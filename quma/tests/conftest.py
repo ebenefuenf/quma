@@ -3,13 +3,12 @@ import pathlib
 import pytest
 
 from quma import pool
+from . import pg
 
 
 @pytest.fixture(scope='module')
 def conn():
-    c = pool.Pool('quma_test_db',
-                  user='quma_test_user',
-                  password='quma_test_password')
+    c = pool.Pool(pg.DB_NAME, user=pg.DB_USER, password=pg.DB_PASS)
     yield c
     c.disconnect()
 
