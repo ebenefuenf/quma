@@ -40,7 +40,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     test_suite='quma.tests',
-    install_requires=['psycopg2'],
+    install_requires=['psycopg2-binary'],
     tests_require=['pytest'],
     extras_require={
         'templates': ['mako'],
