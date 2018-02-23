@@ -1,7 +1,4 @@
-import psycopg2
-
-
-_pool: psycopg2.pool.ThreadedConnectionPool = None
+from psycopg2.pool import ThreadedConnectionPool
 
 
 class Connection(object):
@@ -19,7 +16,7 @@ class Connection(object):
 
     def connect(self):
         if not self._pool:
-            self._pool = psycopg2.pool.ThreadedConnectionPool(
+            self._pool = ThreadedConnectionPool(
                 self.minconn,
                 self.maxconn,
                 database=self.database,

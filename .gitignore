@@ -5,6 +5,7 @@
 .Python
 .eggs/
 .installed.cfg
+.pytest_cache
 MANIFEST
 __pycache__/
 build/
