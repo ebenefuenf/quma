@@ -40,8 +40,9 @@ setup(
     include_package_data=True,
     zip_safe=False,
     test_suite='quma.tests',
+    install_requires=['psycopg2'],
     tests_require=['pytest'],
     extras_require={
-        'postgresql': ['psycopg2'],
+        'templates': ['mako'],
     }
 )
