@@ -1,6 +1,85 @@
 from itertools import chain
 from pathlib import Path
 
+from . import exc
+
+try:
+    from mako.template import Template
+except ImportError:
+    Template = None
+
+
+class Query(object):
+    def __init__(self, query, show, is_template, context_callback=None):
+        self.show = show
+        self.query = query
+        self.context_callback = context_callback
+        self.is_template = is_template
+        self.context = None
+
+    def __call__(self, cursor, returning=False, **kwargs):
+        self._execute(cursor, kwargs)
+        if returning:
+            return cursor.fetchone()[0]
+
+    def __str__(self):
+        return self.query
+
+    def print_sql(self, cursor):
+        if cursor.query:
+            print('-' * 50)
+            print(cursor.query.decode('utf-8'))
+
+    def prepare(self, cursor, kwargs):
+        context = {}
+
+        if self.context_callback:
+            context = self.context_callback(cursor.request, context)
+
+        context.update(kwargs)
+
+        if self.is_template:
+            try:
+                return Template(self.query).render(**context), context
+            except TypeError:
+                raise Exception(
+                    'To use templates (*.msql) you need to install Mako')
+        return self.query, context
+
+    def _execute(self, cursor, kwargs):
+        query, context = self.prepare(cursor, kwargs)
+        cursor.execute(query, context)
+
+    def get(self, cursor, **kwargs):
+        try:
+            self._execute(cursor, kwargs)
+        finally:
+            self.show and self.print_sql(cursor)
+        rowcount = cursor.rowcount
+        if rowcount == 0:
+            raise exc.DoesNotExistError()
+        if rowcount > 1:
+            raise exc.MultipleRecordsError()
+        return cursor.fetchone()
+
+    def all(self, cursor, **kwargs):
+        try:
+            self._execute(cursor, kwargs)
+        finally:
+            self.show and self.print_sql(cursor)
+        return cursor.fetchall()
+
+    def many(self, cursor, size, **kwargs):
+        try:
+            self._execute(cursor, kwargs)
+        finally:
+            self.show and self.print_sql(cursor)
+        return cursor.fetchmany(size)
+
+    def count(self, cursor, **kwargs):
+        self._execute(cursor, kwargs)
+        return cursor.rowcount
+
 
 class Namespace(object):
     def __init__(self, db, sqldir):
@@ -19,6 +98,7 @@ class Namespace(object):
         for sqlfile in sqlfiles:
             filename = Path(sqlfile.name)
             attr = filename.stem
+            ext = filename.suffix
 
             if hasattr(self, attr):
                 # We have real namespace method which shadows
@@ -26,7 +106,11 @@ class Namespace(object):
                 attr = f'_{attr}'
 
             with open(sqlfile, 'r') as f:
-                self._queries[attr] = f.read()
+                self._queries[attr] = Query(
+                    f.read(),
+                    self.show,
+                    ext.lower() == '.msql',
+                    context_callback=self.context_callback)
 
     def __getattr__(self, attr):
         if self.cache:
@@ -42,7 +126,10 @@ class Namespace(object):
         if not sqlfile.is_file():
             sqlfile = self.sqldir / f'{attr}.msql'
         with open(sqlfile, 'r') as f:
-            return f.read()
+            return Query(f.read(),
+                         self.show,
+                         Path(sqlfile).suffix == '.msql',
+                         context_callback=self.context_callback)
 
 
 class Database(type):

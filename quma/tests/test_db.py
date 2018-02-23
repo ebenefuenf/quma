@@ -1,4 +1,9 @@
 from quma.db import db, Namespace
+from . import pg
+
+
+def setup_function(function):
+    pg.setup_db()
 
 
 def test_init(conn, sqldirs):
@@ -11,4 +16,8 @@ def test_namespace(conn, sqldirs):
     db.init(conn, sqldirs)
     assert type(db.addresses) is Namespace
     assert type(db.users) is Namespace
-    assert db.users.all.startswith('SELECT * FROM users')
+
+
+def test_query(conn, sqldirs):
+    db.init(conn, sqldirs)
+    assert str(db.users.all).startswith('SELECT * FROM users')
