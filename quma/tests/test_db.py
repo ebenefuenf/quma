@@ -1,4 +1,4 @@
-from quma.db import db, Namespace
+from quma.db import db, Namespace, Cursor
 from . import pg
 
 
@@ -21,3 +21,10 @@ def test_namespace(conn, sqldirs):
 def test_query(conn, sqldirs):
     db.init(conn, sqldirs)
     assert str(db.users.all).startswith('SELECT * FROM users')
+
+
+def test_cursor(conn, sqldirs):
+    db.init(conn, sqldirs)
+    with db().cursor as cursor:
+        assert type(cursor) is Cursor
+        assert len(db.users.all.all(cursor)) == 4

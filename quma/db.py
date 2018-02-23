@@ -9,6 +9,40 @@ except ImportError:
     Template = None
 
 
+class Cursor(object):
+    def __init__(self, pool, carrier=None, factory=None):
+        self.pool = pool
+        self.carrier = carrier
+
+    def __enter__(self):
+        if self.carrier:
+            if hasattr(self.carrier, 'conn'):
+                self.conn = self.carrier.conn
+            else:
+                self.conn = self.carrier.conn = self.pool.getconn()
+        else:
+            self.conn = self.pool.getconn()
+        self.cursor = self.conn.cursor(cursor_factory=self.pool.factory)
+        return self
+
+    def __exit__(self, *args):
+        self.cursor.close()
+
+        # If the connection is bound to the carrier it
+        # needs to be returned manually.
+        if not hasattr(self.carrier, 'conn'):
+            self.pool.putconn(self.conn)
+
+    def commit(self):
+        self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
+
+    def __getattr__(self, attr):
+        return getattr(self.cursor, attr)
+
+
 class Query(object):
     def __init__(self, query, show, is_template, context_callback=None):
         self.show = show
@@ -34,7 +68,7 @@ class Query(object):
         context = {}
 
         if self.context_callback:
-            context = self.context_callback(cursor.request, context)
+            context = self.context_callback(cursor.carrier, context)
 
         context.update(kwargs)
 
@@ -153,12 +187,16 @@ class db(object, metaclass=Database):
                 cls.ns[path.name] = Namespace(cls, path)
 
     @classmethod
-    def init(cls, connection, sqldirs, cache=True, show=False,
+    def init(cls, pool, sqldirs, cache=True, show=False,
              context_callback=None):
         cls.ns = {}
-        cls.connection = connection
+        cls.pool = pool
         cls.cache = cache
         cls.show = show
         cls.context_callback = context_callback
         for sqldir in sqldirs:
             cls.register_namespace(sqldir)
+
+    @property
+    def cursor(self):
+        return Cursor(self.pool, self.carrier)
