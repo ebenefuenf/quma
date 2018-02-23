@@ -1,7 +1,7 @@
 from psycopg2.pool import ThreadedConnectionPool
 
 
-class Connection(object):
+class Pool(object):
     _pool = None
 
     def __init__(self, database, user=None, password=None, host='localhost',

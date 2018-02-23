@@ -1,12 +1,12 @@
 from psycopg2.pool import ThreadedConnectionPool
 
-from quma import connection
+from quma import pool
 
 
 def test_connection():
-    conn = connection.Connection('quma_test_db',
-                                 user='quma_test_user',
-                                 password='quma_test_password')
+    conn = pool.Pool('quma_test_db',
+                     user='quma_test_user',
+                     password='quma_test_password')
     conn.connect()
     assert type(conn._pool) is ThreadedConnectionPool
     conn.disconnect()
