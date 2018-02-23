@@ -8,6 +8,7 @@ and to use all featuers the DBMS provides.
 
 Installation
 ------------
+
 Download the git repository and run ``python setup.py install``.
 
 
