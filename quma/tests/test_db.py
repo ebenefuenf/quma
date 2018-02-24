@@ -1,4 +1,5 @@
-from quma.db import db, Namespace, Cursor
+from .. import db, Namespace
+from ..mapper import Cursor
 from . import pg
 
 
