@@ -187,17 +187,16 @@ class db(object, metaclass=Database):
             if path.is_dir():
                 ns = path.name
                 try:
-                    mod_path = path / '__init__.py'
+                    mod_path = str(path / '__init__.py')
                     mod_name = f'quma.mapping.{ns}'
-                    module = SourceFileLoader(mod_name,
-                                              str(mod_path)).load_module()
+                    module = SourceFileLoader(mod_name, mod_path).load_module()
                     # snake_case to CamelCase
                     class_name = ''.join([s.title() for s in ns.split('_')])
                     ns_class = getattr(module, class_name)
                     if hasattr(ns_class, 'alias'):
                         cls.namespaces[ns_class.alias] = ns_class(cls, path)
                     cls.namespaces[ns] = ns_class(cls, path)
-                except FileNotFoundError:
+                except (AttributeError, FileNotFoundError):
                     cls.namespaces[ns] = Namespace(cls, path)
 
     @classmethod
