@@ -37,3 +37,5 @@ def test_custom_namespace(conn, sqldirs):
         assert type(db.users).__module__ == 'quma.mapping.users'
         assert type(db.users).__name__ == 'Users'
         assert db.users.get_hans(cursor) == 'Hans'
+        # Test the namespace alias
+        assert db.user.get_hans(cursor) == 'Hans'

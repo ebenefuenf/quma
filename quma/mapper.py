@@ -194,6 +194,8 @@ class db(object, metaclass=Database):
                     # snake_case to CamelCase
                     class_name = ''.join([s.title() for s in ns.split('_')])
                     ns_class = getattr(module, class_name)
+                    if hasattr(ns_class, 'alias'):
+                        cls.namespaces[ns_class.alias] = ns_class(cls, path)
                     cls.namespaces[ns] = ns_class(cls, path)
                 except FileNotFoundError:
                     cls.namespaces[ns] = Namespace(cls, path)
