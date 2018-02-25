@@ -9,14 +9,14 @@ def setup_function(function):
 
 def test_init(conn, sqldirs):
     db.init(conn, sqldirs)
-    assert 'addresses' in db.ns
-    assert 'users' in db.ns
+    assert 'addresses' in db.namespaces
+    assert 'users' in db.namespaces
 
 
 def test_namespace(conn, sqldirs):
     db.init(conn, sqldirs)
     assert type(db.addresses) is Namespace
-    assert type(db.users) is Namespace
+    assert isinstance(db.users, Namespace)
 
 
 def test_query(conn, sqldirs):
@@ -29,3 +29,11 @@ def test_cursor(conn, sqldirs):
     with db().cursor as cursor:
         assert type(cursor) is Cursor
         assert len(db.users.all.all(cursor)) == 4
+
+
+def test_custom_namespace(conn, sqldirs):
+    db.init(conn, sqldirs)
+    with db().cursor as cursor:
+        assert type(db.users).__module__ == 'quma.mapping.users'
+        assert type(db.users).__name__ == 'Users'
+        assert db.users.get_hans(cursor) == 'Hans'

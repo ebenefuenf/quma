@@ -1,3 +1,4 @@
+from importlib.machinery import SourceFileLoader
 from itertools import chain
 from pathlib import Path
 
@@ -168,13 +169,13 @@ class Namespace(object):
 
 class Database(type):
     def __getattr__(cls, attr):
-        if attr not in cls.ns:
+        if attr not in cls.namespaces:
             raise AttributeError()
-        return cls.ns[attr]
+        return cls.namespaces[attr]
 
 
 class db(object, metaclass=Database):
-    ns = {}
+    namespaces = {}
     context_callback = None
 
     def __init__(self, carrier=None):
@@ -184,12 +185,23 @@ class db(object, metaclass=Database):
     def register_namespace(cls, sqldir):
         for path in Path(sqldir).iterdir():
             if path.is_dir():
-                cls.ns[path.name] = Namespace(cls, path)
+                ns = path.name
+                try:
+                    mod_path = path / '__init__.py'
+                    mod_name = f'quma.mapping.{ns}'
+                    module = SourceFileLoader(mod_name,
+                                              str(mod_path)).load_module()
+                    # snake_case to CamelCase
+                    class_name = ''.join([s.title() for s in ns.split('_')])
+                    ns_class = getattr(module, class_name)
+                    cls.namespaces[ns] = ns_class(cls, path)
+                except FileNotFoundError:
+                    cls.namespaces[ns] = Namespace(cls, path)
 
     @classmethod
     def init(cls, pool, sqldirs, cache=True, show=False,
              context_callback=None):
-        cls.ns = {}
+        cls.namespaces = {}
         cls.pool = pool
         cls.cache = cache
         cls.show = show
