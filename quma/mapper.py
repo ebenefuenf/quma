@@ -2,6 +2,8 @@ from importlib.machinery import SourceFileLoader
 from itertools import chain
 from pathlib import Path
 
+import psycopg2
+
 from . import exc
 
 try:
@@ -63,10 +65,15 @@ class Query(object):
         self.is_template = is_template
         self.context = None
 
-    def __call__(self, cursor, returning=False, **kwargs):
-        self._execute(cursor, kwargs)
-        if returning:
-            return cursor.fetchone()[0]
+    def __call__(self, cursor, **kwargs):
+        self.excecute(cursor, kwargs)
+        try:
+            return cursor.fetchall()
+        except psycopg2.ProgrammingError as e:
+            print(cursor.description)
+            if str(e) == 'no results to fetch':
+                return None
+            raise e
 
     def __str__(self):
         return self.query
@@ -92,13 +99,16 @@ class Query(object):
                     'To use templates (*.msql) you need to install Mako')
         return self.query, context
 
-    def _execute(self, cursor, kwargs):
+    def excecute(self, cursor, kwargs):
         query, context = self.prepare(cursor, kwargs)
-        cursor.execute(query, context)
+        try:
+            cursor.execute(query, context)
+        finally:
+            self.show and self.print_sql(cursor)
 
     def get(self, cursor, **kwargs):
         try:
-            self._execute(cursor, kwargs)
+            self.excecute(cursor, kwargs)
         finally:
             self.show and self.print_sql(cursor)
         rowcount = cursor.rowcount
@@ -107,24 +117,6 @@ class Query(object):
         if rowcount > 1:
             raise exc.MultipleRecordsError()
         return cursor.fetchone()
-
-    def all(self, cursor, **kwargs):
-        try:
-            self._execute(cursor, kwargs)
-        finally:
-            self.show and self.print_sql(cursor)
-        return cursor.fetchall()
-
-    def many(self, cursor, size, **kwargs):
-        try:
-            self._execute(cursor, kwargs)
-        finally:
-            self.show and self.print_sql(cursor)
-        return cursor.fetchmany(size)
-
-    def count(self, cursor, **kwargs):
-        self._execute(cursor, kwargs)
-        return cursor.rowcount
 
 
 class Namespace(object):

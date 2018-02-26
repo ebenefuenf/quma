@@ -28,7 +28,7 @@ def test_cursor(conn, sqldirs):
     db.init(conn, sqldirs)
     with db().cursor as cursor:
         assert type(cursor) is Cursor
-        assert len(db.users.all.all(cursor)) == 4
+        assert len(db.users.all(cursor)) == 4
 
 
 def test_custom_namespace(conn, sqldirs):
