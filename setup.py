@@ -15,6 +15,8 @@ with open('quma/__init__.py', 'rt', encoding='utf8') as f:
 with open('README.rst', 'rt', encoding='utf8') as f:
     README = f.read()
 
+test = ['pytest']
+
 setup(
     name='quma',
     version=version,
@@ -40,8 +42,9 @@ setup(
     zip_safe=False,
     test_suite='quma.tests',
     install_requires=['psycopg2-binary'],
-    tests_require=['pytest'],
+    tests_require=test,
     extras_require={
+        'test': test,
         'templates': ['mako'],
     }
 )
