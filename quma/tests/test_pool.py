@@ -1,7 +1,7 @@
 from psycopg2.pool import ThreadedConnectionPool
 
-from .. import Pool
 from . import pg
+from .. import Pool
 
 
 def test_connection():

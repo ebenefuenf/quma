@@ -1,10 +1,7 @@
 import re
 import sys
 
-from setuptools import (
-    find_packages,
-    setup,
-)
+from setuptools import find_packages, setup
 
 if sys.version_info < (3, 5):
     raise Exception('Quma requires Python 3.5 or higher.')

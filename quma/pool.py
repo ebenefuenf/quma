@@ -1,5 +1,5 @@
-from psycopg2.pool import ThreadedConnectionPool
 from psycopg2.extras import NamedTupleCursor
+from psycopg2.pool import ThreadedConnectionPool
 
 
 class Pool(object):

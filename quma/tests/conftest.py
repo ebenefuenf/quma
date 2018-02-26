@@ -3,6 +3,7 @@ import pathlib
 import pytest
 
 from quma import pool
+
 from . import pg
 
 
