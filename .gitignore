@@ -3,6 +3,7 @@
 *.egg-info/
 *.py[cod]
 .Python
+.coverage
 .eggs/
 .installed.cfg
 .pytest_cache
