@@ -2,9 +2,8 @@ import pathlib
 
 import pytest
 
-from quma import pool
-
 from . import pg
+from .. import pool
 
 
 @pytest.fixture(scope='module')

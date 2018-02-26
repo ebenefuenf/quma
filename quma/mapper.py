@@ -143,7 +143,7 @@ class Namespace(object):
                 attr = f'_{attr}'
 
             with open(sqlfile, 'r') as f:
-                self._queries[attr] = Query(
+                self._queries[attr] = self.db.query_class(
                     f.read(),
                     self.show,
                     ext.lower() == '.msql',
@@ -163,10 +163,11 @@ class Namespace(object):
         if not sqlfile.is_file():
             sqlfile = self.sqldir / f'{attr}.msql'
         with open(sqlfile, 'r') as f:
-            return Query(f.read(),
-                         self.show,
-                         Path(sqlfile).suffix == '.msql',
-                         context_callback=self.context_callback)
+            return self.db.query_class(
+                f.read(),
+                self.show,
+                Path(sqlfile).suffix == '.msql',
+                context_callback=self.context_callback)
 
 
 class Database(type):
@@ -181,9 +182,18 @@ class Database(type):
 class db(object, metaclass=Database):
     namespaces = {}
     context_callback = None
+    query_class = Query
 
     def __init__(self, carrier=None):
         self.carrier = carrier
+
+    @classmethod
+    def set_query_class(cls, class_):
+        cls.query_class = class_
+
+    @classmethod
+    def reset_query_class(cls):
+        cls.query_class = Query
 
     @classmethod
     def register_namespace(cls, sqldir):

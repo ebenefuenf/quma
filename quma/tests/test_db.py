@@ -3,7 +3,7 @@ import pytest
 from . import pg
 from .. import Namespace, db
 from ..exc import DoesNotExistError
-from ..mapper import Cursor
+from ..mapper import Cursor, Query
 
 
 def setup_function(function):
@@ -94,3 +94,16 @@ def test_rollback(conn, sqldirs):
     with pytest.raises(DoesNotExistError):
         db.user.by_name.get(cursor, name='hans')
     cursor.close()
+
+
+def test_overwrite_query_class(conn, sqldirs):
+    class MyQuery(Query):
+        def the_test(self):
+            return 'Hans Karl'
+    db.set_query_class(MyQuery)
+    db.init(conn, sqldirs)
+    assert db.user.all.the_test() == 'Hans Karl'
+    db.reset_query_class()
+    db.init(conn, sqldirs)
+    with pytest.raises(AttributeError):
+        db.user.all.the_test()
