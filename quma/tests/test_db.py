@@ -1,3 +1,6 @@
+import pytest
+
+from ..exc import DoesNotExistError
 from .. import db, Namespace
 from ..mapper import Cursor
 from . import pg
@@ -53,3 +56,29 @@ def test_cursor_call(conn, sqldirs):
         cursor.commit()
     finally:
         cursor.close()
+
+
+def test_commit(conn, sqldirs):
+    db.init(conn, sqldirs)
+    cursor = db.cursor()
+    with db.cursor as cursor:
+        db.user.add(cursor,
+                    name='hans',
+                    email='hans@example.com')
+    with db.cursor as cursor:
+        with pytest.raises(DoesNotExistError):
+            db.user.by_name.get(cursor, name='hans')
+
+    with db.cursor as cursor:
+        db.user.add(cursor,
+                    name='hans',
+                    email='hans@example.com')
+        cursor.commit()
+
+    cursor = db.cursor()
+    db.user.by_name.get(cursor, name='hans')
+    db.user.remove(cursor, name='hans')
+    cursor.commit()
+    with pytest.raises(DoesNotExistError):
+        db.user.by_name.get(cursor, name='hans')
+    cursor.close()
