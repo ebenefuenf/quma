@@ -70,7 +70,6 @@ class Query(object):
         try:
             return cursor.fetchall()
         except psycopg2.ProgrammingError as e:
-            print(cursor.description)
             if str(e) == 'no results to fetch':
                 return None
             raise e

@@ -48,5 +48,8 @@ def test_cursor_call(conn, sqldirs):
         db.user.add(cursor,
                     name='Anneliese Günthner',
                     email='anneliese.guenthner@example.com')
+        cursor.commit()
+        db.user.remove(cursor, name='Anneliese Günthner')
+        cursor.commit()
     finally:
         cursor.close()
