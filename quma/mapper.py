@@ -14,8 +14,19 @@ class Cursor(object):
     def __init__(self, pool, carrier=None, factory=None):
         self.pool = pool
         self.carrier = carrier
+        self.conn = None
+        self.cursor = None
 
     def __enter__(self):
+        return self.create_cursor()
+
+    def __exit__(self, *args):
+        self.close()
+
+    def __call__(self):
+        return self.create_cursor()
+
+    def create_cursor(self):
         if self.carrier:
             if hasattr(self.carrier, 'conn'):
                 self.conn = self.carrier.conn
@@ -26,7 +37,7 @@ class Cursor(object):
         self.cursor = self.conn.cursor(cursor_factory=self.pool.factory)
         return self
 
-    def __exit__(self, *args):
+    def close(self):
         self.cursor.close()
 
         # If the connection is bound to the carrier it

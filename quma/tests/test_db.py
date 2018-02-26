@@ -39,3 +39,14 @@ def test_custom_namespace(conn, sqldirs):
         assert db.users.get_hans(cursor) == 'Hans'
         # Test the namespace alias
         assert db.user.get_hans(cursor) == 'Hans'
+
+
+def test_cursor_call(conn, sqldirs):
+    db.init(conn, sqldirs)
+    cursor = db().cursor()
+    try:
+        db.user.add(cursor,
+                    name='Anneliese Günthner',
+                    email='anneliese.guenthner@example.com')
+    finally:
+        cursor.close()
