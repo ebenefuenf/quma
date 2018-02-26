@@ -172,6 +172,8 @@ class Namespace(object):
 
 class Database(type):
     def __getattr__(cls, attr):
+        if attr == 'cursor':
+            return Cursor(cls.pool)
         if attr not in cls.namespaces:
             raise AttributeError()
         return cls.namespaces[attr]
@@ -213,6 +215,6 @@ class db(object, metaclass=Database):
         for sqldir in sqldirs:
             cls.register_namespace(sqldir)
 
-    @property
-    def cursor(self):
-        return Cursor(self.pool, self.carrier)
+    def __getattr__(self, attr):
+        if attr == 'cursor':
+            return Cursor(self.pool, self.carrier)

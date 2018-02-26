@@ -33,7 +33,7 @@ def test_cursor(conn, sqldirs):
 
 def test_custom_namespace(conn, sqldirs):
     db.init(conn, sqldirs)
-    with db().cursor as cursor:
+    with db.cursor as cursor:
         assert type(db.users).__module__ == 'quma.mapping.users'
         assert type(db.users).__name__ == 'Users'
         assert db.users.get_hans(cursor) == 'Hans'
@@ -43,7 +43,7 @@ def test_custom_namespace(conn, sqldirs):
 
 def test_cursor_call(conn, sqldirs):
     db.init(conn, sqldirs)
-    cursor = db().cursor()
+    cursor = db.cursor()
     try:
         db.user.add(cursor,
                     name='Anneliese Günthner',
