@@ -107,3 +107,13 @@ def test_overwrite_query_class(conn, sqldirs):
     db.init(conn, sqldirs)
     with pytest.raises(AttributeError):
         db.user.all.the_test()
+
+
+def test_changeling_cursor(conn, sqldirs):
+    db.init(conn, sqldirs)
+    with db.cursor as cursor:
+        hans = db.user.by_name.get(cursor, name='Franz Görtler')
+        assert hans[0] == 'franz.goertler@example.com'
+        assert hans['email'] == 'franz.goertler@example.com'
+        assert hans.email == 'franz.goertler@example.com'
+        assert 'email' in hans.keys()
