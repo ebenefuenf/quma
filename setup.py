@@ -42,6 +42,7 @@ setup(
     zip_safe=False,
     test_suite='quma.tests',
     install_requires=['psycopg2-binary'],
+    setup_requires=['pytest-runner'],
     tests_require=test,
     extras_require={
         'test': test,
