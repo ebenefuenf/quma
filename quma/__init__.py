@@ -1,5 +1,5 @@
 from .mapper import db, Namespace
-from .pool import Pool
+from .conn import Pool
 
 
 __all__ = ['db', 'Namespace', 'Pool']

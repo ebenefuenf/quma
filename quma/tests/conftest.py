@@ -3,12 +3,12 @@ import pathlib
 import pytest
 
 from . import pg
-from .. import pool
+from .. import conn as connection
 
 
 @pytest.fixture(scope='module')
 def conn():
-    c = pool.Pool(pg.DB_NAME, user=pg.DB_USER, password=pg.DB_PASS)
+    c = connection.Pool(pg.DB_NAME, user=pg.DB_USER, password=pg.DB_PASS)
     yield c
     c.disconnect()
 
