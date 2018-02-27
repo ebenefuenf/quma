@@ -1,9 +1,15 @@
 import pytest
 
 from . import pg
-from .. import Namespace, db
+from .. import (
+    Namespace,
+    db,
+)
 from ..exc import DoesNotExistError
-from ..mapper import Cursor, Query
+from ..mapper import (
+    Cursor,
+    Query,
+)
 
 
 def setup_function(function):

@@ -1,4 +1,7 @@
-from psycopg2.extras import DictCursor, DictRow
+from psycopg2.extras import (
+    DictCursor,
+    DictRow,
+)
 from psycopg2.pool import ThreadedConnectionPool
 
 
