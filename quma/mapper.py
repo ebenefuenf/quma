@@ -14,7 +14,7 @@ except ImportError:
 
 
 class Cursor(object):
-    def __init__(self, conn, carrier=None, factory=None):
+    def __init__(self, conn, carrier=None):
         self.conn = conn
         self.carrier = carrier
         self.cn = None
@@ -31,10 +31,10 @@ class Cursor(object):
 
     def create_cursor(self):
         if self.carrier:
-            if hasattr(self.carrier, 'conn'):
-                self.cn = self.carrier.conn
+            if hasattr(self.carrier, '_quma_conn'):
+                self.cn = self.carrier._quma_conn
             else:
-                self.cn = self.carrier.cn = self.conn.get()
+                self.cn = self.carrier._quma_conn = self.conn.get()
         else:
             self.cn = self.conn.get()
         self.cursor = self.cn.cursor(cursor_factory=self.conn.factory)
@@ -45,7 +45,7 @@ class Cursor(object):
 
         # If the connection is bound to the carrier it
         # needs to be returned manually.
-        if not hasattr(self.carrier, 'conn'):
+        if not hasattr(self.carrier, '_quma_conn'):
             self.conn.put(self.cn)
 
     def commit(self):

@@ -73,6 +73,6 @@ class PostgresPool(Postgres):
         self._pool = None
 
     def release(self, carrier):
-        if hasattr(carrier, '_conn'):
-            self._pool.putconn(carrier._conn)
-            del carrier._conn
+        if hasattr(carrier, '_quma_conn'):
+            self._pool.putconn(carrier._quma_conn)
+            del carrier._quma_conn
