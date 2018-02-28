@@ -23,6 +23,5 @@ def sqldirs():
 
 @pytest.fixture(scope='module')
 def db(conn, sqldirs):
-    db = Database(sqldirs)
-    db.bind(conn)
+    db = Database(conn, sqldirs)
     return db

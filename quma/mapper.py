@@ -14,10 +14,10 @@ except ImportError:
 
 
 class Cursor(object):
-    def __init__(self, pool, carrier=None, factory=None):
-        self.pool = pool
+    def __init__(self, conn, carrier=None, factory=None):
+        self.conn = conn
         self.carrier = carrier
-        self.conn = None
+        self.cn = None
         self.cursor = None
 
     def __enter__(self):
@@ -32,12 +32,12 @@ class Cursor(object):
     def create_cursor(self):
         if self.carrier:
             if hasattr(self.carrier, 'conn'):
-                self.conn = self.carrier.conn
+                self.cn = self.carrier.conn
             else:
-                self.conn = self.carrier.conn = self.pool.getconn()
+                self.cn = self.carrier.cn = self.conn.getconn()
         else:
-            self.conn = self.pool.getconn()
-        self.cursor = self.conn.cursor(cursor_factory=self.pool.factory)
+            self.cn = self.conn.getconn()
+        self.cursor = self.cn.cursor(cursor_factory=self.conn.factory)
         return self
 
     def close(self):
@@ -46,13 +46,13 @@ class Cursor(object):
         # If the connection is bound to the carrier it
         # needs to be returned manually.
         if not hasattr(self.carrier, 'conn'):
-            self.pool.putconn(self.conn)
+            self.conn.putconn(self.cn)
 
     def commit(self):
-        self.conn.commit()
+        self.cn.commit()
 
     def rollback(self):
-        self.conn.rollback()
+        self.cn.rollback()
 
     def __getattr__(self, attr):
         return getattr(self.cursor, attr)
@@ -173,20 +173,31 @@ class Namespace(object):
 
 class Database(object):
 
-    def __init__(self, sqldirs, cache=True, show=False,
-                 context_callback=None,
-                 query_factory=Query):
+    def __init__(self, conn, *args, **kwargs):
+        # if the second arg is present it must be sqldirs
+        if args and len(args) > 1:
+            raise ValueError('Max number of arguments is two')
+        elif args and len(args) == 1:
+            self.sqldirs = args[0]
+        else:
+            self.sqldirs = kwargs.pop('sqldirs', [])
+
+        self.query_factory = kwargs.pop('query_factory', Query)
+        self.context_callback = kwargs.pop('context_callback', Query)
+        self.show = kwargs.pop('show', False)
+        self.cache = kwargs.pop('cache', False)
+
+        self.conn = conn
+
         self.namespaces = {}
-        self.query_factory = query_factory
-        self.cache = cache
-        self.show = show
-        self.context_callback = context_callback
-        for sqldir in sqldirs:
+
+        for sqldir in self.sqldirs:
+            print(sqldir)
             self.register_namespace(sqldir)
 
     def __call__(self, carrier=None):
         self.carrier = carrier
-        return SimpleNamespace(cursor=Cursor(self.pool))
+        return SimpleNamespace(cursor=Cursor(self.conn))
 
     def register_namespace(self, sqldir):
         for path in Path(sqldir).iterdir():
@@ -205,12 +216,9 @@ class Database(object):
                 except (AttributeError, FileNotFoundError):
                     self.namespaces[ns] = Namespace(self, path)
 
-    def bind(self, pool):
-        self.pool = pool
-
     @property
     def cursor(self):
-        return Cursor(self.pool)
+        return Cursor(self.conn)
 
     def __getattr__(self, attr):
         if attr not in self.namespaces:

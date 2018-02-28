@@ -21,6 +21,12 @@ def test_init(db):
     assert 'users' in db.namespaces
 
 
+def test_failing_init(db):
+    with pytest.raises(ValueError) as e:
+        Database(1, 2, 3)
+    assert 'Max number' in str(e)
+
+
 def test_namespace(db):
     assert type(db.addresses) is Namespace
     assert isinstance(db.users, Namespace)
@@ -98,8 +104,7 @@ def test_overwrite_query_class(conn, sqldirs):
     class MyQuery(Query):
         def the_test(self):
             return 'Hans Karl'
-    db = Database(sqldirs, query_factory=MyQuery)
-    db.bind(conn)
+    db = Database(conn, sqldirs, query_factory=MyQuery)
     assert db.user.all.the_test() == 'Hans Karl'
 
 
