@@ -3,17 +3,31 @@ from psycopg2.pool import ThreadedConnectionPool
 from .cursor import ChangelingCursor
 
 
-class Pool(object):
-    def __init__(self, database, user=None, password=None,
-                 host='localhost', port='5432', minconn=1,
-                 maxconn=10, factory=ChangelingCursor,
-                 pool=ThreadedConnectionPool):
-        self.factory = factory
+class Connection(object):
+    def __init__(self, database, **kwargs):
+        self.user = kwargs.pop('user')
+        self.password = kwargs.pop('password')
+
+        self.database = database
+
+
+class PostgresPool(Connection):
+    def __init__(self, database, **kwargs):
+        super().__init__(database, **kwargs)
+
+        self.factory = kwargs.pop('factory', ChangelingCursor)
+
+        pool = kwargs.pop('pool', ThreadedConnectionPool)
+        host = kwargs.pop('host', 'localhost')
+        port = kwargs.pop('port', '5432')
+        minconn = kwargs.pop('minconn', 10)
+        maxconn = kwargs.pop('maxconn', 10)
+
         self._pool = pool(minconn,
                           maxconn,
-                          database=database,
-                          user=user,
-                          password=password,
+                          database=self.database,
+                          user=self.user,
+                          password=self.password,
                           host=host,
                           port=port)
 

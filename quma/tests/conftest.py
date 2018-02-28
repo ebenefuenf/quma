@@ -9,7 +9,9 @@ from .. import conn as connection
 
 @pytest.fixture(scope='module')
 def conn():
-    c = connection.Pool(pg.DB_NAME, user=pg.DB_USER, password=pg.DB_PASS)
+    c = connection.PostgresPool(pg.DB_NAME,
+                                user=pg.DB_USER,
+                                password=pg.DB_PASS)
     yield c
     c.disconnect()
 
