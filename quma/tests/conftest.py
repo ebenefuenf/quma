@@ -3,6 +3,7 @@ import pathlib
 import pytest
 
 from . import pg
+from .. import Database
 from .. import conn as connection
 
 
@@ -18,3 +19,10 @@ def sqldirs():
     return [
         pathlib.Path(__file__).parent / 'fixtures' / 'queries'
     ]
+
+
+@pytest.fixture(scope='module')
+def db(conn, sqldirs):
+    db = Database(sqldirs)
+    db.bind(conn)
+    return db

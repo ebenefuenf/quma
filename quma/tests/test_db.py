@@ -2,8 +2,8 @@ import pytest
 
 from . import pg
 from .. import (
+    Database,
     Namespace,
-    db,
 )
 from ..exc import DoesNotExistError
 from ..mapper import (
@@ -16,32 +16,27 @@ def setup_function(function):
     pg.setup_db()
 
 
-def test_init(conn, sqldirs):
-    db.init(conn, sqldirs)
+def test_init(db):
     assert 'addresses' in db.namespaces
     assert 'users' in db.namespaces
 
 
-def test_namespace(conn, sqldirs):
-    db.init(conn, sqldirs)
+def test_namespace(db):
     assert type(db.addresses) is Namespace
     assert isinstance(db.users, Namespace)
 
 
-def test_query(conn, sqldirs):
-    db.init(conn, sqldirs)
+def test_query(db):
     assert str(db.users.all).startswith('SELECT * FROM users')
 
 
-def test_cursor(conn, sqldirs):
-    db.init(conn, sqldirs)
+def test_cursor(db):
     with db().cursor as cursor:
         assert type(cursor) is Cursor
         assert len(db.users.all(cursor)) == 4
 
 
-def test_custom_namespace(conn, sqldirs):
-    db.init(conn, sqldirs)
+def test_custom_namespace(db):
     with db.cursor as cursor:
         assert type(db.users).__module__ == 'quma.mapping.users'
         assert type(db.users).__name__ == 'Users'
@@ -50,8 +45,7 @@ def test_custom_namespace(conn, sqldirs):
         assert db.user.get_hans(cursor) == 'Hans'
 
 
-def test_cursor_call(conn, sqldirs):
-    db.init(conn, sqldirs)
+def test_cursor_call(db):
     cursor = db.cursor()
     try:
         db.user.add(cursor,
@@ -64,8 +58,7 @@ def test_cursor_call(conn, sqldirs):
         cursor.close()
 
 
-def test_commit(conn, sqldirs):
-    db.init(conn, sqldirs)
+def test_commit(db):
     with db.cursor as cursor:
         db.user.add(cursor,
                     name='hans',
@@ -89,8 +82,7 @@ def test_commit(conn, sqldirs):
     cursor.close()
 
 
-def test_rollback(conn, sqldirs):
-    db.init(conn, sqldirs)
+def test_rollback(db):
     cursor = db.cursor()
     db.user.add(cursor,
                 name='hans',
@@ -106,17 +98,12 @@ def test_overwrite_query_class(conn, sqldirs):
     class MyQuery(Query):
         def the_test(self):
             return 'Hans Karl'
-    db.set_query_class(MyQuery)
-    db.init(conn, sqldirs)
+    db = Database(sqldirs, query_factory=MyQuery)
+    db.bind(conn)
     assert db.user.all.the_test() == 'Hans Karl'
-    db.reset_query_class()
-    db.init(conn, sqldirs)
-    with pytest.raises(AttributeError):
-        db.user.all.the_test()
 
 
-def test_changeling_cursor(conn, sqldirs):
-    db.init(conn, sqldirs)
+def test_changeling_cursor(db):
     with db.cursor as cursor:
         hans = db.user.by_name.get(cursor, name='Franz Görtler')
         assert hans[0] == 'franz.goertler@example.com'

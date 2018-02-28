@@ -1,6 +1,7 @@
 from importlib.machinery import SourceFileLoader
 from itertools import chain
 from pathlib import Path
+from types import SimpleNamespace
 
 import psycopg2
 
@@ -143,7 +144,7 @@ class Namespace(object):
                 attr = f'_{attr}'
 
             with open(sqlfile, 'r') as f:
-                self._queries[attr] = self.db.query_class(
+                self._queries[attr] = self.db.query_factory(
                     f.read(),
                     self.show,
                     ext.lower() == '.msql',
@@ -163,40 +164,31 @@ class Namespace(object):
         if not sqlfile.is_file():
             sqlfile = self.sqldir / f'{attr}.msql'
         with open(sqlfile, 'r') as f:
-            return self.db.query_class(
+            return self.db.query_factory(
                 f.read(),
                 self.show,
                 Path(sqlfile).suffix == '.msql',
                 context_callback=self.context_callback)
 
 
-class Database(type):
-    def __getattr__(cls, attr):
-        if attr == 'cursor':
-            return Cursor(cls.pool)
-        if attr not in cls.namespaces:
-            raise AttributeError()
-        return cls.namespaces[attr]
+class Database(object):
 
+    def __init__(self, sqldirs, cache=True, show=False,
+                 context_callback=None,
+                 query_factory=Query):
+        self.namespaces = {}
+        self.query_factory = query_factory
+        self.cache = cache
+        self.show = show
+        self.context_callback = context_callback
+        for sqldir in sqldirs:
+            self.register_namespace(sqldir)
 
-class db(object, metaclass=Database):
-    namespaces = {}
-    context_callback = None
-    query_class = Query
-
-    def __init__(self, carrier=None):
+    def __call__(self, carrier=None):
         self.carrier = carrier
+        return SimpleNamespace(cursor=Cursor(self.pool))
 
-    @classmethod
-    def set_query_class(cls, class_):
-        cls.query_class = class_
-
-    @classmethod
-    def reset_query_class(cls):
-        cls.query_class = Query
-
-    @classmethod
-    def register_namespace(cls, sqldir):
+    def register_namespace(self, sqldir):
         for path in Path(sqldir).iterdir():
             if path.is_dir():
                 ns = path.name
@@ -208,22 +200,19 @@ class db(object, metaclass=Database):
                     class_name = ''.join([s.title() for s in ns.split('_')])
                     ns_class = getattr(module, class_name)
                     if hasattr(ns_class, 'alias'):
-                        cls.namespaces[ns_class.alias] = ns_class(cls, path)
-                    cls.namespaces[ns] = ns_class(cls, path)
+                        self.namespaces[ns_class.alias] = ns_class(self, path)
+                    self.namespaces[ns] = ns_class(self, path)
                 except (AttributeError, FileNotFoundError):
-                    cls.namespaces[ns] = Namespace(cls, path)
+                    self.namespaces[ns] = Namespace(self, path)
 
-    @classmethod
-    def init(cls, pool, sqldirs, cache=True, show=False,
-             context_callback=None):
-        cls.namespaces = {}
-        cls.pool = pool
-        cls.cache = cache
-        cls.show = show
-        cls.context_callback = context_callback
-        for sqldir in sqldirs:
-            cls.register_namespace(sqldir)
+    def bind(self, pool):
+        self.pool = pool
+
+    @property
+    def cursor(self):
+        return Cursor(self.pool)
 
     def __getattr__(self, attr):
-        if attr == 'cursor':
-            return Cursor(self.pool, self.carrier)
+        if attr not in self.namespaces:
+            raise AttributeError()
+        return self.namespaces[attr]
