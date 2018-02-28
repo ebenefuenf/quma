@@ -13,7 +13,7 @@ def conn():
                                 user=pg.DB_USER,
                                 password=pg.DB_PASS)
     yield c
-    c.disconnect()
+    c.close()
 
 
 @pytest.fixture(scope='module')

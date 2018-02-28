@@ -34,9 +34,9 @@ class Cursor(object):
             if hasattr(self.carrier, 'conn'):
                 self.cn = self.carrier.conn
             else:
-                self.cn = self.carrier.cn = self.conn.getconn()
+                self.cn = self.carrier.cn = self.conn.get()
         else:
-            self.cn = self.conn.getconn()
+            self.cn = self.conn.get()
         self.cursor = self.cn.cursor(cursor_factory=self.conn.factory)
         return self
 
@@ -46,7 +46,7 @@ class Cursor(object):
         # If the connection is bound to the carrier it
         # needs to be returned manually.
         if not hasattr(self.carrier, 'conn'):
-            self.conn.putconn(self.cn)
+            self.conn.put(self.cn)
 
     def commit(self):
         self.cn.commit()
@@ -192,7 +192,6 @@ class Database(object):
         self.namespaces = {}
 
         for sqldir in self.sqldirs:
-            print(sqldir)
             self.register_namespace(sqldir)
 
     def __call__(self, carrier=None):

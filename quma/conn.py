@@ -1,46 +1,78 @@
-from psycopg2.pool import ThreadedConnectionPool
+try:
+    import psycopg2
+    from psycopg2.pool import ThreadedConnectionPool
+except ImportError:
+    pass
 
 from .cursor import ChangelingCursor
 
 
 class Connection(object):
     def __init__(self, database, **kwargs):
+        self.database = database
+
         self.user = kwargs.pop('user')
         self.password = kwargs.pop('password')
 
-        self.database = database
 
-
-class PostgresPool(Connection):
+class Postgres(Connection):
     def __init__(self, database, **kwargs):
         super().__init__(database, **kwargs)
 
+        self.host = kwargs.pop('host', 'localhost')
+        self.port = kwargs.pop('port', '5432')
         self.factory = kwargs.pop('factory', ChangelingCursor)
 
-        pool = kwargs.pop('pool', ThreadedConnectionPool)
-        host = kwargs.pop('host', 'localhost')
-        port = kwargs.pop('port', '5432')
-        minconn = kwargs.pop('minconn', 10)
-        maxconn = kwargs.pop('maxconn', 10)
+        self._init_conn(**kwargs)
 
-        self._pool = pool(minconn,
-                          maxconn,
-                          database=self.database,
-                          user=self.user,
-                          password=self.password,
-                          host=host,
-                          port=port)
+    def _init_conn(self, **kwargs):
+        self.persist = kwargs.pop('persist', False)
+        self._conn = None
+        if self.persist:
+            self._conn = self.get()
 
-    def getconn(self):
+    def get(self):
+        if self.persist and self._conn:
+            return self._conn
+        return psycopg2.connect(database=self.database,
+                                user=self.user,
+                                password=self.password,
+                                host=self.host,
+                                port=self.port)
+
+    def close(self):
+        self._conn.close()
+        self._conn = None
+
+
+class PostgresPool(Postgres):
+    def __init__(self, database, **kwargs):
+        self.pool = kwargs.pop('pool', ThreadedConnectionPool)
+        self.minconn = kwargs.pop('minconn', 10)
+        self.maxconn = kwargs.pop('maxconn', 10)
+
+        super().__init__(database, **kwargs)
+
+    def _init_conn(self, **kwargs):
+        self._pool = self.pool(self.minconn,
+                               self.maxconn,
+                               database=self.database,
+                               user=self.user,
+                               password=self.password,
+                               host=self.host,
+                               port=self.port)
+
+    def get(self):
         return self._pool.getconn()
 
-    def putconn(self, conn):
+    def put(self, conn):
         return self._pool.putconn(conn)
 
-    def disconnect(self):
+    def close(self):
         self._pool.closeall()
         self._pool = None
 
-    def release_connection(self, carrier):
+    def release(self, carrier):
         if hasattr(carrier, '_conn'):
             self._pool.putconn(carrier._conn)
+            del carrier._conn
