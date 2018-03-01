@@ -9,26 +9,45 @@ except ImportError:
 from .cursor import ChangelingCursor
 
 
+class Cursor(object):
+    def __init__(self, dbapi_cursor):
+        d = {key: getattr(dbapi_cursor, key) for key in dir(dbapi_cursor)}
+        self.__dict__ = d
+        self.has_rowcount = False
+
+
 class Connection(object):
     def __init__(self, database, **kwargs):
+        self.factory = None
         self.database = database
 
-        self.user = kwargs.pop('user')
-        self.password = kwargs.pop('password')
-
-    def close(self):
-        self._conn.close()
-        self._conn = None
+        self.user = kwargs.pop('user', None)
+        self.password = kwargs.pop('password', None)
 
     def _init_conn(self, **kwargs):
         self.persist = kwargs.pop('persist', False)
-        self._conn = None
+        self.conn = None
         if self.persist:
-            self._conn = self.get()
+            self.conn = self.get()
 
-    @property
-    def is_pool(self):
-        return False
+    def get(self):
+        raise NotImplementedError
+
+    def put(self, conn):
+        assert self.conn == self.conn
+        if not self.persist and self.conn:
+            self.conn.close()
+            self.conn = None
+
+    def close(self):
+        if self.conn:
+            self.conn.close()
+        self.conn = None
+
+    def cursor(self):
+        if not self.conn:
+            self.get()
+        return Cursor(self.conn.cursor())
 
 
 class SQLite(Connection):
@@ -38,9 +57,9 @@ class SQLite(Connection):
         self._init_conn(**kwargs)
 
     def get(self):
-        if self.persist and self._conn:
-            return self._conn
-        return sqlite3.connect(database=self.database)
+        if not self.conn:
+            self.conn = sqlite3.connect(database=self.database)
+        return self.conn
 
 
 class Postgres(Connection):
@@ -54,47 +73,50 @@ class Postgres(Connection):
         self._init_conn(**kwargs)
 
     def get(self):
-        if self.persist and self._conn:
-            return self._conn
-        return psycopg2.connect(database=self.database,
-                                user=self.user,
-                                password=self.password,
-                                host=self.host,
-                                port=self.port)
+        if not self.conn:
+            self.conn = psycopg2.connect(database=self.database,
+                                         user=self.user,
+                                         password=self.password,
+                                         host=self.host,
+                                         port=self.port)
+        return self.conn
+
+    def cursor(self):
+        if not self.conn:
+            self.get()
+        c = Cursor(self.conn.cursor(cursor_factory=self.conn.factory))
+        c.has_rowcount = True
+        return c
 
 
 class PostgresPool(Postgres):
     def __init__(self, database, **kwargs):
         self.pool = kwargs.pop('pool', ThreadedConnectionPool)
-        self.minconn = kwargs.pop('minconn', 10)
+        self.minconn = kwargs.pop('minconn', 1)
         self.maxconn = kwargs.pop('maxconn', 10)
 
         super().__init__(database, **kwargs)
 
     def _init_conn(self, **kwargs):
-        self._conn = self.pool(self.minconn,
-                               self.maxconn,
-                               database=self.database,
-                               user=self.user,
-                               password=self.password,
-                               host=self.host,
-                               port=self.port)
+        self.conn = self.pool(self.minconn,
+                              self.maxconn,
+                              database=self.database,
+                              user=self.user,
+                              password=self.password,
+                              host=self.host,
+                              port=self.port)
 
     def get(self):
-        return self._conn.getconn()
+        return self.conn.getconn()
 
     def put(self, conn):
-        return self._conn.putconn(conn)
+        return self.conn.putconn(conn)
 
     def close(self):
-        self._conn.closeall()
-        self._conn = None
+        self.conn.closeall()
+        self.conn = None
 
     def release(self, carrier):
         if hasattr(carrier, '_quma_conn'):
-            self._conn.putconn(carrier._quma_conn)
+            self.conn.putconn(carrier._quma_conn)
             del carrier._quma_conn
-
-    @property
-    def is_pool(self):
-        return True

@@ -37,7 +37,7 @@ class Cursor(object):
                 self.cn = self.carrier._quma_conn = self.conn.get()
         else:
             self.cn = self.conn.get()
-        self.cursor = self.cn.cursor(cursor_factory=self.conn.factory)
+        self.cursor = self.conn.cursor()
         return self
 
     def close(self):
@@ -46,10 +46,7 @@ class Cursor(object):
         # If the connection is bound to the carrier it
         # needs to be returned manually.
         if not hasattr(self.carrier, '_quma_conn'):
-            if self.conn.is_pool:
-                self.conn.put(self.cn)
-            else:
-                self.conn.close()
+            self.conn.put(self.cn)
 
     def commit(self):
         self.cn.commit()
@@ -114,12 +111,23 @@ class Query(object):
             self.excecute(cursor, kwargs)
         finally:
             self.show and self.print_sql(cursor)
-        rowcount = cursor.rowcount
-        if rowcount == 0:
-            raise exc.DoesNotExistError()
-        if rowcount > 1:
-            raise exc.MultipleRecordsError()
-        return cursor.fetchone()
+
+        def check_rowcount(rowcount):
+            if rowcount == 0:
+                raise exc.DoesNotExistError()
+            if rowcount > 1:
+                raise exc.MultipleRecordsError()
+            return cursor.fetchone()
+
+        # SQLite does not support rowcount
+        if cursor.has_rowcount:
+            rowcount = cursor.rowcount
+            check_rowcount(rowcount)
+            return cursor.fetchone()
+        else:
+            result = cursor.fetchall()
+            check_rowcount(len(result))
+            return result[0]
 
 
 class Namespace(object):
