@@ -5,8 +5,9 @@ from .mapper import (
 from .conn import (
     Postgres,
     PostgresPool,
+    SQLite,
 )
 
 
-__all__ = ['Database', 'Namespace', 'Postgres', 'PostgresPool']
+__all__ = ['Database', 'Namespace', 'Postgres', 'PostgresPool', 'SQLite']
 __version__ = '0.1a1.dev1'

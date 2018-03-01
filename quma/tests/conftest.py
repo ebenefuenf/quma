@@ -42,3 +42,16 @@ def pgconn():
 def pgdb(pgconn, sqldirs):
     db = Database(pgconn, sqldirs)
     return db
+
+
+@pytest.fixture(scope='module')
+def slconn():
+    c = connection.SQLite(':memory:')
+    yield c
+    c.close()
+
+
+@pytest.fixture(scope='module')
+def sldb(slconn, sqldirs):
+    db = Database(slconn, sqldirs)
+    return db

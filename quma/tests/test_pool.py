@@ -28,6 +28,6 @@ def test_postgres_persist():
 
 def test_postgres_pool():
     conn = PostgresPool(pg.DB_NAME, user=pg.DB_USER, password=pg.DB_PASS)
-    assert type(conn._pool) is ThreadedConnectionPool
+    assert type(conn._conn) is ThreadedConnectionPool
     conn.close()
-    assert conn._pool is None
+    assert conn._conn is None
