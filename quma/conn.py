@@ -74,17 +74,19 @@ class Postgres(Connection):
 
     def get(self):
         if not self.conn:
-            self.conn = psycopg2.connect(database=self.database,
-                                         user=self.user,
-                                         password=self.password,
-                                         host=self.host,
-                                         port=self.port)
+            self.conn = psycopg2.connect(
+                database=self.database,
+                user=self.user,
+                password=self.password,
+                host=self.host,
+                port=self.port,
+                cursor_factory=self.factory)
         return self.conn
 
     def cursor(self):
         if not self.conn:
             self.get()
-        c = Cursor(self.conn.cursor(cursor_factory=self.conn.factory))
+        c = Cursor(self.conn.cursor())
         c.has_rowcount = True
         return c
 
