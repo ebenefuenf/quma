@@ -46,7 +46,10 @@ class Cursor(object):
         # If the connection is bound to the carrier it
         # needs to be returned manually.
         if not hasattr(self.carrier, '_quma_conn'):
-            self.conn.put(self.cn)
+            if self.conn.is_pool:
+                self.conn.put(self.cn)
+            else:
+                self.conn.close()
 
     def commit(self):
         self.cn.commit()

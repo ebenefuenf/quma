@@ -14,6 +14,10 @@ class Connection(object):
         self.user = kwargs.pop('user')
         self.password = kwargs.pop('password')
 
+    @property
+    def is_pool(self):
+        return False
+
 
 class Postgres(Connection):
     def __init__(self, database, **kwargs):
@@ -76,3 +80,7 @@ class PostgresPool(Postgres):
         if hasattr(carrier, '_quma_conn'):
             self._pool.putconn(carrier._quma_conn)
             del carrier._quma_conn
+
+    @property
+    def is_pool(self):
+        return True

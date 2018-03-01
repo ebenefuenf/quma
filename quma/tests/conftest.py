@@ -8,7 +8,14 @@ from .. import conn as connection
 
 
 @pytest.fixture(scope='module')
-def conn():
+def sqldirs():
+    return [
+        pathlib.Path(__file__).parent / 'fixtures' / 'queries'
+    ]
+
+
+@pytest.fixture(scope='module')
+def pgpoolconn():
     c = connection.PostgresPool(pg.DB_NAME,
                                 user=pg.DB_USER,
                                 password=pg.DB_PASS)
@@ -17,13 +24,21 @@ def conn():
 
 
 @pytest.fixture(scope='module')
-def sqldirs():
-    return [
-        pathlib.Path(__file__).parent / 'fixtures' / 'queries'
-    ]
+def pgpooldb(pgpoolconn, sqldirs):
+    db = Database(pgpoolconn, sqldirs)
+    return db
 
 
 @pytest.fixture(scope='module')
-def db(conn, sqldirs):
-    db = Database(conn, sqldirs)
+def pgconn():
+    c = connection.PostgresPool(pg.DB_NAME,
+                                user=pg.DB_USER,
+                                password=pg.DB_PASS)
+    yield c
+    c.close()
+
+
+@pytest.fixture(scope='module')
+def pgdb(pgconn, sqldirs):
+    db = Database(pgconn, sqldirs)
     return db
