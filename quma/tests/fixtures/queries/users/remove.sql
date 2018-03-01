@@ -1,1 +1,1 @@
-DELETE FROM users WHERE name = %(name)s;
+DELETE FROM users WHERE name = :name;

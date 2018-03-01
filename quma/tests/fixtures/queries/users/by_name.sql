@@ -1,1 +1,1 @@
-SELECT email FROM users WHERE name = %(name)s;
+SELECT email FROM users WHERE name = :name;

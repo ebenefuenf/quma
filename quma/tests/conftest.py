@@ -7,14 +7,14 @@ from .. import Database
 from .. import conn as connection
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture('session')
 def sqldirs():
     return [
         pathlib.Path(__file__).parent / 'fixtures' / 'queries'
     ]
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def pgpoolconn():
     c = connection.PostgresPool(util.DB_NAME,
                                 user=util.DB_USER,
@@ -23,13 +23,13 @@ def pgpoolconn():
     c.close()
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def pgpooldb(pgpoolconn, sqldirs):
     db = Database(pgpoolconn, sqldirs)
     return db
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def pgconn():
     c = connection.PostgresPool(util.DB_NAME,
                                 user=util.DB_USER,
@@ -38,20 +38,25 @@ def pgconn():
     c.close()
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture
 def pgdb(pgconn, sqldirs):
     db = Database(pgconn, sqldirs)
     return db
 
 
-@pytest.fixture(scope='module')
-def slconn():
-    c = connection.SQLite(':memory:')
+@pytest.fixture
+def conn():
+    c = connection.SQLite('/tmp/quma.sqlite3')
     yield c
     c.close()
 
 
-@pytest.fixture(scope='module')
-def sldb(slconn, sqldirs):
-    db = Database(slconn, sqldirs)
+@pytest.fixture
+def db(conn, sqldirs):
+    cursor = conn.cursor()
+    cursor.execute(util.DROP_USERS)
+    cursor.execute(util.CREATE_USERS)
+    cursor.execute(util.INSERT_USERS)
+    conn.conn.commit()
+    db = Database(conn, sqldirs)
     return db
