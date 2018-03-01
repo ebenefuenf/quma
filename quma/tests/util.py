@@ -6,7 +6,7 @@ DB_PASS = 'quma_test_password'
 DSN = f'dbname={DB_NAME} user={DB_USER} password={DB_PASS}'
 
 
-def setup_db():
+def setup_pg_db():
     conn = psycopg2.connect(DSN)
     cur = conn.cursor()
     cur.execute('DROP TABLE IF EXISTS users;')

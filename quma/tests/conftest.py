@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from . import pg
+from . import util
 from .. import Database
 from .. import conn as connection
 
@@ -16,9 +16,9 @@ def sqldirs():
 
 @pytest.fixture(scope='module')
 def pgpoolconn():
-    c = connection.PostgresPool(pg.DB_NAME,
-                                user=pg.DB_USER,
-                                password=pg.DB_PASS)
+    c = connection.PostgresPool(util.DB_NAME,
+                                user=util.DB_USER,
+                                password=util.DB_PASS)
     yield c
     c.close()
 
@@ -31,9 +31,9 @@ def pgpooldb(pgpoolconn, sqldirs):
 
 @pytest.fixture(scope='module')
 def pgconn():
-    c = connection.PostgresPool(pg.DB_NAME,
-                                user=pg.DB_USER,
-                                password=pg.DB_PASS)
+    c = connection.PostgresPool(util.DB_NAME,
+                                user=util.DB_USER,
+                                password=util.DB_PASS)
     yield c
     c.close()
 

@@ -1,6 +1,6 @@
 import pytest
 
-from . import pg
+from . import util
 from .. import (
     Database,
     Namespace,
@@ -13,7 +13,7 @@ from ..mapper import (
 
 
 def setup_function(function):
-    pg.setup_db()
+    util.setup_pg_db()
 
 
 def test_init(pgdb):

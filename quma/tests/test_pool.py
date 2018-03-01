@@ -1,7 +1,7 @@
 from psycopg2.extensions import connection
 from psycopg2.pool import ThreadedConnectionPool
 
-from . import pg
+from . import util
 from .. import (
     Postgres,
     PostgresPool,
@@ -9,7 +9,7 @@ from .. import (
 
 
 def test_postgres():
-    conn = Postgres(pg.DB_NAME, user=pg.DB_USER, password=pg.DB_PASS)
+    conn = Postgres(util.DB_NAME, user=util.DB_USER, password=util.DB_PASS)
     cn = conn.get()
     assert conn._conn is None
     assert type(cn) is connection
@@ -17,8 +17,8 @@ def test_postgres():
 
 
 def test_postgres_persist():
-    conn = Postgres(pg.DB_NAME, user=pg.DB_USER,
-                    password=pg.DB_PASS, persist=True)
+    conn = Postgres(util.DB_NAME, user=util.DB_USER,
+                    password=util.DB_PASS, persist=True)
     cn = conn.get()
     assert conn._conn == cn
     assert type(cn) is connection
@@ -27,7 +27,7 @@ def test_postgres_persist():
 
 
 def test_postgres_pool():
-    conn = PostgresPool(pg.DB_NAME, user=pg.DB_USER, password=pg.DB_PASS)
+    conn = PostgresPool(util.DB_NAME, user=util.DB_USER, password=util.DB_PASS)
     assert type(conn._conn) is ThreadedConnectionPool
     conn.close()
     assert conn._conn is None
