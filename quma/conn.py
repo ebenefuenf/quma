@@ -9,13 +9,6 @@ except ImportError:
 from .cursor import ChangelingCursor
 
 
-class Cursor(object):
-    def __init__(self, dbapi_cursor):
-        d = {key: getattr(dbapi_cursor, key) for key in dir(dbapi_cursor)}
-        self.__dict__ = d
-        self.has_rowcount = False
-
-
 class Connection(object):
     def __init__(self, database, **kwargs):
         self.factory = None
@@ -23,6 +16,7 @@ class Connection(object):
 
         self.user = kwargs.pop('user', None)
         self.password = kwargs.pop('password', None)
+        self.has_rowcount = True
 
     def _init_conn(self, **kwargs):
         self.persist = kwargs.pop('persist', False)
@@ -44,15 +38,11 @@ class Connection(object):
             self.conn.close()
         self.conn = None
 
-    def cursor(self):
-        if not self.conn:
-            self.get()
-        return Cursor(self.conn.cursor())
-
 
 class SQLite(Connection):
     def __init__(self, database, **kwargs):
         super().__init__(database, **kwargs)
+        self.has_rowcount = False
 
         self._init_conn(**kwargs)
 
@@ -82,13 +72,6 @@ class Postgres(Connection):
                 port=self.port,
                 cursor_factory=self.factory)
         return self.conn
-
-    def cursor(self):
-        if not self.conn:
-            self.get()
-        c = Cursor(self.conn.cursor())
-        c.has_rowcount = True
-        return c
 
 
 class PostgresPool(Postgres):

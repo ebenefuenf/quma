@@ -13,6 +13,13 @@ except ImportError:
     Template = None
 
 
+class _CursorWrapper(object):
+    def __init__(self, conn, dbapi_cursor):
+        d = {key: getattr(dbapi_cursor, key) for key in dir(dbapi_cursor)}
+        self.__dict__ = d
+        self.has_rowcount = conn.has_rowcount
+
+
 class Cursor(object):
     def __init__(self, conn, carrier=None):
         self.conn = conn
@@ -37,7 +44,7 @@ class Cursor(object):
                 self.cn = self.carrier._quma_conn = self.conn.get()
         else:
             self.cn = self.conn.get()
-        self.cursor = self.conn.cursor()
+        self.cursor = _CursorWrapper(self.conn, self.cn.cursor())
         return self
 
     def close(self):

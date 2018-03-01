@@ -53,7 +53,7 @@ def conn():
 
 @pytest.fixture
 def db(conn, sqldirs):
-    cursor = conn.cursor()
+    cursor = conn.get().cursor()
     cursor.execute(util.DROP_USERS)
     cursor.execute(util.CREATE_USERS)
     cursor.execute(util.INSERT_USERS)
