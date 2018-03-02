@@ -28,7 +28,7 @@ class Connection(object):
         raise NotImplementedError
 
     def put(self, conn):
-        assert self.conn == self.conn
+        assert self.conn == conn
         if not self.persist and self.conn:
             self.conn.close()
             self.conn = None
