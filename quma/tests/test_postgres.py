@@ -65,7 +65,7 @@ def test_rollback(pgdb):
     pgdb.user.by_name_pg.get(cursor, name='hans')
     cursor.rollback()
     with pytest.raises(DoesNotExistError):
-        pgdb.user.by_name_pg.get(cursor, name='hans')
+        u = pgdb.user.by_name_pg.get(cursor, name='hans')
     cursor.close()
 
 
