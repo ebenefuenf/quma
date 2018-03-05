@@ -89,7 +89,8 @@ class PostgresPool(Postgres):
                               user=self.user,
                               password=self.password,
                               host=self.host,
-                              port=self.port)
+                              port=self.port,
+                              cursor_factory=self.factory)
 
     def get(self):
         return self.conn.getconn()
