@@ -15,9 +15,14 @@ except ImportError:
 
 class _CursorWrapper(object):
     def __init__(self, conn, dbapi_cursor):
-        d = {key: getattr(dbapi_cursor, key) for key in dir(dbapi_cursor)}
-        self.__dict__ = d
+        self.dbapi_cursor = dbapi_cursor
         self.has_rowcount = conn.has_rowcount
+
+    def __getattr__(self, key):
+        try:
+            return getattr(self.dbapi_cursor, key)
+        except AttributeError as e:
+            raise e
 
 
 class Cursor(object):
@@ -124,7 +129,6 @@ class Query(object):
                 raise exc.DoesNotExistError()
             if rowcount > 1:
                 raise exc.MultipleRecordsError()
-            return cursor.fetchone()
 
         # SQLite does not support rowcount
         if cursor.has_rowcount:

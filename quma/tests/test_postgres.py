@@ -20,7 +20,7 @@ def test_cursor(pgdb):
 def test_cursor_call(pgdb):
     cursor = pgdb.cursor()
     try:
-        pgdb.user.add_by(cursor,
+        pgdb.user.add_pg(cursor,
                          name='Anneliese Günthner',
                          email='anneliese.guenthner@example.com')
         cursor.commit()
