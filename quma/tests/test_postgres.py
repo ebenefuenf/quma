@@ -79,3 +79,14 @@ def test_changeling_cursor(pgdb):
         with pytest.raises(AttributeError):
             hans.wrong_attr
         assert 'email' in hans.keys()
+
+
+@pytest.mark.postgres
+def test_no_changeling_cursor(pgdb_persist):
+    # pgdb_persist does not use the changeling factory
+    with pgdb_persist.cursor as cursor:
+        hans = pgdb_persist.user.by_name_pg.get(cursor, name='Franz Görtler')
+        assert hans[0] == 'franz.goertler@example.com'
+        assert hans['email'] == 'franz.goertler@example.com'
+        with pytest.raises(AttributeError):
+            hans.email

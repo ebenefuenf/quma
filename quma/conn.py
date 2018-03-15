@@ -24,10 +24,12 @@ class Connection(object):
 
         self.username = kwargs.pop('username', None)
         self.password = kwargs.pop('password', None)
+        self.persist = True if kwargs.pop('persist', '') == 'yes' else False
+        self.changeling = True if kwargs.pop('changeling',
+                                             '') == 'yes' else False
         self.has_rowcount = True
 
     def _init_conn(self, **kwargs):
-        self.persist = True if kwargs.pop('persist', '') == 'true' else False
         self.conn = None
         if self.persist:
             self.conn = self.get()
@@ -65,7 +67,8 @@ class SQLite(Connection):
     def get(self):
         if not self.conn:
             self.conn = sqlite3.connect(database=self.database)
-            self.conn.row_factory = SQLiteChangelingRow
+            if self.changeling:
+                self.conn.row_factory = SQLiteChangelingRow
         return self.conn
 
 
@@ -75,7 +78,10 @@ class Postgres(Connection):
 
         self.hostname = kwargs.pop('hostname', 'localhost')
         self.port = kwargs.pop('port', '5432')
-        self.factory = PostgresChangelingCursor
+        if self.changeling:
+            self.factory = PostgresChangelingCursor
+        else:
+            self.factory = psycopg2.extras.DictCursor
 
         self._init_conn(**kwargs)
 
