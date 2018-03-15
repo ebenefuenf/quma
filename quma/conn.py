@@ -13,6 +13,7 @@ except ImportError:
 
 from .cursor import (
     PostgresChangelingCursor,
+    SQLiteChangelingRow,
 )
 
 
@@ -58,9 +59,13 @@ class SQLite(Connection):
 
         self._init_conn(**kwargs)
 
+    def cursor(self):
+        return self.conn.cursor()
+
     def get(self):
         if not self.conn:
             self.conn = sqlite3.connect(database=self.database)
+            self.conn.row_factory = SQLiteChangelingRow
         return self.conn
 
 

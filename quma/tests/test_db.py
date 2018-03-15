@@ -108,6 +108,8 @@ def test_changeling_cursor(db):
     with db.cursor as cursor:
         hans = db.user.by_name.get(cursor, name='Franz Görtler')
         assert hans[0] == 'franz.goertler@example.com'
-        #  assert hans['email'] == 'franz.goertler@example.com'
-        #  assert hans.email == 'franz.goertler@example.com'
-        #  assert 'email' in hans.keys()
+        assert hans['email'] == 'franz.goertler@example.com'
+        assert hans.email == 'franz.goertler@example.com'
+        with pytest.raises(AttributeError):
+            hans.wrong_attr
+        assert 'email' in hans.keys()

@@ -1,3 +1,5 @@
+import sqlite3
+
 try:
     from psycopg2.extras import (
         DictCursor,
@@ -6,6 +8,21 @@ try:
 except ImportError:
     DictCursor = None
     DictRow = None
+
+
+class SQLiteChangelingRow(sqlite3.Row):
+    """
+    A row object that allows by-column-name access to data.
+
+    Either by index (row[0], row['field']) or by attr (row.field).
+    """
+
+    def __getattr__(self, attr):
+        try:
+            return self[attr]
+        except IndexError as e:
+            msg = f'Row has no field with the name "{attr}"'
+            raise AttributeError(msg) from e
 
 
 class PostgresChangelingRow(DictRow):

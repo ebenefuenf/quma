@@ -65,7 +65,7 @@ def test_rollback(pgdb):
     pgdb.user.by_name_pg.get(cursor, name='hans')
     cursor.rollback()
     with pytest.raises(DoesNotExistError):
-        u = pgdb.user.by_name_pg.get(cursor, name='hans')
+        pgdb.user.by_name_pg.get(cursor, name='hans')
     cursor.close()
 
 
@@ -76,4 +76,6 @@ def test_changeling_cursor(pgdb):
         assert hans[0] == 'franz.goertler@example.com'
         assert hans['email'] == 'franz.goertler@example.com'
         assert hans.email == 'franz.goertler@example.com'
+        with pytest.raises(AttributeError):
+            hans.wrong_attr
         assert 'email' in hans.keys()
