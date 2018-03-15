@@ -1,11 +1,15 @@
+from importlib import import_module
 from importlib.machinery import SourceFileLoader
 from itertools import chain
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import (
+    parse_qsl,
+    urlparse,
+)
 
 import psycopg2
 
-from . import conn
 from . import exc
 
 try:
@@ -210,7 +214,7 @@ class Database(object):
         self.show = kwargs.pop('show', False)
         self.cache = kwargs.pop('cache', False)
 
-        self.conn = conn.connect(dburi)
+        self.conn = connect(dburi)
 
         self.namespaces = {}
 
@@ -258,3 +262,24 @@ class Database(object):
         if attr not in self.namespaces:
             raise AttributeError()
         return self.namespaces[attr]
+
+
+def connect(dburi):
+    engine_map = {
+        'sqlite': 'SQLite',
+        'postgresql': 'Postgres',
+        'postgresql+pool': 'PostgresPool',
+    }
+    url = urlparse(dburi)
+    database = url.path[1:]  # remove the leading slash
+    if url.query:
+        kwargs = dict(parse_qsl(url.query))
+    else:
+        kwargs = {}
+    for attr in ['username', 'password', 'hostname', 'port']:
+        value = getattr(url, attr)
+        if value:
+            kwargs[attr] = value
+    module_name = url.scheme.split('+')[0]
+    module = import_module(f'quma.provider.{module_name}')
+    return getattr(module, engine_map[url.scheme])(database, **kwargs)

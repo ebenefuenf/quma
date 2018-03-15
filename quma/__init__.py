@@ -1,8 +1,8 @@
 from .mapper import (
     Database,
     Namespace,
+    connect,
 )
-from .conn import connect
 
 
 __all__ = ['Database', 'Namespace', 'connect']
