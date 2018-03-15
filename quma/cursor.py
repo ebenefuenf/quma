@@ -1,10 +1,14 @@
-from psycopg2.extras import (
-    DictCursor,
-    DictRow,
-)
+try:
+    from psycopg2.extras import (
+        DictCursor,
+        DictRow,
+    )
+except ImportError:
+    DictCursor = None
+    DictRow = None
 
 
-class ChangelingRow(DictRow):
+class PostgresChangelingRow(DictRow):
     """
     A row object that allows by-column-name access to data.
 
@@ -34,8 +38,8 @@ class ChangelingRow(DictRow):
         list.__setitem__(self, index.__get__(self)[attr], value)
 
 
-class ChangelingCursor(DictCursor):
+class PostgresChangelingCursor(DictCursor):
     def __init__(self, *args, **kwargs):
-        kwargs['row_factory'] = ChangelingRow
+        kwargs['row_factory'] = PostgresChangelingRow
         super(DictCursor, self).__init__(*args, **kwargs)
         self._prefetch = 1

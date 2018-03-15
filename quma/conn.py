@@ -11,7 +11,9 @@ try:
 except ImportError:
     pass
 
-from .cursor import ChangelingCursor
+from .cursor import (
+    PostgresChangelingCursor,
+)
 
 
 class Connection(object):
@@ -65,7 +67,7 @@ class Postgres(Connection):
 
         self.hostname = kwargs.pop('hostname', 'localhost')
         self.port = kwargs.pop('port', '5432')
-        self.factory = kwargs.pop('factory', ChangelingCursor)
+        self.factory = PostgresChangelingCursor
 
         self._init_conn(**kwargs)
 
