@@ -4,7 +4,6 @@ import pytest
 
 from . import util
 from .. import Database
-from .. import conn as connection
 
 
 @pytest.fixture('session')
@@ -15,48 +14,21 @@ def sqldirs():
 
 
 @pytest.fixture
-def pgpoolconn():
-    c = connection.PostgresPool(util.DB_NAME,
-                                user=util.DB_USER,
-                                password=util.DB_PASS)
-    yield c
-    c.close()
-
-
-@pytest.fixture
-def pgpooldb(pgpoolconn, sqldirs):
-    db = Database(pgpoolconn, sqldirs)
+def pgpooldb(sqldirs):
+    db = Database(util.PG_POOL_URI, sqldirs)
     return db
 
 
 @pytest.fixture
-def pgconn():
-    c = connection.PostgresPool(util.DB_NAME,
-                                user=util.DB_USER,
-                                password=util.DB_PASS)
-    yield c
-    c.close()
-
-
-@pytest.fixture
-def pgdb(pgconn, sqldirs):
-    db = Database(pgconn, sqldirs)
+def pgdb(sqldirs):
+    db = Database(util.PG_URI, sqldirs)
     return db
 
 
 @pytest.fixture
-def conn():
-    c = connection.SQLite('/tmp/quma.sqlite3')
-    yield c
-    c.close()
-
-
-@pytest.fixture
-def db(conn, sqldirs):
-    cursor = conn.get().cursor()
-    cursor.execute(util.DROP_USERS)
-    cursor.execute(util.CREATE_USERS)
-    cursor.execute(util.INSERT_USERS)
-    conn.conn.commit()
-    db = Database(conn, sqldirs)
+def db(sqldirs):
+    db = Database('sqlite:////tmp/quma.sqlite', sqldirs)
+    db.execute(util.DROP_USERS)
+    db.execute(util.CREATE_USERS)
+    db.execute(util.INSERT_USERS)
     return db

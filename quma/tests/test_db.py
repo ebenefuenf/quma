@@ -1,5 +1,6 @@
 import pytest
 
+from . import util
 from .. import (
     Database,
     Namespace,
@@ -95,11 +96,11 @@ def test_rollback(db):
     cursor.close()
 
 
-def test_overwrite_query_class(pgpoolconn, sqldirs):
+def test_overwrite_query_class(sqldirs):
     class MyQuery(Query):
         def the_test(self):
             return 'Hans Karl'
-    db = Database(pgpoolconn, sqldirs, query_factory=MyQuery)
+    db = Database(util.PG_POOL_URI, sqldirs, query_factory=MyQuery)
     assert db.user.all.the_test() == 'Hans Karl'
 
 

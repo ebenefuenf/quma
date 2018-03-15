@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import psycopg2
 
+from . import conn
 from . import exc
 
 try:
@@ -195,7 +196,7 @@ class Namespace(object):
 
 class Database(object):
 
-    def __init__(self, conn, *args, **kwargs):
+    def __init__(self, dburi, *args, **kwargs):
         # if the second arg is present it must be sqldirs
         if args and len(args) > 1:
             raise ValueError('Max number of arguments is two')
@@ -209,7 +210,7 @@ class Database(object):
         self.show = kwargs.pop('show', False)
         self.cache = kwargs.pop('cache', False)
 
-        self.conn = conn
+        self.conn = conn.connect(dburi)
 
         self.namespaces = {}
 
@@ -236,6 +237,18 @@ class Database(object):
                     self.namespaces[ns] = ns_class(self, path)
                 except (AttributeError, FileNotFoundError):
                     self.namespaces[ns] = Namespace(self, path)
+
+    def close(self):
+        self.conn.close()
+
+    def execute(self, sql, **kwargs):
+        with self.cursor as c:
+            try:
+                c.execute(sql, **kwargs)
+                c.commit()
+            except Exception as e:
+                c.rollback()
+                raise e
 
     @property
     def cursor(self):
