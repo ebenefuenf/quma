@@ -31,6 +31,9 @@ class Connection(object):
         if self.persist:
             self.conn = self.get()
 
+    def cursor(self):
+        return self.conn.cursor()
+
     def get(self):
         raise NotImplementedError
 

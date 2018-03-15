@@ -50,7 +50,7 @@ class Cursor(object):
                 self.cn = self.carrier._quma_conn = self.conn.get()
         else:
             self.cn = self.conn.get()
-        self.cursor = CursorWrapper(self.conn, self.cn.cursor())
+        self.cursor = CursorWrapper(self.conn, self.conn.cursor())
         return self
 
     def close(self):
