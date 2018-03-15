@@ -1,10 +1,7 @@
 import pytest
 
 from . import util
-from .. import (
-    Postgres,
-    PostgresPool,
-)
+from .. import connect
 
 try:
     from psycopg2.extensions import connection
@@ -15,7 +12,7 @@ except ImportError:
 
 @pytest.mark.postgres
 def test_postgres_non_persistent():
-    conn = Postgres(util.DB_NAME, user=util.DB_USER, password=util.DB_PASS)
+    conn = connect(util.PG_URI)
     assert conn.conn is None
     cn = conn.get()
     assert conn.conn is not None
@@ -27,8 +24,7 @@ def test_postgres_non_persistent():
 
 @pytest.mark.postgres
 def test_postgres_persistent():
-    conn = Postgres(util.DB_NAME, user=util.DB_USER,
-                    password=util.DB_PASS, persist=True)
+    conn = connect(util.PG_URI_PERSIST)
     cn = conn.get()
     assert conn.conn == cn
     assert type(cn) is connection
@@ -38,7 +34,7 @@ def test_postgres_persistent():
 
 @pytest.mark.postgres
 def test_postgres_pool():
-    conn = PostgresPool(util.DB_NAME, user=util.DB_USER, password=util.DB_PASS)
+    conn = connect(util.PG_POOL_URI)
     assert type(conn.conn) is ThreadedConnectionPool
     conn.close()
     assert conn.conn is None
