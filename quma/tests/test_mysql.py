@@ -69,12 +69,22 @@ def test_rollback(mydb):
 
 
 @pytest.mark.mysql
-def test_no_changeling_cursor(mydb_persist):
+def test_tuple_cursor(mydb_persist):
     # pgdb_persist does not use the changeling factory
     with mydb_persist.cursor as cursor:
         hans = mydb_persist.user.by_name.get(cursor, name='Franz Görtler')
         assert hans[0] == 'franz.goertler@example.com'
+        with pytest.raises(TypeError):
+            hans['email']
+        cursor.rollback()
+
+
+@pytest.mark.mysql
+def test_dict_cursor(mydb):
+    # pgdb_persist does not use the changeling factory
+    with mydb.cursor as cursor:
+        hans = mydb.user.by_name.get(cursor, name='Franz Görtler')
         assert hans['email'] == 'franz.goertler@example.com'
-        with pytest.raises(AttributeError):
-            hans.email
+        with pytest.raises(KeyError):
+            hans[0]
         cursor.rollback()

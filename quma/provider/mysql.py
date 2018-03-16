@@ -13,7 +13,14 @@ class Connection(core.Connection):
 
         self.hostname = self.url.hostname or 'localhost'
         self.port = self.url.port or 3306
+        if kwargs.pop('dict_cursor', False):
+            self.cursor_factory = MySQLdb.cursors.DictCursor
+        else:
+            self.cursor_factory = MySQLdb.cursors.Cursor
         self._init_conn(**kwargs)
+
+    def cursor(self):
+        return self.conn.cursor(self.cursor_factory)
 
     def get(self):
         if not self.conn:

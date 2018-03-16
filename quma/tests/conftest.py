@@ -40,7 +40,7 @@ def pgdb_persist(pyformat_sqldirs):
 
 @pytest.fixture
 def mydb(pyformat_sqldirs):
-    db = Database(util.MYSQL_URI, pyformat_sqldirs)
+    db = Database(util.MYSQL_URI, pyformat_sqldirs, dict_cursor=True)
     return db
 
 
