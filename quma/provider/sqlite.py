@@ -18,11 +18,11 @@ class SQLiteChangelingRow(sqlite3.Row):
             raise AttributeError(msg) from e
 
 
-class SQLite(core.Connection):
-    def __init__(self, database, **kwargs):
-        if not database:
-            database = ':memory:'
-        super().__init__(database, **kwargs)
+class Connection(core.Connection):
+    def __init__(self, url, **kwargs):
+        super().__init__(url, **kwargs)
+        if not self.database:
+            self.database = ':memory:'
         self.has_rowcount = False
 
         self._init_conn(**kwargs)

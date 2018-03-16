@@ -214,7 +214,8 @@ class Database(object):
         self.show = kwargs.pop('show', False)
         self.cache = kwargs.pop('cache', False)
 
-        self.conn = connect(dburi)
+        # The remaining kwargs are passed to the DBAPI connect call
+        self.conn = connect(dburi, **kwargs)
 
         self.namespaces = {}
 
@@ -264,22 +265,15 @@ class Database(object):
         return self.namespaces[attr]
 
 
-def connect(dburi):
-    engine_map = {
-        'sqlite': 'SQLite',
-        'postgresql': 'Postgres',
-        'postgresql+pool': 'PostgresPool',
-    }
+def connect(dburi, **kwargs):
     url = urlparse(dburi)
-    database = url.path[1:]  # remove the leading slash
-    if url.query:
-        kwargs = dict(parse_qsl(url.query))
-    else:
-        kwargs = {}
-    for attr in ['username', 'password', 'hostname', 'port']:
-        value = getattr(url, attr)
-        if value:
-            kwargs[attr] = value
-    module_name = url.scheme.split('+')[0]
+    scheme = url.scheme.split('+')
+    module_name = scheme[0]
+    class_name = 'Connection'
+    try:
+        if scheme[1].lower() == 'pool':
+            class_name = 'Pool'
+    except IndexError:
+        pass
     module = import_module(f'quma.provider.{module_name}')
-    return getattr(module, engine_map[url.scheme])(database, **kwargs)
+    return getattr(module, class_name)(url, **kwargs)

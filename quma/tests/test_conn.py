@@ -24,7 +24,7 @@ def test_postgres_non_persistent():
 
 @pytest.mark.postgres
 def test_postgres_persistent():
-    conn = connect(util.PG_URI_PERSIST)
+    conn = connect(util.PG_URI, persist=True)
     cn = conn.get()
     assert conn.conn == cn
     assert type(cn) is connection

@@ -1,13 +1,13 @@
 class Connection(object):
-    def __init__(self, database, **kwargs):
-        self.factory = None
-        self.database = database
+    def __init__(self, url, **kwargs):
+        self.database = url.path[1:]  # remove the leading slash
+        self.username = url.username
+        self.password = url.password
+        self.url = url
 
-        self.username = kwargs.pop('username', None)
-        self.password = kwargs.pop('password', None)
-        self.persist = True if kwargs.pop('persist', '') == 'yes' else False
-        self.changeling = True if kwargs.pop('changeling',
-                                             '') == 'yes' else False
+        self.factory = None
+        self.persist = kwargs.pop('persist', False)
+        self.changeling = kwargs.pop('changeling', False)
         self.has_rowcount = True
 
     def _init_conn(self, **kwargs):

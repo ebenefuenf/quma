@@ -21,19 +21,19 @@ def pgpooldb(sqldirs):
 
 @pytest.fixture
 def pgdb(sqldirs):
-    db = Database(util.PG_URI, sqldirs)
+    db = Database(util.PG_URI, sqldirs, changeling=True)
     return db
 
 
 @pytest.fixture
 def pgdb_persist(sqldirs):
-    db = Database(util.PG_URI_PERSIST, sqldirs)
+    db = Database(util.PG_URI, sqldirs, persist=True)
     return db
 
 
 @pytest.fixture
 def db(sqldirs):
-    db = Database('sqlite:////tmp/quma.sqlite?changeling=yes', sqldirs)
+    db = Database(util.SQLITE_URI, sqldirs, changeling=True)
     db.execute(util.DROP_USERS)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
@@ -42,7 +42,7 @@ def db(sqldirs):
 
 @pytest.fixture
 def db_no_changeling(sqldirs):
-    db = Database('sqlite:////tmp/quma.sqlite', sqldirs)
+    db = Database(util.SQLITE_URI, sqldirs)
     db.execute(util.DROP_USERS)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)

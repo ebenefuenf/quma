@@ -53,12 +53,12 @@ class PostgresChangelingCursor(DictCursor):
         self._prefetch = 1
 
 
-class Postgres(core.Connection):
-    def __init__(self, database, **kwargs):
-        super().__init__(database, **kwargs)
+class Connection(core.Connection):
+    def __init__(self, url, **kwargs):
+        super().__init__(url, **kwargs)
 
-        self.hostname = kwargs.pop('hostname', 'localhost')
-        self.port = kwargs.pop('port', '5432')
+        self.hostname = self.url.hostname or 'localhost'
+        self.port = self.url.hostname or 5432
         if self.changeling:
             self.factory = PostgresChangelingCursor
         else:
@@ -78,12 +78,12 @@ class Postgres(core.Connection):
         return self.conn
 
 
-class PostgresPool(Postgres):
-    def __init__(self, database, **kwargs):
+class Pool(Connection):
+    def __init__(self, url, **kwargs):
         self.minconn = int(kwargs.pop('minconn', 1))
         self.maxconn = int(kwargs.pop('maxconn', 10))
 
-        super().__init__(database, **kwargs)
+        super().__init__(url, **kwargs)
 
     def _init_conn(self, **kwargs):
         self.pool = psycopg2.pool.ThreadedConnectionPool
