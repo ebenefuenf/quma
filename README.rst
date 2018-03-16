@@ -16,7 +16,7 @@ Usage
 -----
 
 If you like to use SQLite, Python has everything covered. To use PostgreSQL
-you need to install `psycopg2` or `psycopg2cffi`. For MySQL it's `mysqlclient`.
+you need to install *psycopg2* or *psycopg2cffi*. For MySQL it's *mysqlclient*.
 
 And then **Yeah**!
 
