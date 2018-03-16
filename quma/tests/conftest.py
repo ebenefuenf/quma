@@ -32,6 +32,12 @@ def pgdb_persist(sqldirs):
 
 
 @pytest.fixture
+def mydb(sqldirs):
+    db = Database(util.MYSQL_URI, sqldirs)
+    return db
+
+
+@pytest.fixture
 def db(sqldirs):
     db = Database(util.SQLITE_URI, sqldirs, changeling=True)
     db.execute(util.DROP_USERS)

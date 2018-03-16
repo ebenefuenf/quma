@@ -1,0 +1,26 @@
+try:
+    import MySQLdb
+except ImportError:
+    raise ImportError('In order to use quma with MySQL you'
+                      'need to install mysqlclient')
+
+from .. import core
+
+
+class Connection(core.Connection):
+    def __init__(self, url, **kwargs):
+        super().__init__(url, **kwargs)
+
+        self.hostname = self.url.hostname or 'localhost'
+        self.port = self.url.port or 3306
+        self._init_conn(**kwargs)
+
+    def get(self):
+        if not self.conn:
+            self.conn = MySQLdb.connect(
+                db=self.database,
+                user=self.username,
+                passwd=self.password,
+                host=self.hostname,
+                port=self.port)
+        return self.conn

@@ -58,7 +58,7 @@ class Connection(core.Connection):
         super().__init__(url, **kwargs)
 
         self.hostname = self.url.hostname or 'localhost'
-        self.port = self.url.hostname or 5432
+        self.port = self.url.port or 5432
         if self.changeling:
             self.factory = PostgresChangelingCursor
         else:
