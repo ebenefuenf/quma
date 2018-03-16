@@ -1,6 +1,6 @@
 import sqlite3
 
-from . import core
+from .. import core
 
 
 class SQLiteChangelingRow(sqlite3.Row):

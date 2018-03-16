@@ -13,7 +13,7 @@ from psycopg2.extras import (
     DictRow,
 )
 
-from . import core
+from .. import core
 
 
 class PostgresChangelingRow(DictRow):
