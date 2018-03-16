@@ -12,6 +12,7 @@ from psycopg2.extras import (
     DictCursor,
     DictRow,
 )
+from psycopg2.pool import ThreadedConnectionPool
 
 from .. import core
 
@@ -86,7 +87,7 @@ class Pool(Connection):
         super().__init__(url, **kwargs)
 
     def _init_conn(self, **kwargs):
-        self.pool = psycopg2.pool.ThreadedConnectionPool
+        self.pool = ThreadedConnectionPool
         self.conn = self.pool(self.minconn,
                               self.maxconn,
                               database=self.database,

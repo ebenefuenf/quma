@@ -7,39 +7,52 @@ from .. import Database
 
 
 @pytest.fixture('session')
-def sqldirs():
+def pyformat_sqldirs():
     return [
-        pathlib.Path(__file__).parent / 'fixtures' / 'queries'
+        pathlib.Path(__file__).parent / 'fixtures' / 'queries' / 'pyformat'
+    ]
+
+
+@pytest.fixture('session')
+def qmark_sqldirs():
+    return [
+        pathlib.Path(__file__).parent / 'fixtures' / 'queries' / 'qmark'
     ]
 
 
 @pytest.fixture
-def pgpooldb(sqldirs):
-    db = Database(util.PG_POOL_URI, sqldirs)
+def pgpooldb(pyformat_sqldirs):
+    db = Database(util.PG_POOL_URI, pyformat_sqldirs)
     return db
 
 
 @pytest.fixture
-def pgdb(sqldirs):
-    db = Database(util.PG_URI, sqldirs, changeling=True)
+def pgdb(pyformat_sqldirs):
+    db = Database(util.PG_URI, pyformat_sqldirs, changeling=True)
     return db
 
 
 @pytest.fixture
-def pgdb_persist(sqldirs):
-    db = Database(util.PG_URI, sqldirs, persist=True)
+def pgdb_persist(pyformat_sqldirs):
+    db = Database(util.PG_URI, pyformat_sqldirs, persist=True)
     return db
 
 
 @pytest.fixture
-def mydb(sqldirs):
-    db = Database(util.MYSQL_URI, sqldirs)
+def mydb(pyformat_sqldirs):
+    db = Database(util.MYSQL_URI, pyformat_sqldirs)
     return db
 
 
 @pytest.fixture
-def db(sqldirs):
-    db = Database(util.SQLITE_URI, sqldirs, changeling=True)
+def mydb_persist(pyformat_sqldirs):
+    db = Database(util.MYSQL_URI, pyformat_sqldirs, persist=True)
+    return db
+
+
+@pytest.fixture
+def db(qmark_sqldirs):
+    db = Database(util.SQLITE_URI, qmark_sqldirs, changeling=True)
     db.execute(util.DROP_USERS)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
@@ -47,8 +60,8 @@ def db(sqldirs):
 
 
 @pytest.fixture
-def db_no_changeling(sqldirs):
-    db = Database(util.SQLITE_URI, sqldirs)
+def db_no_changeling(qmark_sqldirs):
+    db = Database(util.SQLITE_URI, qmark_sqldirs)
     db.execute(util.DROP_USERS)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)

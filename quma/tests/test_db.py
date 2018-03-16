@@ -96,11 +96,11 @@ def test_rollback(db):
     cursor.close()
 
 
-def test_overwrite_query_class(sqldirs):
+def test_overwrite_query_class(pyformat_sqldirs):
     class MyQuery(Query):
         def the_test(self):
             return 'Hans Karl'
-    db = Database(util.PG_POOL_URI, sqldirs, query_factory=MyQuery)
+    db = Database(util.PG_POOL_URI, pyformat_sqldirs, query_factory=MyQuery)
     assert db.user.all.the_test() == 'Hans Karl'
 
 

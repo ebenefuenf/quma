@@ -24,7 +24,7 @@ INSERT_USERS = ("INSERT INTO                                        "
 
 def setup_pg_db():
     import psycopg2
-    conn = psycopg2.connect(DSN)
+    conn = psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS)
     cur = conn.cursor()
     cur.execute(DROP_USERS)
     cur.execute(CREATE_USERS)

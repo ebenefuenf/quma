@@ -20,11 +20,11 @@ def test_cursor(pgdb):
 def test_cursor_call(pgdb):
     cursor = pgdb.cursor()
     try:
-        pgdb.user.add_pg(cursor,
-                         name='Anneliese Günthner',
-                         email='anneliese.guenthner@example.com')
+        pgdb.user.add(cursor,
+                      name='Anneliese Günthner',
+                      email='anneliese.guenthner@example.com')
         cursor.commit()
-        pgdb.user.remove_pg(cursor, name='Anneliese Günthner')
+        pgdb.user.remove(cursor, name='Anneliese Günthner')
         cursor.commit()
     finally:
         cursor.close()
@@ -34,45 +34,45 @@ def test_cursor_call(pgdb):
 def test_commit(pgdb, pgpooldb):
     for db in (pgdb, pgpooldb):
         with pgdb.cursor as cursor:
-            pgdb.user.add_pg(cursor,
-                             name='hans',
-                             email='hans@example.com')
+            pgdb.user.add(cursor,
+                          name='hans',
+                          email='hans@example.com')
         with pgdb.cursor as cursor:
             with pytest.raises(DoesNotExistError):
-                pgdb.user.by_name_pg.get(cursor, name='hans')
+                pgdb.user.by_name.get(cursor, name='hans')
 
         with pgdb.cursor as cursor:
-            pgdb.user.add_pg(cursor,
-                             name='hans',
-                             email='hans@example.com')
+            pgdb.user.add(cursor,
+                          name='hans',
+                          email='hans@example.com')
             cursor.commit()
 
         cursor = pgdb.cursor()
-        pgdb.user.by_name_pg.get(cursor, name='hans')
-        pgdb.user.remove_pg(cursor, name='hans')
+        pgdb.user.by_name.get(cursor, name='hans')
+        pgdb.user.remove(cursor, name='hans')
         cursor.commit()
         with pytest.raises(DoesNotExistError):
-            pgdb.user.by_name_pg.get(cursor, name='hans')
+            pgdb.user.by_name.get(cursor, name='hans')
         cursor.close()
 
 
 @pytest.mark.postgres
 def test_rollback(pgdb):
     cursor = pgdb.cursor()
-    pgdb.user.add_pg(cursor,
-                     name='hans',
-                     email='hans@example.com')
-    pgdb.user.by_name_pg.get(cursor, name='hans')
+    pgdb.user.add(cursor,
+                  name='hans',
+                  email='hans@example.com')
+    pgdb.user.by_name.get(cursor, name='hans')
     cursor.rollback()
     with pytest.raises(DoesNotExistError):
-        pgdb.user.by_name_pg.get(cursor, name='hans')
+        pgdb.user.by_name.get(cursor, name='hans')
     cursor.close()
 
 
 @pytest.mark.postgres
 def test_changeling_cursor(pgdb):
     with pgdb.cursor as cursor:
-        hans = pgdb.user.by_name_pg.get(cursor, name='Franz Görtler')
+        hans = pgdb.user.by_name.get(cursor, name='Franz Görtler')
         assert hans[0] == 'franz.goertler@example.com'
         assert hans['email'] == 'franz.goertler@example.com'
         assert hans.email == 'franz.goertler@example.com'
@@ -85,8 +85,9 @@ def test_changeling_cursor(pgdb):
 def test_no_changeling_cursor(pgdb_persist):
     # pgdb_persist does not use the changeling factory
     with pgdb_persist.cursor as cursor:
-        hans = pgdb_persist.user.by_name_pg.get(cursor, name='Franz Görtler')
+        hans = pgdb_persist.user.by_name.get(cursor, name='Franz Görtler')
         assert hans[0] == 'franz.goertler@example.com'
         assert hans['email'] == 'franz.goertler@example.com'
         with pytest.raises(AttributeError):
             hans.email
+        cursor.rollback()
