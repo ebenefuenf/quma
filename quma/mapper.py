@@ -2,11 +2,7 @@ from importlib import import_module
 from importlib.machinery import SourceFileLoader
 from itertools import chain
 from pathlib import Path
-from types import SimpleNamespace
-from urllib.parse import (
-    parse_qsl,
-    urlparse,
-)
+from urllib.parse import urlparse
 
 import psycopg2
 
@@ -198,6 +194,16 @@ class Namespace(object):
                 context_callback=self.context_callback)
 
 
+class CallWrapper(object):
+    def __init__(self, database, carrier):
+        self.database = database
+        self.carrier = carrier
+
+    @property
+    def cursor(self):
+        return Cursor(self.database.conn, self.carrier)
+
+
 class Database(object):
 
     def __init__(self, dburi, *args, **kwargs):
@@ -223,8 +229,7 @@ class Database(object):
             self.register_namespace(sqldir)
 
     def __call__(self, carrier=None):
-        self.carrier = carrier
-        return SimpleNamespace(cursor=Cursor(self.conn))
+        return CallWrapper(self, carrier)
 
     def register_namespace(self, sqldir):
         for path in Path(sqldir).iterdir():
