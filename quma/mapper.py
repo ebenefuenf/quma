@@ -87,8 +87,7 @@ class Query(object):
         self.is_template = is_template
         self.context = None
 
-    def __call__(self, cursor, **kwargs):
-        self.excecute(cursor, kwargs)
+    def __call__(self, cursor, *args, **kwargs):
         try:
             return cursor.fetchall()
         except psycopg2.ProgrammingError as e:
@@ -104,13 +103,18 @@ class Query(object):
             print('-' * 50)
             print(cursor.query.decode('utf-8'))
 
-    def prepare(self, cursor, kwargs):
-        context = {}
+    def prepare(self, cursor, payload):
+        context = type(payload)()
+        if type(context) is tuple:
+            context = list(context)
 
         if self.context_callback:
             context = self.context_callback(cursor.carrier, context)
 
-        context.update(kwargs)
+        try:
+            context.update(payload)
+        except AttributeError:
+            context.extend(payload)
 
         if self.is_template:
             try:
@@ -120,16 +124,21 @@ class Query(object):
                     'To use templates (*.msql) you need to install Mako')
         return self.query, context
 
-    def excecute(self, cursor, kwargs):
-        query, context = self.prepare(cursor, kwargs)
+    def excecute(self, cursor, args, kwargs):
+        if args and kwargs:
+            raise ValueError('Mixed style parameters are not allowed')
+        if args:
+            query, context = self.prepare(cursor, args)
+        else:
+            query, context = self.prepare(cursor, kwargs)
         try:
             cursor.execute(query, context)
         finally:
             self.show and self.print_sql(cursor)
 
-    def get(self, cursor, **kwargs):
+    def get(self, cursor, *args, **kwargs):
         try:
-            self.excecute(cursor, kwargs)
+            self.excecute(cursor, args, kwargs)
         finally:
             self.show and self.print_sql(cursor)
 

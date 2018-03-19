@@ -113,3 +113,14 @@ def test_changeling_cursor(db):
         with pytest.raises(AttributeError):
             hans.wrong_attr
         assert 'email' in hans.keys()
+
+
+def test_qmark_query(db):
+    with db.cursor as cursor:
+        emil = db.user.by_email.get(cursor, 'emil.jaeger@example.com')
+        assert emil[0] == 'Emil Jäger'
+        assert emil['name'] == 'Emil Jäger'
+        assert emil.name == 'Emil Jäger'
+        with pytest.raises(AttributeError):
+            emil.wrong_attr
+        assert 'name' in emil.keys()
