@@ -1,4 +1,8 @@
 
+class APIError(Exception):
+    pass
+
+
 class MultipleRecordsError(Exception):
     pass
 

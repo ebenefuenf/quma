@@ -30,14 +30,15 @@ class Cursor(object):
     def __init__(self, conn, carrier=None):
         self.conn = conn
         self.carrier = carrier
-        self.cn = None
-        self.cursor = None
+        self.dbapi_conn = None
+        self.dbapi_cursor = None
 
     def __enter__(self):
         return self.create_cursor()
 
     def __exit__(self, *args):
-        self.close()
+        if self.conn:
+            self.put()
 
     def __call__(self):
         return self.create_cursor()
@@ -45,30 +46,31 @@ class Cursor(object):
     def create_cursor(self):
         if self.carrier:
             if hasattr(self.carrier, '_quma_conn'):
-                self.cn = self.carrier._quma_conn
+                self.dbapi_conn = self.carrier._quma_conn
             else:
-                self.cn = self.carrier._quma_conn = self.conn.get()
+                self.dbapi_conn = self.carrier._quma_conn = self.conn.get()
         else:
-            self.cn = self.conn.get()
-        self.cursor = CursorWrapper(self.conn, self.conn.cursor())
+            self.dbapi_conn = self.conn.get()
+        self.dbapi_cursor = CursorWrapper(self.conn,
+                                          self.conn.cursor(self.dbapi_conn))
         return self
 
-    def close(self):
-        self.cursor.close()
+    def put(self):
+        self.dbapi_cursor.close()
 
         # If the connection is bound to the carrier it
         # needs to be returned manually.
         if not hasattr(self.carrier, '_quma_conn'):
-            self.conn.put(self.cn)
+            self.conn.put(self.dbapi_conn)
 
     def commit(self):
-        self.cn.commit()
+        self.dbapi_conn.commit()
 
     def rollback(self):
-        self.cn.rollback()
+        self.dbapi_conn.rollback()
 
     def __getattr__(self, attr):
-        return getattr(self.cursor, attr)
+        return getattr(self.dbapi_cursor, attr)
 
 
 class Query(object):
@@ -250,6 +252,7 @@ class Database(object):
 
     def close(self):
         self.conn.close()
+        self.conn = None
 
     def execute(self, sql, **kwargs):
         with self.cursor as c:

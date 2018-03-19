@@ -27,12 +27,8 @@ class Connection(core.Connection):
 
         self._init_conn(**kwargs)
 
-    def cursor(self):
-        return self.conn.cursor()
-
-    def get(self):
-        if not self.conn:
-            self.conn = sqlite3.connect(database=self.database)
-            if self.changeling:
-                self.conn.row_factory = SQLiteChangelingRow
-        return self.conn
+    def create_conn(self):
+        conn = sqlite3.connect(database=self.database)
+        if self.changeling:
+            conn.row_factory = SQLiteChangelingRow
+        return conn

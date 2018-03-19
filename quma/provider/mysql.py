@@ -19,15 +19,12 @@ class Connection(core.Connection):
             self.cursor_factory = MySQLdb.cursors.Cursor
         self._init_conn(**kwargs)
 
-    def cursor(self):
-        return self.conn.cursor(self.cursor_factory)
+    def cursor(self, conn):
+        return conn.cursor(self.cursor_factory)
 
-    def get(self):
-        if not self.conn:
-            self.conn = MySQLdb.connect(
-                db=self.database,
-                user=self.username,
-                passwd=self.password,
-                host=self.hostname,
-                port=self.port)
-        return self.conn
+    def create_conn(self):
+        return MySQLdb.connect(db=self.database,
+                               user=self.username,
+                               passwd=self.password,
+                               host=self.hostname,
+                               port=self.port)

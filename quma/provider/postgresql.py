@@ -67,16 +67,14 @@ class Connection(core.Connection):
 
         self._init_conn(**kwargs)
 
-    def get(self):
-        if not self.conn:
-            self.conn = psycopg2.connect(
-                database=self.database,
-                user=self.username,
-                password=self.password,
-                host=self.hostname,
-                port=self.port,
-                cursor_factory=self.factory)
-        return self.conn
+    def create_conn(self):
+        return psycopg2.connect(
+            database=self.database,
+            user=self.username,
+            password=self.password,
+            host=self.hostname,
+            port=self.port,
+            cursor_factory=self.factory)
 
 
 class Pool(Connection):
@@ -106,8 +104,3 @@ class Pool(Connection):
     def close(self):
         self.conn.closeall()
         self.conn = None
-
-    def release(self, carrier):
-        if hasattr(carrier, '_quma_conn'):
-            self.conn.putconn(carrier._quma_conn)
-            del carrier._quma_conn
