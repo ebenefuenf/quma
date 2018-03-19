@@ -8,18 +8,22 @@ PG_POOL_URI = f'postgresql+pool://{DB_USER}:{DB_PASS}@/{DB_NAME}'
 MYSQL_URI = f'mysql://{DB_USER}:{DB_PASS}@/{DB_NAME}'
 
 DROP_USERS = 'DROP TABLE IF EXISTS users;'
-CREATE_USERS = ('CREATE TABLE users (           '
-                '   id SERIAL PRIMARY KEY,      '
-                '   name VARCHAR(128) NOT NULL, '
-                '   email VARCHAR(128) NOT NULL '
-                ');                             ')
-INSERT_USERS = ("INSERT INTO                                        "
-                "   users (name, email)                             "
-                "VALUES                                             "
-                "   ('Hans Karl', 'hans.karl@example.com'),         "
-                "   ('Robert Fößel', 'robert.foessel@example.com'), "
-                "   ('Franz Görtler', 'franz.goertler@example.com'),"
-                "   ('Emil Jäger', 'emil.jaeger@example.com');      ")
+CREATE_USERS = ("""
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(128) NOT NULL,
+    email VARCHAR(128) NOT NULL,
+    city VARCHAR(128) NOT NULL);
+""")
+INSERT_USERS = ("""
+INSERT INTO
+    users (name, email, city)
+VALUES
+    ('Hans Karl', 'hans.karl@example.com', 'Staffelbach'),
+    ('Robert Fößel', 'robert.foessel@example.com', 'Oberhaid'),
+    ('Franz Görtler', 'franz.goertler@example.com', 'Bamberg'),
+    ('Emil Jäger', 'emil.jaeger@example.com', 'Nürnberg');
+""")
 
 
 def setup_pg_db():

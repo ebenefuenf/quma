@@ -22,7 +22,8 @@ def test_cursor_call(mydb):
     try:
         mydb.user.add(cursor,
                       name='Anneliese Günthner',
-                      email='anneliese.guenthner@example.com')
+                      email='anneliese.guenthner@example.com',
+                      city='city')
         cursor.commit()
         mydb.user.remove(cursor, name='Anneliese Günthner')
         cursor.commit()
@@ -35,7 +36,8 @@ def test_commit(mydb):
     with mydb.cursor as cursor:
         mydb.user.add(cursor,
                       name='hans',
-                      email='hans@example.com')
+                      email='hans@example.com',
+                      city='city')
     with mydb.cursor as cursor:
         with pytest.raises(DoesNotExistError):
             mydb.user.by_name.get(cursor, name='hans')
@@ -43,7 +45,8 @@ def test_commit(mydb):
     with mydb.cursor as cursor:
         mydb.user.add(cursor,
                       name='hans',
-                      email='hans@example.com')
+                      email='hans@example.com',
+                      city='city')
         cursor.commit()
 
     cursor = mydb.cursor()
@@ -60,7 +63,8 @@ def test_rollback(mydb):
     cursor = mydb.cursor()
     mydb.user.add(cursor,
                   name='hans',
-                  email='hans@example.com')
+                  email='hans@example.com',
+                  city='city')
     mydb.user.by_name.get(cursor, name='hans')
     cursor.rollback()
     with pytest.raises(DoesNotExistError):

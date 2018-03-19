@@ -22,7 +22,8 @@ def test_cursor_call(pgdb):
     try:
         pgdb.user.add(cursor,
                       name='Anneliese Günthner',
-                      email='anneliese.guenthner@example.com')
+                      email='anneliese.guenthner@example.com',
+                      city='Sassanfahrt')
         cursor.commit()
         pgdb.user.remove(cursor, name='Anneliese Günthner')
         cursor.commit()
@@ -36,7 +37,8 @@ def test_commit(pgdb, pgpooldb):
         with pgdb.cursor as cursor:
             pgdb.user.add(cursor,
                           name='hans',
-                          email='hans@example.com')
+                          email='hans@example.com',
+                          city='city')
         with pgdb.cursor as cursor:
             with pytest.raises(DoesNotExistError):
                 pgdb.user.by_name.get(cursor, name='hans')
@@ -44,7 +46,8 @@ def test_commit(pgdb, pgpooldb):
         with pgdb.cursor as cursor:
             pgdb.user.add(cursor,
                           name='hans',
-                          email='hans@example.com')
+                          email='hans@example.com',
+                          city='city')
             cursor.commit()
 
         cursor = pgdb.cursor()
@@ -66,7 +69,8 @@ def test_conn_attr(pgdb):
         assert c.get_conn_attr('autocommit') is c.raw_conn.autocommit
         pgdb.user.add(c,
                       name='hans',
-                      email='hans@example.com')
+                      email='hans@example.com',
+                      city='city')
         # no explicit commit
     with pgdb.cursor as cursor:
         assert cursor.get_conn_attr('autocommit') is False
@@ -79,7 +83,8 @@ def test_rollback(pgdb):
     cursor = pgdb.cursor()
     pgdb.user.add(cursor,
                   name='hans',
-                  email='hans@example.com')
+                  email='hans@example.com',
+                  city='city')
     pgdb.user.by_name.get(cursor, name='hans')
     cursor.rollback()
     with pytest.raises(DoesNotExistError):

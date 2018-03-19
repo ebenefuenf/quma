@@ -1,5 +1,5 @@
 INSERT INTO users
-    (name, email)
+    (name, email, city)
 VALUES
-    (%(name)s, %(email)s);
+    (%(name)s, %(email)s, %(city)s);
 

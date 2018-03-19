@@ -1,1 +1,1 @@
-SELECT email FROM users WHERE name = :name;
+SELECT email, city FROM users WHERE name = :name;

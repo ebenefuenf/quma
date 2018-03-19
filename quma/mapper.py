@@ -80,15 +80,15 @@ class Cursor(object):
 
 
 class Query(object):
-    def __init__(self, query, show, is_template, context_callback=None):
+    def __init__(self, query, show, is_template, init_params=None):
         self.show = show
         self.query = query
-        self.context_callback = context_callback
+        self.init_params = init_params
         self.is_template = is_template
-        self.context = None
+        self.params = None
 
     def __call__(self, cursor, *args, **kwargs):
-        self.excecute(cursor, args, kwargs)
+        self._execute(cursor, list(args), kwargs)
         try:
             return cursor.fetchall()
         except psycopg2.ProgrammingError as e:
@@ -99,49 +99,46 @@ class Query(object):
     def __str__(self):
         return self.query
 
-    def print_sql(self, cursor):
+    def _print_sql(self, cursor):
         if cursor.query:
             print('-' * 50)
             print(cursor.query.decode('utf-8'))
 
-    def prepare(self, cursor, payload):
-        context = type(payload)()
-        if type(context) is tuple:
-            context = list(context)
+    def _prepare(self, cursor, payload, init_params):
+        params = type(payload)()
 
-        if self.context_callback:
-            context = self.context_callback(cursor.carrier, context)
+        init = init_params or self.init_params
+        if init:
+            params = init(cursor.carrier, params)
 
         try:
-            context.update(payload)
+            params.update(payload)
         except AttributeError:
-            context.extend(payload)
+            params.extend(payload)
 
         if self.is_template:
             try:
-                return Template(self.query).render(**context), context
+                return Template(self.query).render(**params), params
             except TypeError:
                 raise Exception(
                     'To use templates (*.msql) you need to install Mako')
-        return self.query, context
+        return self.query, params
 
-    def excecute(self, cursor, args, kwargs):
-        if args and kwargs:
-            raise ValueError('Mixed style parameters are not allowed')
+    def _execute(self, cursor, args, kwargs, init_params=None):
         if args:
-            query, context = self.prepare(cursor, args)
+            query, params = self._prepare(cursor, args, init_params)
         else:
-            query, context = self.prepare(cursor, kwargs)
+            query, params = self._prepare(cursor, kwargs, init_params)
         try:
-            cursor.execute(query, context)
+            cursor.execute(query, params)
         finally:
-            self.show and self.print_sql(cursor)
+            self.show and self._print_sql(cursor)
 
-    def get(self, cursor, *args, **kwargs):
+    def get(self, cursor, *args, init_params=None, **kwargs):
         try:
-            self.excecute(cursor, args, kwargs)
+            self._execute(cursor, list(args), kwargs, init_params)
         finally:
-            self.show and self.print_sql(cursor)
+            self.show and self._print_sql(cursor)
 
         def check_rowcount(rowcount):
             if rowcount == 0:
@@ -166,11 +163,10 @@ class Namespace(object):
         self.sqldir = sqldir
         self.cache = db.cache
         self.show = db.show
-        self.context_callback = None
         self._queries = {}
-        self.collect_queries()
+        self._collect_queries()
 
-    def collect_queries(self):
+    def _collect_queries(self):
         sqlfiles = chain(self.sqldir.glob('*.sql'),
                          self.sqldir.glob('*.msql'))
 
@@ -189,7 +185,7 @@ class Namespace(object):
                     f.read(),
                     self.show,
                     ext.lower() == '.msql',
-                    context_callback=self.context_callback)
+                    init_params=self.db.init_params)
 
     def __getattr__(self, attr):
         if self.cache:
@@ -209,7 +205,7 @@ class Namespace(object):
                 f.read(),
                 self.show,
                 Path(sqlfile).suffix == '.msql',
-                context_callback=self.context_callback)
+                init_params=self.db.init_params)
 
 
 class CallWrapper(object):
@@ -234,7 +230,7 @@ class Database(object):
             self.sqldirs = kwargs.pop('sqldirs', [])
 
         self.query_factory = kwargs.pop('query_factory', Query)
-        self.context_callback = kwargs.pop('context_callback', Query)
+        self.init_params = kwargs.pop('init_params', None)
         self.show = kwargs.pop('show', False)
         self.cache = kwargs.pop('cache', False)
 

@@ -52,7 +52,8 @@ def test_cursor_call(db):
     try:
         db.user.add(cursor,
                     name='Anneliese Günthner',
-                    email='anneliese.guenthner@example.com')
+                    email='anneliese.guenthner@example.com',
+                    city='Sassanfahrt')
         cursor.commit()
         db.user.remove(cursor, name='Anneliese Günthner')
         cursor.commit()
@@ -64,7 +65,8 @@ def test_commit(db):
     with db.cursor as cursor:
         db.user.add(cursor,
                     name='hans',
-                    email='hans@example.com')
+                    email='hans@example.com',
+                    city='city')
     with db.cursor as cursor:
         with pytest.raises(DoesNotExistError):
             db.user.by_name.get(cursor, name='hans')
@@ -72,7 +74,8 @@ def test_commit(db):
     with db.cursor as cursor:
         db.user.add(cursor,
                     name='hans',
-                    email='hans@example.com')
+                    email='hans@example.com',
+                    city='city')
         cursor.commit()
 
     cursor = db.cursor()
@@ -88,7 +91,8 @@ def test_rollback(db):
     cursor = db.cursor()
     db.user.add(cursor,
                 name='hans',
-                email='hans@example.com')
+                email='hans@example.com',
+                city='city')
     db.user.by_name.get(cursor, name='hans')
     cursor.rollback()
     with pytest.raises(DoesNotExistError):
@@ -117,10 +121,36 @@ def test_changeling_cursor(db):
 
 def test_qmark_query(db):
     with db.cursor as cursor:
-        emil = db.user.by_email.get(cursor, 'emil.jaeger@example.com')
+        emil = db.user.by_email.get(cursor, 'emil.jaeger@example.com', 1)
         assert emil[0] == 'Emil Jäger'
         assert emil['name'] == 'Emil Jäger'
         assert emil.name == 'Emil Jäger'
         with pytest.raises(AttributeError):
             emil.wrong_attr
         assert 'name' in emil.keys()
+
+
+def test_dict_callback(dbdictcb, carrier1):
+    db = dbdictcb
+
+    def dict_callback(carrier, params):
+        return {'name': 'Hans Karl'}
+
+    with db(carrier1).cursor as c:
+        user = db.user.by_name.get(c)
+        assert user['city'] == 'Oberhaid'
+        user = db.user.by_name.get(c, init_params=dict_callback)
+        assert user['city'] == 'Staffelbach'
+
+
+def test_seq_callback(dbseqcb, carrier1):
+    db = dbseqcb
+
+    def seq_callback(carrier, params):
+        return ['hans.karl@example.com']
+
+    with db(carrier1).cursor as c:
+        user = db.user.by_email.get(c, 1)
+        assert user['city'] == 'Oberhaid'
+        user = db.user.by_email.get(c, 1, init_params=seq_callback)
+        assert user['city'] == 'Staffelbach'

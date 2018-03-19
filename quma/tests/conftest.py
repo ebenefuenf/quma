@@ -1,4 +1,5 @@
 import pathlib
+from types import SimpleNamespace
 
 import pytest
 
@@ -66,3 +67,44 @@ def db_no_changeling(qmark_sqldirs):
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
     return db
+
+
+@pytest.fixture
+def dbdictcb(qmark_sqldirs):
+    def dict_callback(carrier, params):
+        params['name'] = carrier.name
+        return params
+
+    db = Database(util.SQLITE_URI, qmark_sqldirs, init_params=dict_callback,
+                  changeling=True)
+    db.execute(util.DROP_USERS)
+    db.execute(util.CREATE_USERS)
+    db.execute(util.INSERT_USERS)
+    return db
+
+
+@pytest.fixture
+def dbseqcb(qmark_sqldirs):
+    def sequence_callback(carrier, params):
+        params.append(carrier.email)
+        return params
+
+    db = Database(util.SQLITE_URI, qmark_sqldirs,
+                  init_params=sequence_callback,
+                  changeling=True)
+    db.execute(util.DROP_USERS)
+    db.execute(util.CREATE_USERS)
+    db.execute(util.INSERT_USERS)
+    return db
+
+
+@pytest.fixture
+def carrier1():
+    return SimpleNamespace(name='Robert Fößel',
+                           email='robert.foessel@example.com')
+
+
+@pytest.fixture
+def carrier2():
+    return SimpleNamespace(name='Hans Karl',
+                           email='hans.karl@example.com')
