@@ -57,6 +57,24 @@ def test_commit(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_conn_attr(pgdb):
+    with pgdb.cursor as c:
+        assert c.raw_conn.autocommit is False
+        assert c.get_conn_attr('autocommit') is c.raw_conn.autocommit
+        c.set_conn_attr('autocommit', True)
+        assert c.raw_conn.autocommit is True
+        assert c.get_conn_attr('autocommit') is c.raw_conn.autocommit
+        pgdb.user.add(c,
+                      name='hans',
+                      email='hans@example.com')
+        # no explicit commit
+    with pgdb.cursor as cursor:
+        assert cursor.get_conn_attr('autocommit') is False
+        user = pgdb.user.by_name.get(cursor, name='hans')
+    assert user.email == 'hans@example.com'
+
+
+@pytest.mark.postgres
 def test_rollback(pgdb):
     cursor = pgdb.cursor()
     pgdb.user.add(cursor,

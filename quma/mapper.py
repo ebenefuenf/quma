@@ -15,13 +15,13 @@ except ImportError:
 
 
 class CursorWrapper(object):
-    def __init__(self, conn, dbapi_cursor):
-        self.dbapi_cursor = dbapi_cursor
+    def __init__(self, conn, raw_cursor):
+        self.raw_cursor = raw_cursor
         self.has_rowcount = conn.has_rowcount
 
     def __getattr__(self, key):
         try:
-            return getattr(self.dbapi_cursor, key)
+            return getattr(self.raw_cursor, key)
         except AttributeError as e:
             raise e
 
@@ -30,8 +30,8 @@ class Cursor(object):
     def __init__(self, conn, carrier=None):
         self.conn = conn
         self.carrier = carrier
-        self.dbapi_conn = None
-        self.dbapi_cursor = None
+        self.raw_conn = None
+        self.raw_cursor = None
 
     def __enter__(self):
         return self.create_cursor()
@@ -46,31 +46,37 @@ class Cursor(object):
     def create_cursor(self):
         if self.carrier:
             if hasattr(self.carrier, '_quma_conn'):
-                self.dbapi_conn = self.carrier._quma_conn
+                self.raw_conn = self.carrier._quma_conn
             else:
-                self.dbapi_conn = self.carrier._quma_conn = self.conn.get()
+                self.raw_conn = self.carrier._quma_conn = self.conn.get()
         else:
-            self.dbapi_conn = self.conn.get()
-        self.dbapi_cursor = CursorWrapper(self.conn,
-                                          self.conn.cursor(self.dbapi_conn))
+            self.raw_conn = self.conn.get()
+        self.raw_cursor = CursorWrapper(self.conn,
+                                        self.conn.cursor(self.raw_conn))
         return self
 
     def put(self):
-        self.dbapi_cursor.close()
+        self.raw_cursor.close()
 
         # If the connection is bound to the carrier it
         # needs to be returned manually.
         if not hasattr(self.carrier, '_quma_conn'):
-            self.conn.put(self.dbapi_conn)
+            self.conn.put(self.raw_conn)
 
     def commit(self):
-        self.dbapi_conn.commit()
+        self.raw_conn.commit()
 
     def rollback(self):
-        self.dbapi_conn.rollback()
+        self.raw_conn.rollback()
+
+    def get_conn_attr(self, attr):
+        return getattr(self.raw_conn, attr)
+
+    def set_conn_attr(self, attr, value):
+        setattr(self.raw_conn, attr, value)
 
     def __getattr__(self, attr):
-        return getattr(self.dbapi_cursor, attr)
+        return getattr(self.raw_cursor, attr)
 
 
 class Query(object):
