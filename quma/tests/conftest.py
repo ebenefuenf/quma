@@ -100,11 +100,11 @@ def dbseqcb(qmark_sqldirs):
 
 @pytest.fixture
 def carrier1():
-    return SimpleNamespace(name='Robert Fößel',
-                           email='robert.foessel@example.com')
+    return SimpleNamespace(name='User 1',
+                           email='user.1@example.com')
 
 
 @pytest.fixture
 def carrier2():
-    return SimpleNamespace(name='Hans Karl',
-                           email='hans.karl@example.com')
+    return SimpleNamespace(name='User 2',
+                           email='user.2@example.com')

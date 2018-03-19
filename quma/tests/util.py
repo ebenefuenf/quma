@@ -19,10 +19,10 @@ INSERT_USERS = ("""
 INSERT INTO
     users (name, email, city)
 VALUES
-    ('Hans Karl', 'hans.karl@example.com', 'Staffelbach'),
-    ('Robert Fößel', 'robert.foessel@example.com', 'Oberhaid'),
-    ('Franz Görtler', 'franz.goertler@example.com', 'Bamberg'),
-    ('Emil Jäger', 'emil.jaeger@example.com', 'Nürnberg');
+    ('User 1', 'user.1@example.com', 'City 1'),
+    ('User 2', 'user.2@example.com', 'City 2'),
+    ('User 3', 'user.3@example.com', 'City 3'),
+    ('User 4', 'user.4@example.com', 'City 4');
 """)
 
 

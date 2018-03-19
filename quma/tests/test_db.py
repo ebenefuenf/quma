@@ -42,20 +42,20 @@ def test_custom_namespace(db):
     with db.cursor as cursor:
         assert type(db.users).__module__ == 'quma.mapping.users'
         assert type(db.users).__name__ == 'Users'
-        assert db.users.get_hans(cursor) == 'Hans'
+        assert db.users.get_test(cursor) == 'Test'
         # Test the namespace alias
-        assert db.user.get_hans(cursor) == 'Hans'
+        assert db.user.get_test(cursor) == 'Test'
 
 
 def test_cursor_call(db):
     cursor = db.cursor()
     try:
         db.user.add(cursor,
-                    name='Anneliese Günthner',
-                    email='anneliese.guenthner@example.com',
-                    city='Sassanfahrt')
+                    name='Test User',
+                    email='test.user@example.com',
+                    city='Test City')
         cursor.commit()
-        db.user.remove(cursor, name='Anneliese Günthner')
+        db.user.remove(cursor, name='Test User')
         cursor.commit()
     finally:
         cursor.close()
@@ -64,93 +64,93 @@ def test_cursor_call(db):
 def test_commit(db):
     with db.cursor as cursor:
         db.user.add(cursor,
-                    name='hans',
-                    email='hans@example.com',
-                    city='city')
+                    name='Test User',
+                    email='test.user@example.com',
+                    city='Test City')
     with db.cursor as cursor:
         with pytest.raises(DoesNotExistError):
-            db.user.by_name.get(cursor, name='hans')
+            db.user.by_name.get(cursor, name='Test User')
 
     with db.cursor as cursor:
         db.user.add(cursor,
-                    name='hans',
-                    email='hans@example.com',
-                    city='city')
+                    name='Test User',
+                    email='test.user@example.com',
+                    city='Test City')
         cursor.commit()
 
     cursor = db.cursor()
-    db.user.by_name.get(cursor, name='hans')
-    db.user.remove(cursor, name='hans')
+    db.user.by_name.get(cursor, name='Test User')
+    db.user.remove(cursor, name='Test User')
     cursor.commit()
     with pytest.raises(DoesNotExistError):
-        db.user.by_name.get(cursor, name='hans')
+        db.user.by_name.get(cursor, name='Test User')
     cursor.close()
 
 
 def test_rollback(db):
     cursor = db.cursor()
     db.user.add(cursor,
-                name='hans',
-                email='hans@example.com',
-                city='city')
-    db.user.by_name.get(cursor, name='hans')
+                name='Test User',
+                email='test.user@example.com',
+                city='Test City')
+    db.user.by_name.get(cursor, name='Test User')
     cursor.rollback()
     with pytest.raises(DoesNotExistError):
-        db.user.by_name.get(cursor, name='hans')
+        db.user.by_name.get(cursor, name='Test User')
     cursor.close()
 
 
 def test_overwrite_query_class(pyformat_sqldirs):
     class MyQuery(Query):
         def the_test(self):
-            return 'Hans Karl'
+            return 'Test'
     db = Database(util.PG_POOL_URI, pyformat_sqldirs, query_factory=MyQuery)
-    assert db.user.all.the_test() == 'Hans Karl'
+    assert db.user.all.the_test() == 'Test'
 
 
 def test_changeling_cursor(db):
     with db.cursor as cursor:
-        hans = db.user.by_name.get(cursor, name='Franz Görtler')
-        assert hans[0] == 'franz.goertler@example.com'
-        assert hans['email'] == 'franz.goertler@example.com'
-        assert hans.email == 'franz.goertler@example.com'
+        user = db.user.by_name.get(cursor, name='User 2')
+        assert user[0] == 'user.2@example.com'
+        assert user['email'] == 'user.2@example.com'
+        assert user.email == 'user.2@example.com'
         with pytest.raises(AttributeError):
-            hans.wrong_attr
-        assert 'email' in hans.keys()
+            user.wrong_attr
+        assert 'email' in user.keys()
 
 
 def test_qmark_query(db):
     with db.cursor as cursor:
-        emil = db.user.by_email.get(cursor, 'emil.jaeger@example.com', 1)
-        assert emil[0] == 'Emil Jäger'
-        assert emil['name'] == 'Emil Jäger'
-        assert emil.name == 'Emil Jäger'
+        user = db.user.by_email.get(cursor, 'user.3@example.com', 1)
+        assert user[0] == 'User 3'
+        assert user['name'] == 'User 3'
+        assert user.name == 'User 3'
         with pytest.raises(AttributeError):
-            emil.wrong_attr
-        assert 'name' in emil.keys()
+            user.wrong_attr
+        assert 'name' in user.keys()
 
 
 def test_dict_callback(dbdictcb, carrier1):
     db = dbdictcb
 
     def dict_callback(carrier, params):
-        return {'name': 'Hans Karl'}
+        return {'name': 'User 2'}
 
     with db(carrier1).cursor as c:
         user = db.user.by_name.get(c)
-        assert user['city'] == 'Oberhaid'
+        assert user['city'] == 'City 1'
         user = db.user.by_name.get(c, init_params=dict_callback)
-        assert user['city'] == 'Staffelbach'
+        assert user['city'] == 'City 2'
 
 
-def test_seq_callback(dbseqcb, carrier1):
+def test_seq_callback(dbseqcb, carrier2):
     db = dbseqcb
 
     def seq_callback(carrier, params):
-        return ['hans.karl@example.com']
+        return ['user.3@example.com']
 
-    with db(carrier1).cursor as c:
+    with db(carrier2).cursor as c:
         user = db.user.by_email.get(c, 1)
-        assert user['city'] == 'Oberhaid'
+        assert user['city'] == 'City 2'
         user = db.user.by_email.get(c, 1, init_params=seq_callback)
-        assert user['city'] == 'Staffelbach'
+        assert user['city'] == 'City 3'

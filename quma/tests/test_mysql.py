@@ -35,26 +35,26 @@ def test_cursor_call(mydb):
 def test_commit(mydb):
     with mydb.cursor as cursor:
         mydb.user.add(cursor,
-                      name='hans',
-                      email='hans@example.com',
-                      city='city')
+                      name='Test User',
+                      email='test.user@example.com',
+                      city='Test City')
     with mydb.cursor as cursor:
         with pytest.raises(DoesNotExistError):
-            mydb.user.by_name.get(cursor, name='hans')
+            mydb.user.by_name.get(cursor, name='Test User')
 
     with mydb.cursor as cursor:
         mydb.user.add(cursor,
-                      name='hans',
-                      email='hans@example.com',
-                      city='city')
+                      name='Test User',
+                      email='test.user@example.com',
+                      city='Test City')
         cursor.commit()
 
     cursor = mydb.cursor()
-    mydb.user.by_name.get(cursor, name='hans')
-    mydb.user.remove(cursor, name='hans')
+    mydb.user.by_name.get(cursor, name='Test User')
+    mydb.user.remove(cursor, name='Test User')
     cursor.commit()
     with pytest.raises(DoesNotExistError):
-        mydb.user.by_name.get(cursor, name='hans')
+        mydb.user.by_name.get(cursor, name='Test User')
     cursor.close()
 
 
@@ -62,13 +62,13 @@ def test_commit(mydb):
 def test_rollback(mydb):
     cursor = mydb.cursor()
     mydb.user.add(cursor,
-                  name='hans',
-                  email='hans@example.com',
-                  city='city')
-    mydb.user.by_name.get(cursor, name='hans')
+                  name='Test User',
+                  email='test.user@example.com',
+                  city='Test City')
+    mydb.user.by_name.get(cursor, name='Test User')
     cursor.rollback()
     with pytest.raises(DoesNotExistError):
-        mydb.user.by_name.get(cursor, name='hans')
+        mydb.user.by_name.get(cursor, name='Test User')
     cursor.close()
 
 
@@ -76,10 +76,10 @@ def test_rollback(mydb):
 def test_tuple_cursor(mydb_persist):
     # pgdb_persist does not use the changeling factory
     with mydb_persist.cursor as cursor:
-        hans = mydb_persist.user.by_name.get(cursor, name='Franz Görtler')
-        assert hans[0] == 'franz.goertler@example.com'
+        user = mydb_persist.user.by_name.get(cursor, name='User 4')
+        assert user[0] == 'user.4@example.com'
         with pytest.raises(TypeError):
-            hans['email']
+            user['email']
         cursor.rollback()
 
 
@@ -87,8 +87,8 @@ def test_tuple_cursor(mydb_persist):
 def test_dict_cursor(mydb):
     # pgdb_persist does not use the changeling factory
     with mydb.cursor as cursor:
-        hans = mydb.user.by_name.get(cursor, name='Franz Görtler')
-        assert hans['email'] == 'franz.goertler@example.com'
+        user = mydb.user.by_name.get(cursor, name='User 3')
+        assert user['email'] == 'user.3@example.com'
         with pytest.raises(KeyError):
-            hans[0]
+            user[0]
         cursor.rollback()
