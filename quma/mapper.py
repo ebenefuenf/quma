@@ -88,6 +88,7 @@ class Query(object):
         self.context = None
 
     def __call__(self, cursor, *args, **kwargs):
+        self.excecute(cursor, args, kwargs)
         try:
             return cursor.fetchall()
         except psycopg2.ProgrammingError as e:
