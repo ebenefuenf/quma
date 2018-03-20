@@ -1,7 +1,10 @@
 import pytest
 
 from . import util
-from ..exc import DoesNotExistError
+from ..exc import (
+    DoesNotExistError,
+    MultipleRecordsError,
+)
 from ..mapper import Cursor
 
 
@@ -114,3 +117,19 @@ def test_no_changeling_cursor(pgdb_persist):
         with pytest.raises(AttributeError):
             user.email
         cursor.rollback()
+
+
+@pytest.mark.postgres
+def test_multiple_records(pgdb):
+    with pgdb.cursor as cursor:
+        users = pgdb.users.by_city(cursor, city='City A')
+        assert len(users) == 2
+        for user in users:
+            assert user.name in ('User 1', 'User 2')
+
+
+@pytest.mark.postgres
+def test_multiple_records_error(pgdb):
+    with pgdb.cursor as cursor:
+        with pytest.raises(MultipleRecordsError):
+            pgdb.user.by_city.get(cursor, city='City A')

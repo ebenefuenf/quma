@@ -20,10 +20,10 @@ INSERT_USERS = ("""
 INSERT INTO
     users (name, email, city)
 VALUES
-    ('User 1', 'user.1@example.com', 'City 1'),
-    ('User 2', 'user.2@example.com', 'City 2'),
-    ('User 3', 'user.3@example.com', 'City 3'),
-    ('User 4', 'user.4@example.com', 'City 4');
+    ('User 1', 'user.1@example.com', 'City A'),
+    ('User 2', 'user.2@example.com', 'City A'),
+    ('User 3', 'user.3@example.com', 'City B'),
+    ('User 4', 'user.4@example.com', 'City B');
 """)
 
 

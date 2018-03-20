@@ -5,7 +5,10 @@ from .. import (
     Database,
     Namespace,
 )
-from ..exc import DoesNotExistError
+from ..exc import (
+    DoesNotExistError,
+    MultipleRecordsError,
+)
 from ..mapper import (
     Cursor,
     Query,
@@ -130,27 +133,41 @@ def test_qmark_query(db):
         assert 'name' in user.keys()
 
 
-def test_dict_callback(dbdictcb, carrier1):
+def test_dict_callback(dbdictcb, carrier):
     db = dbdictcb
 
     def dict_callback(carrier, params):
-        return {'name': 'User 2'}
+        return {'name': 'User 3'}
 
-    with db(carrier1).cursor as c:
+    with db(carrier).cursor as c:
         user = db.user.by_name.get(c)
-        assert user['city'] == 'City 1'
+        assert user['city'] == 'City A'
         user = db.user.by_name.get(c, init_params=dict_callback)
-        assert user['city'] == 'City 2'
+        assert user['city'] == 'City B'
 
 
-def test_seq_callback(dbseqcb, carrier2):
+def test_seq_callback(dbseqcb, carrier):
     db = dbseqcb
 
     def seq_callback(carrier, params):
         return ['user.3@example.com']
 
-    with db(carrier2).cursor as c:
+    with db(carrier).cursor as c:
         user = db.user.by_email.get(c, 1)
-        assert user['city'] == 'City 2'
+        assert user['city'] == 'City A'
         user = db.user.by_email.get(c, 1, init_params=seq_callback)
-        assert user['city'] == 'City 3'
+        assert user['city'] == 'City B'
+
+
+def test_multiple_records(db):
+    with db.cursor as cursor:
+        users = db.users.by_city(cursor, city='City A')
+        assert len(users) == 2
+        for user in users:
+            assert user.name in ('User 1', 'User 2')
+
+
+def test_multiple_records_error(db):
+    with db.cursor as cursor:
+        with pytest.raises(MultipleRecordsError):
+            db.user.by_city.get(cursor, city='City A')
