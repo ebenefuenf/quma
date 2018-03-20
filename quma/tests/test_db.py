@@ -61,29 +61,29 @@ def test_cursor_call(db):
         cursor.close()
 
 
-def test_commit(db):
-    with db.cursor as cursor:
-        db.user.add(cursor,
-                    name='Test User',
-                    email='test.user@example.com',
-                    city='Test City')
-    with db.cursor as cursor:
+def test_commit(dbfile):
+    with dbfile.cursor as cursor:
+        dbfile.user.add(cursor,
+                        name='Test User',
+                        email='test.user@example.com',
+                        city='Test City')
+    with dbfile.cursor as cursor:
         with pytest.raises(DoesNotExistError):
-            db.user.by_name.get(cursor, name='Test User')
+            dbfile.user.by_name.get(cursor, name='Test User')
 
-    with db.cursor as cursor:
-        db.user.add(cursor,
-                    name='Test User',
-                    email='test.user@example.com',
-                    city='Test City')
+    with dbfile.cursor as cursor:
+        dbfile.user.add(cursor,
+                        name='Test User',
+                        email='test.user@example.com',
+                        city='Test City')
         cursor.commit()
 
-    cursor = db.cursor()
-    db.user.by_name.get(cursor, name='Test User')
-    db.user.remove(cursor, name='Test User')
+    cursor = dbfile.cursor()
+    dbfile.user.by_name.get(cursor, name='Test User')
+    dbfile.user.remove(cursor, name='Test User')
     cursor.commit()
     with pytest.raises(DoesNotExistError):
-        db.user.by_name.get(cursor, name='Test User')
+        dbfile.user.by_name.get(cursor, name='Test User')
     cursor.close()
 
 

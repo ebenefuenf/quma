@@ -53,6 +53,15 @@ def mydb_persist(pyformat_sqldirs):
 
 @pytest.fixture
 def db(qmark_sqldirs):
+    db = Database(util.SQLITE_MEMORY, qmark_sqldirs, persist=True,
+                  changeling=True)
+    db.execute(util.CREATE_USERS)
+    db.execute(util.INSERT_USERS)
+    return db
+
+
+@pytest.fixture
+def dbfile(qmark_sqldirs):
     db = Database(util.SQLITE_URI, qmark_sqldirs, changeling=True)
     db.execute(util.DROP_USERS)
     db.execute(util.CREATE_USERS)
@@ -62,8 +71,7 @@ def db(qmark_sqldirs):
 
 @pytest.fixture
 def db_no_changeling(qmark_sqldirs):
-    db = Database(util.SQLITE_URI, qmark_sqldirs)
-    db.execute(util.DROP_USERS)
+    db = Database(util.SQLITE_MEMORY, qmark_sqldirs, persist=True)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
     return db
@@ -75,9 +83,10 @@ def dbdictcb(qmark_sqldirs):
         params['name'] = carrier.name
         return params
 
-    db = Database(util.SQLITE_URI, qmark_sqldirs, init_params=dict_callback,
+    db = Database(util.SQLITE_MEMORY, qmark_sqldirs,
+                  init_params=dict_callback,
+                  persist=True,
                   changeling=True)
-    db.execute(util.DROP_USERS)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
     return db
@@ -89,10 +98,10 @@ def dbseqcb(qmark_sqldirs):
         params.append(carrier.email)
         return params
 
-    db = Database(util.SQLITE_URI, qmark_sqldirs,
+    db = Database(util.SQLITE_MEMORY, qmark_sqldirs,
                   init_params=sequence_callback,
+                  persist=True,
                   changeling=True)
-    db.execute(util.DROP_USERS)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
     return db
