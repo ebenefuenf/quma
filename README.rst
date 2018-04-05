@@ -23,7 +23,10 @@ And then **Yeah**!
 Testing
 -------
 
-Run ``pytest`` or ``py.test``
+Run ``pytest`` or ``py.test`` to run all tests. 
+``pytest -m "not postgres and not mysql"`` for all general 
+tests. And ``pytest -m "postgres"`` or ``pytest -m "mysql"`` 
+for DBMS specific tests.
 
 Prerequisites
 ~~~~~~~~~~~~~
