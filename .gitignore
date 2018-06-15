@@ -6,6 +6,8 @@
 .coverage
 .eggs/
 .installed.cfg
+.mypy_cache
+.pyre
 .pytest_cache
 MANIFEST
 __pycache__/

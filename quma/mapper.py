@@ -3,10 +3,12 @@ from importlib.machinery import SourceFileLoader
 from itertools import chain
 from pathlib import Path
 from urllib.parse import urlparse
+from typing import TypeVar
 
 import psycopg2
 
 from . import exc
+from . import core
 
 try:
     from mako.template import Template
@@ -26,12 +28,15 @@ class CursorWrapper(object):
             raise e
 
 
+CursorType = TypeVar('CursorType', bound='Cursor')
+
+
 class Cursor(object):
-    def __init__(self, conn, carrier=None):
+    def __init__(self, conn: core.Connection, carrier=None) -> None:
         self.conn = conn
         self.carrier = carrier
         self.raw_conn = None
-        self.raw_cursor = None
+        self.raw_cursor: CursorWrapper
 
     def __enter__(self):
         return self.create_cursor()
@@ -40,10 +45,10 @@ class Cursor(object):
         if self.conn:
             self.put()
 
-    def __call__(self):
+    def __call__(self: CursorType) -> CursorType:
         return self.create_cursor()
 
-    def create_cursor(self):
+    def create_cursor(self: CursorType) -> CursorType:
         if self.carrier:
             if hasattr(self.carrier, '_quma_conn'):
                 self.raw_conn = self.carrier._quma_conn
