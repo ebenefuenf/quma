@@ -9,6 +9,7 @@ import psycopg2
 
 from . import exc
 from . import core
+from . import pool
 
 try:
     from mako.template import Template
@@ -294,11 +295,13 @@ def connect(dburi, **kwargs):
     url = urlparse(dburi)
     scheme = url.scheme.split('+')
     module_name = scheme[0]
-    class_name = 'Connection'
+    module = import_module(f'quma.provider.{module_name}')
+    conn = getattr(module, 'Connection')(url, **kwargs)
     try:
         if scheme[1].lower() == 'pool':
-            class_name = 'Pool'
+            return pool.Pool(conn, **kwargs)
+        else:
+            raise ValueError('Wrong scheme. Only "provider://" or '
+                             '"provider+pool://" are allowed')
     except IndexError:
-        pass
-    module = import_module(f'quma.provider.{module_name}')
-    return getattr(module, class_name)(url, **kwargs)
+        return conn

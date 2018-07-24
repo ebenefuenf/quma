@@ -107,7 +107,7 @@ def test_overwrite_query_class(pyformat_sqldirs):
     class MyQuery(Query):
         def the_test(self):
             return 'Test'
-    db = Database(util.PG_POOL_URI, pyformat_sqldirs, query_factory=MyQuery)
+    db = Database(util.PGSQL_POOL_URI, pyformat_sqldirs, query_factory=MyQuery)
     assert db.user.all.the_test() == 'Test'
 
 

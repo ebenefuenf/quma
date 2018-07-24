@@ -4,9 +4,10 @@ DB_PASS = 'quma_test_password'
 DSN = f'dbname={DB_NAME} user={DB_USER} password={DB_PASS}'
 SQLITE_URI = 'sqlite:////tmp/quma.sqlite'
 SQLITE_MEMORY = 'sqlite:///'
-PG_URI = f'postgresql://{DB_USER}:{DB_PASS}@/{DB_NAME}'
-PG_POOL_URI = f'postgresql+pool://{DB_USER}:{DB_PASS}@/{DB_NAME}'
+PGSQL_URI = f'postgresql://{DB_USER}:{DB_PASS}@/{DB_NAME}'
+PGSQL_POOL_URI = f'postgresql+pool://{DB_USER}:{DB_PASS}@/{DB_NAME}'
 MYSQL_URI = f'mysql://{DB_USER}:{DB_PASS}@/{DB_NAME}'
+MYSQL_POOL_URI = f'mysql+pool://{DB_USER}:{DB_PASS}@/{DB_NAME}'
 
 DROP_USERS = 'DROP TABLE IF EXISTS users;'
 CREATE_USERS = ("""

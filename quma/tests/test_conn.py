@@ -9,7 +9,7 @@ from .. import exc
 def test_postgres_non_persistent():
     from psycopg2.extensions import connection
 
-    conn = connect(util.PG_URI)
+    conn = connect(util.PGSQL_URI)
     cn1 = conn.get()
     assert cn1.closed == 0
     with pytest.raises(AttributeError):
@@ -30,7 +30,7 @@ def test_postgres_non_persistent():
 def test_postgres_persistent():
     from psycopg2.extensions import connection
 
-    conn = connect(util.PG_URI, persist=True)
+    conn = connect(util.PGSQL_URI, persist=True)
     cn1 = conn.get()
     assert cn1.closed == 0
     assert conn.conn == cn1
@@ -50,21 +50,26 @@ def test_postgres_persistent():
 @pytest.mark.postgres
 def test_postgres_pool():
     from psycopg2.extensions import connection
-    from psycopg2.pool import ThreadedConnectionPool, PoolError
+    from .. import pool
 
-    conn = connect(util.PG_POOL_URI)
-    assert type(conn.conn) is ThreadedConnectionPool
+    conn = connect(util.PGSQL_POOL_URI)
+    assert type(conn) is pool.Pool
+    assert conn.size == 5
     cn1 = conn.get()
+    assert conn.overflow == -4
     cn2 = conn.get()
+    assert conn.overflow == -3
     assert type(cn1) is connection
     assert type(cn2) is connection
     assert cn1 != cn2
     conn.put(cn1)
     conn.put(cn2)
-    with pytest.raises(PoolError):
-        conn.put(cn2)
+    assert conn.checkedin == 2
+    cn3 = conn.get()
+    assert conn.checkedin == 1
+    assert cn3 == cn1
     conn.close()
-    assert conn.conn is None
+    assert conn.checkedin == 0
 
 
 @pytest.mark.mysql
@@ -107,3 +112,28 @@ def test_mysql_persistent():
     assert cn2.closed == 1
     with pytest.raises(AttributeError):
         conn.conn
+
+
+@pytest.mark.mysql
+def test_mysql_pool():
+    from MySQLdb.connections import Connection
+    from .. import pool
+
+    conn = connect(util.MYSQL_POOL_URI)
+    assert type(conn) is pool.Pool
+    assert conn.size == 5
+    cn1 = conn.get()
+    assert conn.overflow == -4
+    cn2 = conn.get()
+    assert conn.overflow == -3
+    assert type(cn1) is Connection
+    assert type(cn2) is Connection
+    assert cn1 != cn2
+    conn.put(cn1)
+    conn.put(cn2)
+    assert conn.checkedin == 2
+    cn3 = conn.get()
+    assert conn.checkedin == 1
+    assert cn3 == cn1
+    conn.close()
+    assert conn.checkedin == 0

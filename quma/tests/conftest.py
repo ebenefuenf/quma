@@ -23,19 +23,19 @@ def qmark_sqldirs():
 
 @pytest.fixture
 def pgpooldb(pyformat_sqldirs):
-    db = Database(util.PG_POOL_URI, pyformat_sqldirs)
+    db = Database(util.PGSQL_POOL_URI, pyformat_sqldirs)
     return db
 
 
 @pytest.fixture
 def pgdb(pyformat_sqldirs):
-    db = Database(util.PG_URI, pyformat_sqldirs, changeling=True)
+    db = Database(util.PGSQL_URI, pyformat_sqldirs, changeling=True)
     return db
 
 
 @pytest.fixture
 def pgdb_persist(pyformat_sqldirs):
-    db = Database(util.PG_URI, pyformat_sqldirs, persist=True)
+    db = Database(util.PGSQL_URI, pyformat_sqldirs, persist=True)
     return db
 
 

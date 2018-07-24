@@ -75,32 +75,3 @@ class Connection(core.Connection):
             host=self.hostname,
             port=self.port,
             cursor_factory=self.factory)
-
-
-class Pool(Connection):
-    def __init__(self, url, **kwargs):
-        self.minconn = int(kwargs.pop('minconn', 1))
-        self.maxconn = int(kwargs.pop('maxconn', 10))
-
-        super().__init__(url, **kwargs)
-
-    def _init_conn(self, **kwargs):
-        self.pool = ThreadedConnectionPool
-        self.conn = self.pool(self.minconn,
-                              self.maxconn,
-                              database=self.database,
-                              user=self.username,
-                              password=self.password,
-                              host=self.hostname,
-                              port=self.port,
-                              cursor_factory=self.factory)
-
-    def get(self):
-        return self.conn.getconn()
-
-    def put(self, conn):
-        return self.conn.putconn(conn)
-
-    def close(self):
-        self.conn.closeall()
-        self.conn = None
