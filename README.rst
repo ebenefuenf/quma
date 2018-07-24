@@ -23,15 +23,8 @@ And then **Yeah**!
 Testing
 -------
 
-Run ``pytest`` or ``py.test`` to run all tests. 
-``pytest -m "not postgres and not mysql"`` for all general 
-tests. And ``pytest -m "postgres"`` or ``pytest -m "mysql"`` 
-for DBMS specific tests.
-
-Prerequisites
-~~~~~~~~~~~~~
-
-In order to run the tests you need to create a test database:
+**Prerequisites**: In order to run the tests for *MySQL* or *PostgreSQL*
+you need to create a test database:
 
 PostgreSQL::
 
@@ -44,3 +37,11 @@ MySQL/MariaDB::
     CREATE DATABASE quma_test_db;
     CREATE USER quma_test_user@localhost IDENTIFIED BY 'quma_test_password';
     GRANT ALL ON quma_test_db.* TO quma_test_user@localhost;
+
+How to run the tests
+~~~~~~~~~~~~~~~~~~~~
+
+Run ``pytest`` or ``py.test`` to run all tests. 
+``pytest -m "not postgres and not mysql"`` for all general 
+tests. And ``pytest -m "postgres"`` or ``pytest -m "mysql"`` 
+for DBMS specific tests.
