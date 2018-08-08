@@ -181,3 +181,31 @@ def test_multiple_records_error(db):
     with db.cursor as cursor:
         with pytest.raises(MultipleRecordsError):
             db.user.by_city.get(cursor, city='City A')
+
+
+def test_shadowing(db, dbshadow):
+    with db.cursor as cursor:
+        assert len(dbshadow.get_users(cursor)) == 4
+        assert db.get_test(cursor) == 'Test'
+        assert db.get_city.get(cursor).name == 'Shadowed City'
+        assert db.addresses.by_zip.get(cursor).address == 'Shadowed Address'
+
+    with dbshadow.cursor as cursor:
+        # root script from shadowed dir
+        assert len(dbshadow.get_users(cursor)) == 4
+        # masking root script
+        assert dbshadow.get_city.get(cursor).name == 'Masking City'
+        # root script from masking dir
+        assert len(dbshadow.get_trees(cursor)) == 2
+        # root method from shadowed dir
+        assert dbshadow.get_shadowed_test(cursor) == 'Shadowed Test'
+        # masking root method
+        assert dbshadow.get_test(cursor) == 'Masking Test'
+        # namespace script from shadowed dir
+        user = dbshadow.addresses.by_user.get(cursor)
+        assert user.address == 'Shadowed Address'
+        # namespace script from masking dir
+        assert dbshadow.addresses.get_tree.get(cursor).name == 'Masking Oak'
+        # masking namespace script
+        address = dbshadow.addresses.by_zip.get(cursor).address
+        assert address == 'Masking Address'

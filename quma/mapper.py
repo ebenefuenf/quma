@@ -164,17 +164,18 @@ class Query(object):
 
 
 class Namespace(object):
-    def __init__(self, db, sqldir):
+    def __init__(self, db, sqldir, shadow=None):
         self.db = db
         self.sqldir = sqldir
         self.cache = db.cache
         self.show = db.show
+        self.shadow = shadow
         self._queries = {}
-        self._collect_queries()
+        self._collect_queries(sqldir)
 
-    def _collect_queries(self):
-        sqlfiles = chain(self.sqldir.glob('*.sql'),
-                         self.sqldir.glob('*.msql'))
+    def _collect_queries(self, sqldir):
+        sqlfiles = chain(sqldir.glob('*.sql'),
+                         sqldir.glob('*.msql'))
 
         for sqlfile in sqlfiles:
             filename = Path(sqlfile.name)
@@ -195,23 +196,27 @@ class Namespace(object):
 
     def __getattr__(self, attr):
         if self.cache:
-            if attr not in self._queries:
-                raise AttributeError()
-            return self._queries[attr]
+            try:
+                return self._queries[attr]
+            except AttributeError:
+                return getattr(self.shadow, attr)
 
         if attr.startswith('_'):
             # unshadow - see collect_queries
             attr = attr[1:]
 
-        sqlfile = self.sqldir / f'{attr}.sql'
-        if not sqlfile.is_file():
-            sqlfile = self.sqldir / f'{attr}.msql'
-        with open(sqlfile, 'r') as f:
-            return self.db.query_factory(
-                f.read(),
-                self.show,
-                Path(sqlfile).suffix == '.msql',
-                init_params=self.db.init_params)
+        try:
+            sqlfile = self.sqldir / f'{attr}.sql'
+            if not sqlfile.is_file():
+                sqlfile = self.sqldir / f'{attr}.msql'
+            with open(sqlfile, 'r') as f:
+                return self.db.query_factory(
+                    f.read(),
+                    self.show,
+                    Path(sqlfile).suffix == '.msql',
+                    init_params=self.db.init_params)
+        except FileNotFoundError:
+            return getattr(self.shadow, attr)
 
 
 class CallWrapper(object):
@@ -252,6 +257,14 @@ class Database(object):
         return CallWrapper(self, carrier)
 
     def register_namespace(self, sqldir):
+        def instantiate(ns, ns_class, path):
+            if ns in self.namespaces:
+                # pass the old namespace to the new instance
+                shadow = self.namespaces[ns]
+                self.namespaces[ns] = ns_class(self, path, shadow=shadow)
+            else:
+                self.namespaces[ns] = ns_class(self, path)
+
         def register(path, ns):
             try:
                 mod_path = str(path / '__init__.py')
@@ -264,10 +277,10 @@ class Database(object):
                     class_name = ''.join([s.title() for s in ns.split('_')])
                 ns_class = getattr(module, class_name)
                 if hasattr(ns_class, 'alias'):
-                    self.namespaces[ns_class.alias] = ns_class(self, path)
-                self.namespaces[ns] = ns_class(self, path)
+                    instantiate(ns_class.alias, ns_class, path)
+                instantiate(ns, ns_class, path)
             except (AttributeError, FileNotFoundError):
-                self.namespaces[ns] = Namespace(self, path)
+                instantiate(ns, Namespace, path)
 
         register(Path(sqldir), '__root__')
         for path in Path(sqldir).iterdir():
@@ -294,11 +307,15 @@ class Database(object):
     def __getattr__(self, attr):
         if attr in self.namespaces:
             return self.namespaces[attr]
-        try:
-            return getattr(self.namespaces['__root__'], attr)
-        except AttributeError:
-            raise AttributeError(f'Namespace or Root method "{attr}" '
-                                 'not found.')
+
+        root = self.namespaces['__root__']
+        while root:
+            try:
+                return getattr(root, attr)
+            except AttributeError:
+                root = root.shadow
+        raise AttributeError(f'Namespace or Root method "{attr}" '
+                             'not found.')
 
 
 def connect(dburi, **kwargs):

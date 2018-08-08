@@ -17,7 +17,16 @@ def pyformat_sqldirs():
 @pytest.fixture('session')
 def qmark_sqldirs():
     return [
-        pathlib.Path(__file__).parent / 'fixtures' / 'queries' / 'qmark'
+        pathlib.Path(__file__).parent / 'fixtures' / 'queries' / 'qmark',
+    ]
+
+
+@pytest.fixture('session')
+def qmark_shadow_sqldirs():
+    parent = pathlib.Path(__file__).parent
+    return [
+        parent / 'fixtures' / 'queries' / 'qmark',
+        parent / 'fixtures' / 'queries' / 'qmark_shadow',
     ]
 
 
@@ -54,6 +63,15 @@ def mydb_persist(pyformat_sqldirs):
 @pytest.fixture
 def db(qmark_sqldirs):
     db = Database(util.SQLITE_MEMORY, qmark_sqldirs, persist=True,
+                  changeling=True)
+    db.execute(util.CREATE_USERS)
+    db.execute(util.INSERT_USERS)
+    return db
+
+
+@pytest.fixture
+def dbshadow(qmark_shadow_sqldirs):
+    db = Database(util.SQLITE_MEMORY, qmark_shadow_sqldirs, persist=True,
                   changeling=True)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
