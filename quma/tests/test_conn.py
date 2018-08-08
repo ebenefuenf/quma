@@ -48,11 +48,15 @@ def test_postgres_persistent():
 
 
 @pytest.mark.postgres
-def test_postgres_pool():
+@pytest.mark.parametrize('pessimistic', [
+    False,
+    True,
+])
+def test_postgres_pool(pessimistic):
     from psycopg2.extensions import connection
     from .. import pool
 
-    conn = connect(util.PGSQL_POOL_URI)
+    conn = connect(util.PGSQL_POOL_URI, pessimistic=pessimistic)
     assert type(conn) is pool.Pool
     assert conn.size == 5
     cn1 = conn.get()
@@ -73,10 +77,14 @@ def test_postgres_pool():
 
 
 @pytest.mark.mysql
-def test_mysql_non_persistent():
+@pytest.mark.parametrize('pessimistic', [
+    False,
+    True,
+])
+def test_mysql_non_persistent(pessimistic):
     from MySQLdb.connections import Connection
 
-    conn = connect(util.MYSQL_URI)
+    conn = connect(util.MYSQL_URI, pessimistic=pessimistic)
     cn1 = conn.get()
     assert cn1.open == 1
     with pytest.raises(AttributeError):

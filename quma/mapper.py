@@ -2,13 +2,13 @@ from importlib import import_module
 from importlib.machinery import SourceFileLoader
 from itertools import chain
 from pathlib import Path
-from urllib.parse import urlparse
 from typing import TypeVar
+from urllib.parse import urlparse
 
 import psycopg2
 
-from . import exc
 from . import core
+from . import exc
 from . import pool
 
 try:

@@ -10,6 +10,7 @@ from queue import (
 )
 
 from .core import Connection
+from .exc import OperationalError
 
 
 class TimeoutError(Exception):
@@ -38,7 +39,7 @@ class Pool(object):
     """ A queuing pool of connections """
 
     def __init__(self, conn: Connection, size=5, overflow=10,
-                 timeout=None) -> None:
+                 timeout=None, pessimistic=False) -> None:
         if conn.persist:
             raise ValueError('Persistent connections are not allowed')
         self._MAX = overflow
@@ -47,6 +48,7 @@ class Pool(object):
         self._overflow_lock = threading.Lock()
         self._pool = Queue(maxsize=size)
         self._conn = conn
+        self._pessimistic = pessimistic
 
     def _inc_overflow(self):
         if self._MAX == -1:
@@ -72,7 +74,7 @@ class Pool(object):
             self._pool.put(conn, False)
         except Full:
             try:
-                conn.close()
+                self._conn.close(conn)
             finally:
                 self._dec_overflow()
 
@@ -81,7 +83,14 @@ class Pool(object):
 
         try:
             wait = use_overflow and self._overflow >= self._MAX
-            return self._pool.get(wait, self._timeout)
+            conn = self._pool.get(wait, self._timeout)
+            if self._pessimistic:
+                try:
+                    self._conn.check(conn)
+                except OperationalError:
+                    self._conn.close(conn)
+                    return self._conn.get()
+            return conn
         except Empty:
             # don't do things inside of "except Empty", because when we say
             # we timed out or can't connect and raise, Python 3 tells
@@ -92,9 +101,9 @@ class Pool(object):
                 return self.get()
             else:
                 raise TimeoutError(
-                    "QueuePool limit of size %d overflow %d reached, "
-                    "connection timed out, timeout %d" %
-                    (self.size(), self.overflow(), self._timeout), code="3o7r")
+                    'QueuePool limit of size %d overflow %d reached, '
+                    'connection timed out, timeout %d' %
+                    (self.size(), self.overflow(), self._timeout))
 
         if self._inc_overflow():
             try:
@@ -116,12 +125,12 @@ class Pool(object):
         self._overflow = 0 - self.size
 
     def status(self):
-        return "Pool size: %d  Connections in pool: %d "\
-            "Current Overflow: %d Current Checked out "\
-            "connections: %d" % (self.size,
-                                 self.checkedin,
-                                 self.overflow,
-                                 self.checkedout)
+        return ('Pool size: %d  Connections in pool: %d '
+                'Current Overflow: %d Current Checked out '
+                'connections: %d' % (self.size,
+                                     self.checkedin,
+                                     self.overflow,
+                                     self.checkedout))
 
     @property
     def size(self):

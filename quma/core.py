@@ -30,10 +30,20 @@ class Connection(object):
         if not self.persist:
             conn.close()
 
-    def close(self):
+    def close(self, conn=None):
+        if conn:
+            conn.close()
         if not self.persist:
             raise exc.APIError("Don't call the close() method of "
                                "non-persistent connections.")
         if self.conn:
             self.conn.close()
             del self.conn
+
+    def _check(self):
+        raise NotImplementedError
+
+    def check(self, conn=None):
+        if conn:
+            return self._check(conn)
+        return self._check(self.conn)

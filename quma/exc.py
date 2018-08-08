@@ -11,6 +11,10 @@ class DoesNotExistError(Exception):
     pass
 
 
+class OperationalError(Exception):
+    pass
+
+
 class IntegrityError(Exception):
 
     def __init__(self, *args, ref_entity=None, ref_id=None,

@@ -4,7 +4,10 @@ except ImportError:
     raise ImportError('In order to use quma with MySQL you'
                       'need to install mysqlclient')
 
-from .. import core
+from .. import (
+    core,
+    exc,
+)
 
 
 class Connection(core.Connection):
@@ -28,3 +31,10 @@ class Connection(core.Connection):
                                passwd=self.password,
                                host=self.hostname,
                                port=self.port)
+
+    def _check(self, conn):
+        try:
+            cur = conn.cursor()
+            cur.execute('SELECT 1')
+        except MySQLdb.OperationalError:
+            raise exc.OperationalError

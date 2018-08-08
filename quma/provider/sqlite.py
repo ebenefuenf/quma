@@ -1,6 +1,9 @@
 import sqlite3
 
-from .. import core
+from .. import (
+    core,
+    exc,
+)
 
 
 class SQLiteChangelingRow(sqlite3.Row):
@@ -32,3 +35,12 @@ class Connection(core.Connection):
         if self.changeling:
             conn.row_factory = SQLiteChangelingRow
         return conn
+
+    def _check(self, conn):
+        try:
+            cur = conn.cursor()
+            cur.execute('SELECT 1')
+        except sqlite3.ProgrammingError:
+            raise exc.OperationalError
+        except sqlite3.OperationalError:
+            raise exc.OperationalError

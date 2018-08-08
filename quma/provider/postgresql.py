@@ -12,9 +12,11 @@ from psycopg2.extras import (
     DictCursor,
     DictRow,
 )
-from psycopg2.pool import ThreadedConnectionPool
 
-from .. import core
+from .. import (
+    core,
+    exc,
+)
 
 
 class PostgresChangelingRow(DictRow):
@@ -75,3 +77,10 @@ class Connection(core.Connection):
             host=self.hostname,
             port=self.port,
             cursor_factory=self.factory)
+
+    def _check(self, conn):
+        try:
+            cur = conn.cursor()
+            cur.execute('SELECT 1')
+        except psycopg2.OperationalError:
+            raise exc.OperationalError
