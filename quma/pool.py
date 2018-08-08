@@ -97,7 +97,7 @@ class Pool(object):
                     return self._conn.get()
             return conn
         except Empty:
-            # don't do things inside of "except Empty", because when we say
+            # Don't do things inside of "except Empty", because when we say
             # we timed out or can't connect and raise, Python 3 tells
             # people the real error is queue.Empty which it isn't.
             pass

@@ -16,6 +16,7 @@ from ..mapper import (
 
 
 def test_init(db):
+    assert '__root__' in db.namespaces
     assert 'addresses' in db.namespaces
     assert 'users' in db.namespaces
 
@@ -29,6 +30,12 @@ def test_failing_init(db):
 def test_namespace(db):
     assert type(db.addresses) is Namespace
     assert isinstance(db.users, Namespace)
+
+
+def test_root_attr(db):
+    assert isinstance(db.get_users, Query)
+    with db().cursor as cursor:
+        assert len(db.get_users(cursor)) == 4
 
 
 def test_query(db):

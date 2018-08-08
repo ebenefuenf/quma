@@ -252,21 +252,27 @@ class Database(object):
         return CallWrapper(self, carrier)
 
     def register_namespace(self, sqldir):
-        for path in Path(sqldir).iterdir():
-            if path.is_dir():
-                ns = path.name
-                try:
-                    mod_path = str(path / '__init__.py')
-                    mod_name = f'quma.mapping.{ns}'
-                    module = SourceFileLoader(mod_name, mod_path).load_module()
+        def register(path, ns):
+            try:
+                mod_path = str(path / '__init__.py')
+                mod_name = f'quma.mapping.{ns}'
+                module = SourceFileLoader(mod_name, mod_path).load_module()
+                if ns == '__root__':
+                    class_name = 'Root'
+                else:
                     # snake_case to CamelCase
                     class_name = ''.join([s.title() for s in ns.split('_')])
-                    ns_class = getattr(module, class_name)
-                    if hasattr(ns_class, 'alias'):
-                        self.namespaces[ns_class.alias] = ns_class(self, path)
-                    self.namespaces[ns] = ns_class(self, path)
-                except (AttributeError, FileNotFoundError):
-                    self.namespaces[ns] = Namespace(self, path)
+                ns_class = getattr(module, class_name)
+                if hasattr(ns_class, 'alias'):
+                    self.namespaces[ns_class.alias] = ns_class(self, path)
+                self.namespaces[ns] = ns_class(self, path)
+            except (AttributeError, FileNotFoundError):
+                self.namespaces[ns] = Namespace(self, path)
+
+        register(Path(sqldir), '__root__')
+        for path in Path(sqldir).iterdir():
+            if path.is_dir():
+                register(path, path.name)
 
     def close(self):
         self.conn.close()
@@ -286,9 +292,13 @@ class Database(object):
         return Cursor(self.conn)
 
     def __getattr__(self, attr):
-        if attr not in self.namespaces:
-            raise AttributeError()
-        return self.namespaces[attr]
+        if attr in self.namespaces:
+            return self.namespaces[attr]
+        try:
+            return getattr(self.namespaces['__root__'], attr)
+        except AttributeError:
+            raise AttributeError(f'Namespace or Root method "{attr}" '
+                                 'not found.')
 
 
 def connect(dburi, **kwargs):
