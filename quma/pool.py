@@ -70,6 +70,11 @@ class Pool(object):
             return True
 
     def put(self, conn):
+        # Always rollback possibly open transaction so that as the
+        # connection is set up to be used again, it’s in a “clean”
+        # state with no references held to the previous series of
+        # operations.
+        conn.rollback()
         try:
             self._pool.put(conn, False)
         except Full:
