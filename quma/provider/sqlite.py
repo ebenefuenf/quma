@@ -1,7 +1,7 @@
 import sqlite3
 
 from .. import (
-    core,
+    conn,
     exc,
 )
 
@@ -21,7 +21,7 @@ class SQLiteChangelingRow(sqlite3.Row):
             raise AttributeError(msg) from e
 
 
-class Connection(core.Connection):
+class Connection(conn.Connection):
     def __init__(self, url, **kwargs):
         super().__init__(url, **kwargs)
         if not self.database:

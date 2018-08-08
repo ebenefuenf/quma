@@ -9,7 +9,7 @@ from queue import (
     Empty,
 )
 
-from .core import Connection
+from .conn import Connection
 from .exc import OperationalError
 
 

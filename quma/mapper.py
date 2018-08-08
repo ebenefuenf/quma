@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 import psycopg2
 
-from . import core
+from . import conn
 from . import exc
 from . import pool
 
@@ -33,7 +33,7 @@ CursorType = TypeVar('CursorType', bound='Cursor')
 
 
 class Cursor(object):
-    def __init__(self, conn: core.Connection, carrier=None) -> None:
+    def __init__(self, conn: conn.Connection, carrier=None) -> None:
         self.conn = conn
         self.carrier = carrier
         self.raw_conn = None

@@ -14,7 +14,7 @@ from psycopg2.extras import (
 )
 
 from .. import (
-    core,
+    conn,
     exc,
 )
 
@@ -56,7 +56,7 @@ class PostgresChangelingCursor(DictCursor):
         self._prefetch = 1
 
 
-class Connection(core.Connection):
+class Connection(conn.Connection):
     def __init__(self, url, **kwargs):
         super().__init__(url, **kwargs)
 

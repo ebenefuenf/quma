@@ -5,12 +5,12 @@ except ImportError:
                       'need to install mysqlclient')
 
 from .. import (
-    core,
+    conn,
     exc,
 )
 
 
-class Connection(core.Connection):
+class Connection(conn.Connection):
     def __init__(self, url, **kwargs):
         super().__init__(url, **kwargs)
 
