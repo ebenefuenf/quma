@@ -36,6 +36,9 @@ def test_root_attr(db):
     assert isinstance(db.get_users, Query)
     with db().cursor as cursor:
         assert len(db.get_users(cursor)) == 4
+        assert len(db.root.get_users(cursor)) == 4
+        assert db.get_test(cursor) == 'Test'
+        assert db.root.get_test(cursor) == 'Test'
 
 
 def test_query(db):
