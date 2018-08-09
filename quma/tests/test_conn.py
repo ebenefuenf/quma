@@ -1,8 +1,25 @@
+from unittest.mock import Mock
 import pytest
 
 from . import util
+from .. import conn
 from .. import connect
 from .. import exc
+
+
+def test_base_connection(dburl):
+    cn = conn.Connection(dburl, persist=True)
+    assert cn.database == util.DB_NAME
+    assert cn.username == util.DB_USER
+    assert cn.password == util.DB_PASS
+    assert cn.url == dburl
+    c = Mock()
+    cn.conn = c
+    with pytest.raises(NotImplementedError):
+        cn.check()
+    cn.close()
+    cn.close(c)
+    assert c.close.call_count == 2
 
 
 @pytest.mark.postgres

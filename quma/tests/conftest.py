@@ -7,6 +7,12 @@ from . import util
 from .. import Database
 
 
+@pytest.fixture
+def dburl():
+    from urllib.parse import urlparse
+    return urlparse(util.PGSQL_URI)
+
+
 @pytest.fixture('session')
 def pyformat_sqldirs():
     return [
