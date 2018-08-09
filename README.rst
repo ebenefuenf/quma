@@ -2,7 +2,7 @@
 Quma
 ====
 
-A simple **Python** > 3.5 and **SQLite**/**PostgreSQL**/**MySQL** library 
+A simple **Python** >= v3.5 and **SQLite**/**PostgreSQL**/**MySQL** library 
 which maps methods to SQL scripts. Unlike ORMs, it allows to write SQL as
 it was intented and to use all featuers the DBMS provides.
 
