@@ -103,3 +103,22 @@ def test_many(mydb):
         assert len(users) == 2
         users = mydb.users.all.next(cursor, 2)
         assert len(users) == 0
+
+
+@pytest.mark.mysql
+def test_many_default(mydb):
+    with mydb.cursor as cursor:
+        users = mydb.users.all.many(cursor)
+        assert len(users) == 1
+        users = mydb.users.all.next(cursor)
+        assert len(users) == 1
+
+        users = mydb.users.all.many(cursor, 2, test='test')
+        assert len(users) == 2
+        users = mydb.users.all.next(cursor, 2)
+        assert len(users) == 2
+
+        users = mydb.users.all.many(cursor, test='test', size=2)
+        assert len(users) == 2
+        users = mydb.users.all.next(cursor, size=2)
+        assert len(users) == 2

@@ -104,8 +104,8 @@ class Query(object):
             except psycopg2.ProgrammingError as e:
                 if str(e) == 'no results to fetch':
                     return ()
-                raise e
-        return func()
+                raise e  # pragma: no cover
+        return func()  # pragma: no cover
 
     def __call__(self, cursor, *args, **kwargs):
         self._execute(cursor, list(args), kwargs)
@@ -171,11 +171,15 @@ class Query(object):
             check_rowcount(len(result))
             return result[0]
 
-    def many(self, cursor, size, *args, **kwargs):
+    def many(self, cursor, size=None, *args, **kwargs):
+        if size is None:
+            size = cursor.arraysize
         self._execute(cursor, list(args), kwargs)
         return self._fetch(partial(cursor.fetchmany, size))
 
-    def next(self, cursor, size):
+    def next(self, cursor, size=None):
+        if size is None:
+            size = cursor.arraysize
         return self._fetch(partial(cursor.fetchmany, size))
 
 
