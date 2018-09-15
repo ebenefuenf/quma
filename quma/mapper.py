@@ -4,7 +4,10 @@ from itertools import chain
 from pathlib import Path
 from urllib.parse import urlparse
 
-import psycopg2
+try:
+    import psycopg2
+except ImportError:  # pragma: no cover
+    psycopg2 = None
 
 from . import exc
 from . import pool
@@ -90,12 +93,19 @@ class Query(object):
 
     def __call__(self, cursor, *args, **kwargs):
         self._execute(cursor, list(args), kwargs)
-        try:
-            return cursor.fetchall()
-        except psycopg2.ProgrammingError as e:
-            if str(e) == 'no results to fetch':
-                return None
-            raise e
+        if psycopg2:
+            # PG is the only one of the supported DBMS which
+            # raises an error when fetchall is called after
+            # a CREATE, INSERT, UPDATE and so on.
+            # mysqlclient and sqlite3 return an empty tuple so
+            # we do it that way too to provide an uniform api.
+            try:
+                return cursor.fetchall()
+            except psycopg2.ProgrammingError as e:
+                if str(e) == 'no results to fetch':
+                    return ()
+                raise e
+        return cursor.fetchall()
 
     def __str__(self):
         return self.query
