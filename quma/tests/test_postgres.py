@@ -133,3 +133,16 @@ def test_multiple_records_error(pgdb):
     with pgdb.cursor as cursor:
         with pytest.raises(MultipleRecordsError):
             pgdb.user.by_city.get(cursor, city='City A')
+
+
+@pytest.mark.postgres
+def test_many(pgdb):
+    with pgdb.cursor as cursor:
+        users = pgdb.users.all.many(cursor, 2)
+        assert len(users) == 2
+        users = pgdb.users.all.next(cursor, 1)
+        assert len(users) == 1
+        users = pgdb.users.all.next(cursor, 1)
+        assert len(users) == 1
+        users = pgdb.users.all.next(cursor, 1)
+        assert len(users) == 0

@@ -1,3 +1,4 @@
+from functools import partial
 from importlib import import_module
 from importlib.machinery import SourceFileLoader
 from itertools import chain
@@ -91,21 +92,24 @@ class Query(object):
         self.is_template = is_template
         self.params = None
 
-    def __call__(self, cursor, *args, **kwargs):
-        self._execute(cursor, list(args), kwargs)
+    def _fetch(self, func):
         if psycopg2:
             # PG is the only one of the supported DBMS which
             # raises an error when fetchall is called after
             # a CREATE, INSERT, UPDATE and so on.
-            # mysqlclient and sqlite3 return an empty tuple so
-            # we do it that way too to provide an uniform api.
+            # mysqlclient and sqlite3 return an empty tuple.
+            # We do it that way too to provide an uniform api.
             try:
-                return cursor.fetchall()
+                return func()
             except psycopg2.ProgrammingError as e:
                 if str(e) == 'no results to fetch':
                     return ()
                 raise e
-        return cursor.fetchall()
+        return func()
+
+    def __call__(self, cursor, *args, **kwargs):
+        self._execute(cursor, list(args), kwargs)
+        return self._fetch(cursor.fetchall)
 
     def __str__(self):
         return self.query
@@ -166,6 +170,13 @@ class Query(object):
             result = cursor.fetchall()
             check_rowcount(len(result))
             return result[0]
+
+    def many(self, cursor, size, *args, **kwargs):
+        self._execute(cursor, list(args), kwargs)
+        return self._fetch(partial(cursor.fetchmany, size))
+
+    def next(self, cursor, size):
+        return self._fetch(partial(cursor.fetchmany, size))
 
 
 class Namespace(object):

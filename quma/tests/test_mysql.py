@@ -92,3 +92,14 @@ def test_dict_cursor(mydb):
         with pytest.raises(KeyError):
             user[0]
         cursor.rollback()
+
+
+@pytest.mark.mysql
+def test_many(mydb):
+    with mydb.cursor as cursor:
+        users = mydb.users.all.many(cursor, 2)
+        assert len(users) == 2
+        users = mydb.users.all.next(cursor, 2)
+        assert len(users) == 2
+        users = mydb.users.all.next(cursor, 2)
+        assert len(users) == 0
