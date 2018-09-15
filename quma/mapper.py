@@ -11,7 +11,7 @@ from . import pool
 
 try:
     from mako.template import Template
-except ImportError:
+except ImportError:  # pragma: no cover
     Template = None
 
 
@@ -32,7 +32,7 @@ class Cursor(object):
         self.conn = conn
         self.carrier = carrier
         self.raw_conn = None
-        self.raw_cursor: CursorWrapper
+        self.raw_cursor = None
 
     def __enter__(self):
         return self.create_cursor()

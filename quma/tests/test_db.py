@@ -49,6 +49,19 @@ def test_cursor(db):
     with db().cursor as cursor:
         assert type(cursor) is Cursor
         assert len(db.users.all(cursor)) == 4
+        with pytest.raises(AttributeError):
+            cursor.raw_cursor.non_existent_attr
+
+
+def test_carrier(db):
+    carrier = type('Carrier', (), {})
+    with db(carrier).cursor as cursor:
+        assert len(db.users.all(cursor)) == 4
+        rc = cursor.raw_conn
+    assert hasattr(carrier, '_quma_conn')
+    with db(carrier).cursor as cursor:
+        assert len(db.users.all(cursor)) == 4
+        assert rc == cursor.raw_conn
 
 
 def test_custom_namespace(db):
