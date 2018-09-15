@@ -2,12 +2,10 @@ from importlib import import_module
 from importlib.machinery import SourceFileLoader
 from itertools import chain
 from pathlib import Path
-from typing import TypeVar
 from urllib.parse import urlparse
 
 import psycopg2
 
-from . import conn
 from . import exc
 from . import pool
 
@@ -29,11 +27,8 @@ class CursorWrapper(object):
             raise e
 
 
-CursorType = TypeVar('CursorType', bound='Cursor')
-
-
 class Cursor(object):
-    def __init__(self, conn: conn.Connection, carrier=None) -> None:
+    def __init__(self, conn, carrier=None):
         self.conn = conn
         self.carrier = carrier
         self.raw_conn = None
@@ -46,10 +41,10 @@ class Cursor(object):
         if self.conn:
             self.put()
 
-    def __call__(self: CursorType) -> CursorType:
+    def __call__(self):
         return self.create_cursor()
 
-    def create_cursor(self: CursorType) -> CursorType:
+    def create_cursor(self):
         if self.carrier:
             if hasattr(self.carrier, '_quma_conn'):
                 self.raw_conn = self.carrier._quma_conn

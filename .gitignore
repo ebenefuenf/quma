@@ -9,6 +9,7 @@
 .mypy_cache
 .pyre
 .pytest_cache
+.tags*
 MANIFEST
 __pycache__/
 build/

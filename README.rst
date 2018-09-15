@@ -11,12 +11,16 @@ Installation
 
 Download the git repository and run ``python setup.py install``.
 
+Development: ``pip install -e '.[test,templates,postgres,mysql]'``
+
 
 Usage
 -----
 
 If you like to use SQLite, Python has everything covered. To use PostgreSQL
 you need to install *psycopg2* or *psycopg2cffi*. For MySQL it's *mysqlclient*.
+
+If you want to use templates install *mako*.
 
 And then **Yeah**!
 

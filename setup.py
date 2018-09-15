@@ -15,7 +15,7 @@ with open('quma/__init__.py', 'rt', encoding='utf8') as f:
 with open('README.rst', 'rt', encoding='utf8') as f:
     README = f.read()
 
-test = ['pytest', 'mypy']
+test = ['pytest', 'pytest-cov']
 
 setup(
     name='quma',
@@ -44,7 +44,9 @@ setup(
     setup_requires=['pytest-runner'],
     tests_require=test,
     extras_require={
-        'test': test,
+        'test':  test,
         'templates': ['mako'],
+        'postgres': ['psycopg2'],
+        'mysql': ['mysqlclient'],
     }
 )
