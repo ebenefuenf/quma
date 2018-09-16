@@ -20,6 +20,9 @@ class Connection(object):
     def cursor(self, conn):
         return conn.cursor()
 
+    def get_cursor_attr(self, cursor, key):
+        return getattr(cursor, key)
+
     def create_conn(self):
         raise NotImplementedError
 

@@ -69,6 +69,22 @@ class Connection(conn.Connection):
 
         self._init_conn(**kwargs)
 
+    def get_cursor_attr(self, cursor, key):
+        # PG is the only one of the supported DBMS which
+        # raises an error when fetchall is called after
+        # a CREATE, INSERT, UPDATE and so on.
+        # mysqlclient and sqlite3 return an empty tuple.
+        # We do it that way too to provide an uniform api.
+        if key in ('fetchall', 'fetchmany'):
+            def fetch(*args, **kwargs):
+                try:
+                    return getattr(cursor, key)(*args, **kwargs)
+                except psycopg2.ProgrammingError as e:
+                    if str(e) == 'no results to fetch':
+                        return ()
+            return fetch
+        return getattr(cursor, key)
+
     def create_conn(self):
         return psycopg2.connect(
             database=self.database,

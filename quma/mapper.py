@@ -5,11 +5,6 @@ from itertools import chain
 from pathlib import Path
 from urllib.parse import urlparse
 
-try:
-    import psycopg2
-except ImportError:  # pragma: no cover
-    psycopg2 = None
-
 from . import exc
 from . import pool
 
@@ -21,12 +16,13 @@ except ImportError:  # pragma: no cover
 
 class CursorWrapper(object):
     def __init__(self, conn, raw_cursor):
+        self.conn = conn
         self.raw_cursor = raw_cursor
         self.has_rowcount = conn.has_rowcount
 
     def __getattr__(self, key):
         try:
-            return getattr(self.raw_cursor, key)
+            return self.conn.get_cursor_attr(self.raw_cursor, key)
         except AttributeError as e:
             raise e
 
@@ -100,19 +96,10 @@ class Query(object):
         self.params = None
 
     def _fetch(self, func):
-        if psycopg2:
-            # PG is the only one of the supported DBMS which
-            # raises an error when fetchall is called after
-            # a CREATE, INSERT, UPDATE and so on.
-            # mysqlclient and sqlite3 return an empty tuple.
-            # We do it that way too to provide an uniform api.
-            try:
-                return func()
-            except psycopg2.ProgrammingError as e:
-                if str(e) == 'no results to fetch':
-                    return ()
-                raise e  # pragma: no cover
-        return func()  # pragma: no cover
+        try:
+            return func()
+        except exc.FetchError as e:  # pragma: no cover
+            raise e.error
 
     def __call__(self, cursor, *args, **kwargs):
         self._execute(cursor, list(args), kwargs)
