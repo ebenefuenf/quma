@@ -61,12 +61,19 @@ class Cursor(object):
         return self
 
     def put(self):
+        """
+        Ensures that not only the cursor is closed but also
+        the connection if necessary.
+        """
         self.raw_cursor.close()
 
         # If the connection is bound to the carrier it
         # needs to be returned manually.
         if not hasattr(self.carrier, '_quma_conn'):
             self.conn.put(self.raw_conn)
+
+    def close(self):
+        self.put()
 
     def commit(self):
         self.raw_conn.commit()
