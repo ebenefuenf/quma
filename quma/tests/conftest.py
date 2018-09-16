@@ -86,7 +86,8 @@ def dbcache(qmark_sqldirs):
 
 @pytest.fixture
 def db(qmark_sqldirs):
-    db = Database(util.SQLITE_MEMORY, qmark_sqldirs, persist=True,
+    db = Database(util.SQLITE_MEMORY, persist=True,
+                  sqldirs=qmark_sqldirs,
                   changeling=True)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
