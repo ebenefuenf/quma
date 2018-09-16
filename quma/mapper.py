@@ -129,8 +129,8 @@ class Query(object):
             try:
                 return Template(self.query).render(**params), params
             except TypeError:
-                raise Exception(
-                    f'To use templates you need to install Mako')
+                raise ImportError(
+                    'To use templates you need to install Mako')
         return self.query, params
 
     def _execute(self, cursor, args, kwargs, init_params=None):

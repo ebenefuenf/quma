@@ -1,0 +1,5 @@
+% if name == 'User 1':
+SELECT 'I''m User 1' AS intro, email, city FROM users WHERE name = :name;
+% else:
+SELECT 'I''m not User 1' AS intro, email, city FROM users WHERE name = :name;
+% endif

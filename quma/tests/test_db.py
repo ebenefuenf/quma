@@ -9,6 +9,7 @@ from ..exc import (
     DoesNotExistError,
     MultipleRecordsError,
 )
+from .. import mapper
 from ..mapper import (
     Cursor,
     Query,
@@ -154,6 +155,21 @@ def test_qmark_query(db):
         with pytest.raises(AttributeError):
             user.wrong_attr
         assert 'name' in user.keys()
+
+
+def test_template_query(db):
+    with db.cursor as cursor:
+        user = db.user.by_name_tmpl.get(cursor, name='User 1')
+        assert user.intro == "I'm User 1"
+        user = db.user.by_name_tmpl.get(cursor, name='User 2')
+        assert user.intro == "I'm not User 1"
+
+        tmpl = mapper.Template
+        mapper.Template = None
+        with pytest.raises(ImportError) as e:
+            db.user.by_name_tmpl.get(cursor, name='User 1')
+        assert str(e.value).startswith('To use templates')
+        mapper.Template = tmpl
 
 
 def test_dict_callback(dbdictcb, carrier):
