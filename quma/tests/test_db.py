@@ -238,3 +238,19 @@ def test_shadowing(db, dbshadow):
         # masking namespace script
         address = dbshadow.addresses.by_zip.get(cursor).address
         assert address == 'Masking Address'
+
+
+def test_show_parameter(dbshow):
+    import sys
+    tmp = sys.stdout
+    sys.stdout = type('S', (), {})
+    sql = {}
+
+    def write(s):
+        sql['sql'] = s
+
+    sys.stdout.write = write
+    with dbshow.cursor as cursor:
+        dbshow.user.by_name(cursor, name='User 1')
+        assert 'SELECT email, city' in sql['sql']
+    sys.stdout = tmp

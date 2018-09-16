@@ -3,6 +3,7 @@ from importlib import import_module
 from importlib.machinery import SourceFileLoader
 from itertools import chain
 from pathlib import Path
+import sys
 from urllib.parse import urlparse
 
 from . import exc
@@ -108,10 +109,11 @@ class Query(object):
     def __str__(self):
         return self.query
 
-    def _print_sql(self, cursor):
-        if cursor.query:
-            print('-' * 50)
-            print(cursor.query.decode('utf-8'))
+    def _print_sql(self):
+        if self.query:
+            sys.stdout.write('-' * 50)
+            sys.stdout.write('\n')
+            sys.stdout.write(self.query)
 
     def _prepare(self, cursor, payload, init_params):
         params = type(payload)()
@@ -141,13 +143,13 @@ class Query(object):
         try:
             cursor.execute(query, params)
         finally:
-            self.show and self._print_sql(cursor)
+            self.show and self._print_sql()
 
     def get(self, cursor, *args, init_params=None, **kwargs):
         try:
             self._execute(cursor, list(args), kwargs, init_params)
         finally:
-            self.show and self._print_sql(cursor)
+            self.show and self._print_sql()
 
         def check_rowcount(rowcount):
             if rowcount == 0:

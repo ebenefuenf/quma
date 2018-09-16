@@ -67,6 +67,15 @@ def mydb_persist(pyformat_sqldirs):
 
 
 @pytest.fixture
+def dbshow(qmark_sqldirs):
+    db = Database(util.SQLITE_MEMORY, qmark_sqldirs, persist=True,
+                  changeling=True, show=True)
+    db.execute(util.CREATE_USERS)
+    db.execute(util.INSERT_USERS)
+    return db
+
+
+@pytest.fixture
 def db(qmark_sqldirs):
     db = Database(util.SQLITE_MEMORY, qmark_sqldirs, persist=True,
                   changeling=True)
