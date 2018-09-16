@@ -264,3 +264,10 @@ def test_caching(db, dbcache):
         assert user.city == 'City A'
         assert dbcache.user.get_test(cursor) == 'Test'
         assert len(dbcache.user._queries) >= 0
+
+
+def test_close(db):
+    from .. import provider
+    assert type(db.conn) is provider.sqlite.Connection
+    db.close()
+    assert db.conn is None
