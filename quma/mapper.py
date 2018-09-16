@@ -130,7 +130,7 @@ class Query(object):
                 return Template(self.query).render(**params), params
             except TypeError:
                 raise Exception(
-                    'To use templates (*.msql) you need to install Mako')
+                    f'To use templates you need to install Mako')
         return self.query, params
 
     def _execute(self, cursor, args, kwargs, init_params=None):
@@ -188,8 +188,8 @@ class Namespace(object):
         self._collect_queries(sqldir)
 
     def _collect_queries(self, sqldir):
-        sqlfiles = chain(sqldir.glob('*.sql'),
-                         sqldir.glob('*.msql'))
+        sqlfiles = chain(sqldir.glob(f'*.{self.db.file_ext}'),
+                         sqldir.glob(f'*.{self.db.tmpl_ext}'))
 
         for sqlfile in sqlfiles:
             filename = Path(sqlfile.name)
@@ -205,7 +205,7 @@ class Namespace(object):
                 self._queries[attr] = self.db.query_factory(
                     f.read(),
                     self.show,
-                    ext.lower() == '.msql',
+                    ext.lower() == f'.{self.db.tmpl_ext}',
                     init_params=self.db.init_params)
 
     def __getattr__(self, attr):
@@ -220,14 +220,14 @@ class Namespace(object):
             attr = attr[1:]
 
         try:
-            sqlfile = self.sqldir / f'{attr}.sql'
+            sqlfile = self.sqldir / f'{attr}.{self.db.file_ext}'
             if not sqlfile.is_file():
-                sqlfile = self.sqldir / f'{attr}.msql'
+                sqlfile = self.sqldir / f'{attr}.{self.db.tmpl_ext}'
             with open(sqlfile, 'r') as f:
                 return self.db.query_factory(
                     f.read(),
                     self.show,
-                    Path(sqlfile).suffix == '.msql',
+                    Path(sqlfile).suffix == f'.{self.db.tmpl_ext}',
                     init_params=self.db.init_params)
         except FileNotFoundError:
             return getattr(self.shadow, attr)
@@ -254,6 +254,8 @@ class Database(object):
         else:
             self.sqldirs = kwargs.pop('sqldirs', [])
 
+        self.file_ext = kwargs.pop('file_ext', 'sql')
+        self.tmpl_ext = kwargs.pop('tmpl_ext', 'msql')
         self.query_factory = kwargs.pop('query_factory', Query)
         self.init_params = kwargs.pop('init_params', None)
         self.show = kwargs.pop('show', False)
