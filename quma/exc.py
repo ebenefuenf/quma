@@ -16,6 +16,6 @@ class OperationalError(Exception):
 
 
 class FetchError(Exception):
-    def __init__(self, message, error):
-        super().__init__(message)
+    def __init__(self, error):
+        super().__init__()
         self.error = error

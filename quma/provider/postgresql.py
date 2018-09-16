@@ -82,6 +82,7 @@ class Connection(conn.Connection):
                 except psycopg2.ProgrammingError as e:
                     if str(e) == 'no results to fetch':
                         return ()
+                    raise exc.FetchError(e)
             return fetch
         return getattr(cursor, key)
 

@@ -1,11 +1,14 @@
+import psycopg2
 import pytest
 
 from . import util
 from ..exc import (
     DoesNotExistError,
+    FetchError,
     MultipleRecordsError,
 )
 from ..mapper import Cursor
+from ..provider.postgresql import Connection
 
 
 def setup_function(function):
@@ -133,6 +136,23 @@ def test_multiple_records_error(pgdb):
     with pgdb.cursor as cursor:
         with pytest.raises(MultipleRecordsError):
             pgdb.user.by_city.get(cursor, city='City A')
+
+
+@pytest.mark.postgres
+def test_faulty_fetch(dburl):
+    cursor = type('C', (), {})
+    cn = Connection(dburl)
+
+    def fetch():
+        raise psycopg2.ProgrammingError('test error')
+
+    cursor.fetchall = fetch
+    cursor.fetchmany = fetch
+    with pytest.raises(FetchError) as e:
+        cn.get_cursor_attr(cursor, 'fetchall')()
+    assert str(e.value.error) == 'test error'
+    with pytest.raises(FetchError) as e:
+        cn.get_cursor_attr(cursor, 'fetchmany')()
 
 
 @pytest.mark.postgres
