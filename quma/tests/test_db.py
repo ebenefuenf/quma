@@ -254,3 +254,13 @@ def test_show_parameter(dbshow):
         dbshow.user.by_name(cursor, name='User 1')
         assert 'SELECT email, city' in sql['sql']
     sys.stdout = tmp
+
+
+def test_caching(db, dbcache):
+    with db.cursor as cursor:
+        assert len(db.user._queries) == 0
+    with dbcache.cursor as cursor:
+        user = dbcache.user.by_name.get(cursor, name='User 1')
+        assert user.city == 'City A'
+        assert dbcache.user.get_test(cursor) == 'Test'
+        assert len(dbcache.user._queries) >= 0

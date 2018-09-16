@@ -187,7 +187,8 @@ class Namespace(object):
         self.show = db.show
         self.shadow = shadow
         self._queries = {}
-        self._collect_queries(sqldir)
+        if db.cache:
+            self._collect_queries(sqldir)
 
     def _collect_queries(self, sqldir):
         sqlfiles = chain(sqldir.glob(f'*.{self.db.file_ext}'),
@@ -214,12 +215,8 @@ class Namespace(object):
         if self.cache:
             try:
                 return self._queries[attr]
-            except AttributeError:
+            except KeyError:
                 return getattr(self.shadow, attr)
-
-        if attr.startswith('_'):
-            # unshadow - see collect_queries
-            attr = attr[1:]
 
         try:
             sqlfile = self.sqldir / f'{attr}.{self.db.file_ext}'
