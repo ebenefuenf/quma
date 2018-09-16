@@ -7,7 +7,7 @@ from setuptools import (
 )
 
 if sys.version_info < (3, 5):
-    raise Exception('Quma requires Python 3.5 or higher.')
+    raise Exception('quma requires Python 3.5 or higher.')
 
 with open('quma/__init__.py', 'rt', encoding='utf8') as f:
     version = re.search(r'__version__ = \'(.*?)\'', f.read()).group(1)

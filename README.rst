@@ -1,5 +1,5 @@
 ====
-Quma
+quma
 ====
 
 A simple **Python** >= v3.5 and **SQLite**/**PostgreSQL**/**MySQL** library 
