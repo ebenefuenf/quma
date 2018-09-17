@@ -30,6 +30,12 @@ def test_failing_init(db):
     assert 'Max number' in str(e)
 
 
+def test_failing_connect():
+    with pytest.raises(ValueError) as e:
+        mapper.connect('sqlite+wrong-scheme://test')
+    assert str(e.value).startswith('Wrong scheme')
+
+
 def test_namespace(db):
     assert type(db.addresses) is Namespace
     assert isinstance(db.users, Namespace)
