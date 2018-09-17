@@ -307,13 +307,14 @@ class Database(object):
         self.conn = None
 
     def execute(self, sql, **kwargs):
-        with self.cursor as c:
-            try:
-                c.execute(sql, **kwargs)
-                c.commit()
-            except Exception as e:
-                c.rollback()
-                raise e
+        c = self.cursor()
+        try:
+            c.execute(sql, **kwargs)
+            c.commit()
+        except Exception as e:
+            c.rollback()
+            raise e
+        return c
 
     @property
     def cursor(self):

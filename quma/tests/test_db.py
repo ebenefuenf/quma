@@ -1,3 +1,5 @@
+import sqlite3
+
 import pytest
 
 from . import util
@@ -271,3 +273,10 @@ def test_close(db):
     assert type(db.conn) is provider.sqlite.Connection
     db.close()
     assert db.conn is None
+
+
+def test_execute(db):
+    c = db.execute('SELECT * FROM users')
+    assert len(c.fetchall()) > 0
+    with pytest.raises(sqlite3.OperationalError):
+        c = db.execute('SELECT * FRO')
