@@ -42,6 +42,10 @@ def test_root_attr(db):
         assert len(db.root.get_users(cursor)) == 4
         assert db.get_test(cursor) == 'Test'
         assert db.root.get_test(cursor) == 'Test'
+        with pytest.raises(AttributeError):
+            db.get_faulty_test(cursor)
+        with pytest.raises(AttributeError):
+            db.root.get_faulty_test(cursor)
 
 
 def test_query(db):
