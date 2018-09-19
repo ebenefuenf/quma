@@ -1,9 +1,15 @@
 from unittest.mock import Mock
 import pytest
+import queue
+import threading
+import time
 
 from . import util
 from .. import conn
-from .. import connect
+from .. import (
+    connect,
+    Database,
+)
 from .. import exc
 
 
@@ -93,6 +99,56 @@ def test_postgres_pool(pessimistic):
     assert conn.checkedin == 0
 
 
+@pytest.mark.postgres
+def test_postgres_finit_pool():
+    conn = connect(util.PGSQL_POOL_URI, size=1, overflow=4, timeout=0.05)
+    conns = queue.Queue()
+    exces = queue.Queue()
+
+    def addconn(conns, conn):
+        try:
+            conns.put(conn.get())
+        except exc.TimeoutError as e:
+            assert str(e).startswith('QueuePool limit of size')
+            exces.put(e)
+
+    for _ in range(20):
+        threading.Thread(target=addconn, args=(conns, conn)).start()
+    time.sleep(0.1)
+
+    assert exces.qsize() == 15
+
+    while not conns.empty():
+        c = conns.get()
+        conn.put(c)
+    conn.close()
+
+
+@pytest.mark.postgres
+def test_postgres_infinit_pool():
+    conn = connect(util.PGSQL_POOL_URI, size=1, overflow=-1)
+    conns = queue.Queue()
+
+    def addconn(conns, conn):
+        conns.put(conn.get())
+
+    for _ in range(20):
+        threading.Thread(target=addconn, args=(conns, conn)).start()
+
+    while not conns.empty():
+        c = conns.get()
+        conn.put(c)
+    conn.close()
+
+
+@pytest.mark.postgres
+def test_postgres_persistent_pool(pyformat_sqldirs):
+    from . import util
+    with pytest.raises(ValueError) as e:
+        Database(util.PGSQL_POOL_URI, pyformat_sqldirs, persist=True)
+    assert str(e.value).startswith('Persistent connections')
+
+
 @pytest.mark.mysql
 @pytest.mark.parametrize('pessimistic', [
     False,
@@ -162,3 +218,37 @@ def test_mysql_pool():
     assert cn3 == cn1
     conn.close()
     assert conn.checkedin == 0
+
+
+@pytest.mark.mysql
+def test_mysql_persistent_pool(pyformat_sqldirs):
+    from . import util
+    with pytest.raises(ValueError) as e:
+        Database(util.MYSQL_POOL_URI, pyformat_sqldirs, persist=True)
+    assert str(e.value).startswith('Persistent connections')
+
+
+@pytest.mark.mysql
+def test_mysql_finit_pool():
+    conn = connect(util.MYSQL_POOL_URI, size=1, overflow=4, timeout=0.1)
+    conns = []
+    with pytest.raises(exc.TimeoutError) as e:
+        for _ in range(20):
+            conns.append(conn.get())
+    assert str(e.value).startswith('QueuePool limit of size')
+    while conns:
+        c = conns.pop()
+        conn.put(c)
+    conn.close()
+
+
+@pytest.mark.mysql
+def test_mysql_infinit_pool():
+    conn = connect(util.MYSQL_POOL_URI, size=1, overflow=-1)
+    conns = []
+    for _ in range(20):
+        conns.append(conn.get())
+    while conns:
+        c = conns.pop()
+        conn.put(c)
+    conn.close()

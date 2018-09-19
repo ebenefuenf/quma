@@ -10,11 +10,10 @@ from queue import (
 )
 
 from .conn import Connection
-from .exc import OperationalError
-
-
-class TimeoutError(Exception):
-    """Raised when a connection pool times out on getting a connection."""
+from .exc import (
+    OperationalError,
+    TimeoutError
+)
 
 
 class Queue(BaseQueue):
@@ -38,8 +37,8 @@ class Queue(BaseQueue):
 class Pool(object):
     """ A queuing pool of connections """
 
-    def __init__(self, conn: Connection, size=5, overflow=10,
-                 timeout=None, pessimistic=False) -> None:
+    def __init__(self, conn, size=5, overflow=10, timeout=None,
+                 pessimistic=False, **kwargs):
         if conn.persist:
             raise ValueError('Persistent connections are not allowed')
         self._MAX = overflow
@@ -58,8 +57,6 @@ class Pool(object):
             if self._overflow < self._MAX:
                 self._overflow += 1
                 return True
-            else:
-                return False
 
     def _dec_overflow(self):
         if self._MAX == -1:
@@ -108,9 +105,9 @@ class Pool(object):
                 raise TimeoutError(
                     'QueuePool limit of size %d overflow %d reached, '
                     'connection timed out, timeout %d' %
-                    (self.size(), self.overflow(), self._timeout))
+                    (self.size, self.overflow, self._timeout))
 
-        if self._inc_overflow():
+        if not self._inc_overflow() is None:
             try:
                 return self._conn.get()
             except Exception as e:
