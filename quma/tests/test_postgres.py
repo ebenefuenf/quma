@@ -105,6 +105,8 @@ def test_changeling_cursor(pgdb):
         assert user[0] == 'user.3@example.com'
         assert user['email'] == 'user.3@example.com'
         assert user.email == 'user.3@example.com'
+        user.email = 'test@example.com'
+        assert user.email == 'test@example.com'
         with pytest.raises(AttributeError):
             user.wrong_attr
         assert 'email' in user.keys()
