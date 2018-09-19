@@ -132,8 +132,24 @@ def test_postgres_infinit_pool():
     def addconn(conns, conn):
         conns.put(conn.get())
 
+    threads = []
     for _ in range(20):
-        threading.Thread(target=addconn, args=(conns, conn)).start()
+        t = threading.Thread(target=addconn, args=(conns, conn))
+        t.start()
+        threads.append(t)
+    for t in threads:
+        t.join()
+    threads = []
+    for _ in range(5):
+        c = conns.get()
+        conn.put(c)
+    for _ in range(10):
+        t = threading.Thread(target=addconn, args=(conns, conn))
+        t.start()
+        threads.append(t)
+    for t in threads:
+        t.join()
+    assert conns.qsize() == 25
 
     while not conns.empty():
         c = conns.get()
@@ -244,10 +260,16 @@ def test_mysql_finit_pool():
 
 @pytest.mark.mysql
 def test_mysql_infinit_pool():
-    conn = connect(util.MYSQL_POOL_URI, size=1, overflow=-1)
+    conn = connect(util.MYSQL_POOL_URI, size=1, overflow=-1, pessimistic=True)
     conns = []
     for _ in range(20):
         conns.append(conn.get())
+    for _ in range(5):
+        c = conns.pop()
+        conn.put(c)
+    for _ in range(10):
+        conns.append(conn.get())
+    assert len(conns) == 25
     while conns:
         c = conns.pop()
         conn.put(c)

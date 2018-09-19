@@ -1,5 +1,9 @@
 try:
     import MySQLdb
+    from MySQLdb.cursors import (
+        Cursor,
+        DictCursor,
+    )
 except ImportError:
     raise ImportError('In order to use quma with MySQL you'
                       'need to install mysqlclient')
@@ -17,9 +21,9 @@ class Connection(conn.Connection):
         self.hostname = self.url.hostname or 'localhost'
         self.port = self.url.port or 3306
         if kwargs.pop('dict_cursor', False):
-            self.cursor_factory = MySQLdb.cursors.DictCursor
+            self.cursor_factory = DictCursor
         else:
-            self.cursor_factory = MySQLdb.cursors.Cursor
+            self.cursor_factory = Cursor
         self._init_conn(**kwargs)
 
     def cursor(self, conn):
