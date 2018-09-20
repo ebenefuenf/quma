@@ -1,8 +1,9 @@
-from unittest.mock import Mock
 import pytest
 import queue
+import sqlite3
 import threading
 import time
+from unittest.mock import Mock
 
 from . import util
 from .. import conn
@@ -11,6 +12,15 @@ from .. import (
     Database,
 )
 from .. import exc
+
+
+def get_cursor_mock(exception):
+    def cursor():
+        m = Mock()
+        m.execute = Mock()
+        m.execute.side_effect = exception
+        return m
+    return cursor
 
 
 def test_base_connection(dburl):
@@ -26,6 +36,17 @@ def test_base_connection(dburl):
     cn.close()
     cn.close(c)
     assert c.close.call_count == 2
+
+
+def test_failing_check():
+    conn = connect(util.SQLITE_MEMORY, persist=True, pessimistic=True)
+    connmock = Mock()
+    connmock.cursor = get_cursor_mock(sqlite3.ProgrammingError)
+    with pytest.raises(exc.OperationalError):
+        conn._check(connmock)
+    connmock.cursor = get_cursor_mock(sqlite3.OperationalError)
+    with pytest.raises(exc.OperationalError):
+        conn._check(connmock)
 
 
 @pytest.mark.postgres
@@ -68,6 +89,16 @@ def test_postgres_persistent():
     assert cn2.closed == 1
     with pytest.raises(AttributeError):
         conn.conn
+
+
+@pytest.mark.postgres
+def test_postgres_failing_check():
+    import psycopg2
+    conn = connect(util.PGSQL_URI, pessimistic=True)
+    connmock = Mock()
+    connmock.cursor = get_cursor_mock(psycopg2.OperationalError)
+    with pytest.raises(exc.OperationalError):
+        conn._check(connmock)
 
 
 @pytest.mark.postgres
@@ -212,6 +243,16 @@ def test_mysql_persistent():
 
 
 @pytest.mark.mysql
+def test_mysql_failing_check():
+    import MySQLdb
+    conn = connect(util.MYSQL_URI, pessimistic=True)
+    connmock = Mock()
+    connmock.cursor = get_cursor_mock(MySQLdb.OperationalError)
+    with pytest.raises(exc.OperationalError):
+        conn._check(connmock)
+
+
+@pytest.mark.mysql
 def test_mysql_pool():
     from MySQLdb.connections import Connection
     from .. import pool
@@ -260,17 +301,32 @@ def test_mysql_finit_pool():
 
 @pytest.mark.mysql
 def test_mysql_infinit_pool():
-    conn = connect(util.MYSQL_POOL_URI, size=1, overflow=-1, pessimistic=True)
-    conns = []
+    conn = connect(util.MYSQL_POOL_URI, size=1, overflow=-1)
+    conns = queue.Queue()
+
+    def addconn(conns, conn):
+        conns.put(conn.get())
+
+    threads = []
     for _ in range(20):
-        conns.append(conn.get())
+        t = threading.Thread(target=addconn, args=(conns, conn))
+        t.start()
+        threads.append(t)
+    for t in threads:
+        t.join()
+    threads = []
     for _ in range(5):
-        c = conns.pop()
+        c = conns.get()
         conn.put(c)
     for _ in range(10):
-        conns.append(conn.get())
-    assert len(conns) == 25
-    while conns:
-        c = conns.pop()
+        t = threading.Thread(target=addconn, args=(conns, conn))
+        t.start()
+        threads.append(t)
+    for t in threads:
+        t.join()
+    assert conns.qsize() == 25
+
+    while not conns.empty():
+        c = conns.get()
         conn.put(c)
     conn.close()
