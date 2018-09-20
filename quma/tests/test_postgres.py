@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 import psycopg2
 import pytest
 
@@ -155,6 +157,29 @@ def test_faulty_fetch(dburl):
     assert str(e.value.error) == 'test error'
     with pytest.raises(FetchError) as e:
         cn.get_cursor_attr(cursor, 'fetchmany')()
+
+
+@pytest.mark.postgres
+def test_get_cursor_attr(pgdb):
+    conn = pgdb.conn
+    cursor = Mock
+    cursor.fetchall = Mock()
+    cursor.fetchall.side_effect = psycopg2.ProgrammingError(
+        'no results to fetch')
+    assert conn.get_cursor_attr(cursor, 'fetchall')() == ()
+    cursor.fetchall.side_effect = psycopg2.ProgrammingError('test')
+    with pytest.raises(FetchError) as e:
+        conn.get_cursor_attr(cursor, 'fetchall')()
+    assert str(e.value.error) == 'test'
+
+    # Test Query._fetch except
+    with pgdb.cursor as cursor:
+        cursor.raw_cursor.fetchall = Mock()
+        cursor.raw_cursor.fetchall.side_effect = FetchError(
+                psycopg2.ProgrammingError('pg-exc-test'))
+        with pytest.raises(psycopg2.ProgrammingError) as e:
+            pgdb.users.all(cursor)
+        assert str(e.value) == 'pg-exc-test'
 
 
 @pytest.mark.postgres
