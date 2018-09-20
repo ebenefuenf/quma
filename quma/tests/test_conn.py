@@ -192,6 +192,21 @@ def test_postgres_infinit_pool():
 
 
 @pytest.mark.postgres
+def test_postgres_pessimistic_failure():
+    conn = connect(util.PGSQL_POOL_URI, size=1, overflow=-1, pessimistic=True)
+    c1 = conn.get()
+    conn.put(c1)
+    c2 = conn.get()
+    assert c1 == c2
+    conn._conn.check = Mock()
+    conn._conn.check.side_effect = exc.OperationalError
+    c1 = conn.get()
+    conn.put(c1)
+    c2 = conn.get()
+    assert c1 != c2
+
+
+@pytest.mark.postgres
 def test_postgres_persistent_pool(pyformat_sqldirs):
     from . import util
     with pytest.raises(ValueError) as e:
@@ -278,6 +293,21 @@ def test_mysql_pool():
     assert cn3 == cn1
     conn.close()
     assert conn.checkedin == 0
+
+
+@pytest.mark.mysql
+def test_mysql_pessimistic_failure():
+    conn = connect(util.MYSQL_POOL_URI, size=1, overflow=-1, pessimistic=True)
+    c1 = conn.get()
+    conn.put(c1)
+    c2 = conn.get()
+    assert c1 == c2
+    conn._conn.check = Mock()
+    conn._conn.check.side_effect = exc.OperationalError
+    c1 = conn.get()
+    conn.put(c1)
+    c2 = conn.get()
+    assert c1 != c2
 
 
 @pytest.mark.mysql
