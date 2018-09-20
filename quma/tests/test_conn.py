@@ -2,7 +2,6 @@ import pytest
 import queue
 import sqlite3
 import threading
-import time
 from unittest.mock import Mock
 
 from . import util
@@ -143,9 +142,13 @@ def test_postgres_finit_pool():
             assert str(e).startswith('QueuePool limit of size')
             exces.put(e)
 
+    ts = []
     for _ in range(20):
-        threading.Thread(target=addconn, args=(conns, conn)).start()
-    time.sleep(0.1)
+        t = threading.Thread(target=addconn, args=(conns, conn))
+        t.start()
+        ts.append(t)
+    for t in ts:
+        t.join()
 
     assert exces.qsize() == 15
 
