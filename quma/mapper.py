@@ -11,7 +11,7 @@ from . import pool
 
 try:
     from mako.template import Template
-except ImportError:  # pragma: no cover
+except ImportError:
     Template = None
 
 
@@ -99,7 +99,7 @@ class Query(object):
     def _fetch(self, func):
         try:
             return func()
-        except exc.FetchError as e:  # pragma: no cover
+        except exc.FetchError as e:
             raise e.error
 
     def __call__(self, cursor, *args, **kwargs):
