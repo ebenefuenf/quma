@@ -100,30 +100,46 @@ def test_cursor_call(db):
         cursor.close()
 
 
-def test_commit(dbfile):
-    with dbfile.cursor as cursor:
-        dbfile.user.add(cursor,
-                        name='Test User',
-                        email='test.user@example.com',
-                        city='Test City')
-    with dbfile.cursor as cursor:
+def commit(db):
+    with db.cursor as cursor:
+        db.user.add(cursor,
+                    name='Test User',
+                    email='test.user@example.com',
+                    city='Test City')
+    with db.cursor as cursor:
         with pytest.raises(DoesNotExistError):
-            dbfile.user.by_name.get(cursor, name='Test User')
+            db.user.by_name.get(cursor, name='Test User')
 
-    with dbfile.cursor as cursor:
-        dbfile.user.add(cursor,
-                        name='Test User',
-                        email='test.user@example.com',
-                        city='Test City')
+    with db.cursor as cursor:
+        db.user.add(cursor,
+                    name='Test User',
+                    email='test.user@example.com',
+                    city='Test City')
         cursor.commit()
 
-    cursor = dbfile.cursor()
-    dbfile.user.by_name.get(cursor, name='Test User')
-    dbfile.user.remove(cursor, name='Test User')
+    cursor = db.cursor()
+    db.user.by_name.get(cursor, name='Test User')
+    db.user.remove(cursor, name='Test User')
     cursor.commit()
     with pytest.raises(DoesNotExistError):
-        dbfile.user.by_name.get(cursor, name='Test User')
+        db.user.by_name.get(cursor, name='Test User')
     cursor.close()
+
+
+def test_commit(dbfile):
+    commit(dbfile)
+
+
+@pytest.mark.postgres
+def test_postgres_commit(pgdb, pgpooldb):
+    for db in (pgdb, pgpooldb):
+        commit(db)
+
+
+@pytest.mark.mysql
+def test_mysql_commit(mydb, mypooldb):
+    for db in (mydb, mypooldb):
+        commit(db)
 
 
 def test_rollback(db):

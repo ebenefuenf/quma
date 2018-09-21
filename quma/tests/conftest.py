@@ -61,6 +61,12 @@ def mydb(pyformat_sqldirs):
 
 
 @pytest.fixture
+def mypooldb(pyformat_sqldirs):
+    db = Database(util.MYSQL_POOL_URI, pyformat_sqldirs)
+    return db
+
+
+@pytest.fixture
 def mydb_persist(pyformat_sqldirs):
     db = Database(util.MYSQL_URI, pyformat_sqldirs, persist=True)
     return db

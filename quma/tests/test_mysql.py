@@ -32,33 +32,6 @@ def test_cursor_call(mydb):
 
 
 @pytest.mark.mysql
-def test_commit(mydb):
-    with mydb.cursor as cursor:
-        mydb.user.add(cursor,
-                      name='Test User',
-                      email='test.user@example.com',
-                      city='Test City')
-    with mydb.cursor as cursor:
-        with pytest.raises(DoesNotExistError):
-            mydb.user.by_name.get(cursor, name='Test User')
-
-    with mydb.cursor as cursor:
-        mydb.user.add(cursor,
-                      name='Test User',
-                      email='test.user@example.com',
-                      city='Test City')
-        cursor.commit()
-
-    cursor = mydb.cursor()
-    mydb.user.by_name.get(cursor, name='Test User')
-    mydb.user.remove(cursor, name='Test User')
-    cursor.commit()
-    with pytest.raises(DoesNotExistError):
-        mydb.user.by_name.get(cursor, name='Test User')
-    cursor.close()
-
-
-@pytest.mark.mysql
 def test_rollback(mydb):
     cursor = mydb.cursor()
     mydb.user.add(cursor,

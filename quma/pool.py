@@ -116,6 +116,16 @@ class Pool(object):
         else:
             return self.get()
 
+    def cursor(self, conn):
+        return conn.cursor()
+
+    def get_cursor_attr(self, cursor, key):
+        return self._conn.get_cursor_attr(cursor, key)
+
+    @property
+    def has_rowcount(self):
+        return self._conn.has_rowcount
+
     def close(self):
         while True:
             try:

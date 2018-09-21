@@ -40,34 +40,6 @@ def test_cursor_call(pgdb):
 
 
 @pytest.mark.postgres
-def test_commit(pgdb, pgpooldb):
-    for db in (pgdb, pgpooldb):
-        with pgdb.cursor as cursor:
-            pgdb.user.add(cursor,
-                          name='Test User',
-                          email='test.user@example.com',
-                          city='Test City')
-        with pgdb.cursor as cursor:
-            with pytest.raises(DoesNotExistError):
-                pgdb.user.by_name.get(cursor, name='Test User')
-
-        with pgdb.cursor as cursor:
-            pgdb.user.add(cursor,
-                          name='Test User',
-                          email='test.user@example.com',
-                          city='Test City')
-            cursor.commit()
-
-        cursor = pgdb.cursor()
-        pgdb.user.by_name.get(cursor, name='Test User')
-        pgdb.user.remove(cursor, name='Test User')
-        cursor.commit()
-        with pytest.raises(DoesNotExistError):
-            pgdb.user.by_name.get(cursor, name='Test User')
-        cursor.close()
-
-
-@pytest.mark.postgres
 def test_conn_attr(pgdb):
     with pgdb.cursor as c:
         assert c.raw_conn.autocommit is False
