@@ -22,29 +22,6 @@ def get_cursor_mock(exception):
     return cursor
 
 
-def pool_overflow_counting(uri):
-    conn = connect(uri, size=1, overflow=4)
-    cn1 = conn.get()
-    cn2 = conn.get()
-    conn.get()
-    assert conn.overflow == 2
-    conn.put(cn1)
-    # Queue not full yet, overflow does not decrease
-    assert conn.overflow == 2
-    conn.put(cn2)
-    # Queue is full now, overflow must be lower
-    assert conn.overflow == 1
-    conn.get()
-    conn.get()
-    assert conn.overflow == 2
-    conn._conn.get = Mock()
-    conn._conn.get.side_effect = ValueError
-    with pytest.raises(ValueError):
-        conn.get()
-    assert conn.overflow == 2
-    conn.close()
-
-
 def test_base_connection(dburl):
     cn = conn.Connection(dburl, persist=True)
     assert cn.database == util.DB_NAME
@@ -71,11 +48,41 @@ def test_failing_check():
         conn._check(connmock)
 
 
-@pytest.mark.postgres
-def test_postgres_non_persistent():
-    from psycopg2.extensions import connection
+def pool_overflow_counting(uri):
+    conn = connect(uri, size=1, overflow=4)
+    cn1 = conn.get()
+    cn2 = conn.get()
+    conn.get()
+    assert conn.overflow == 2
+    conn.put(cn1)
+    # Queue not full yet, overflow does not decrease
+    assert conn.overflow == 2
+    conn.put(cn2)
+    # Queue is full now, overflow must be lower
+    assert conn.overflow == 1
+    conn.get()
+    conn.get()
+    assert conn.overflow == 2
+    conn._conn.get = Mock()
+    conn._conn.get.side_effect = ValueError
+    with pytest.raises(ValueError):
+        conn.get()
+    assert conn.overflow == 2
+    conn.close()
 
-    conn = connect(util.PGSQL_URI)
+
+@pytest.mark.postgres
+def test_postgres_pool_overflow_counting():
+    pool_overflow_counting(util.PGSQL_POOL_URI)
+
+
+@pytest.mark.mysql
+def test_mysql_pool_overflow_counting():
+    pool_overflow_counting(util.MYSQL_POOL_URI)
+
+
+def non_persistent(uri, connection, pessimistic):
+    conn = connect(uri, pessimistic=pessimistic)
     cn1 = conn.get()
     assert cn1.closed == 0
     with pytest.raises(AttributeError):
@@ -93,10 +100,27 @@ def test_postgres_non_persistent():
 
 
 @pytest.mark.postgres
-def test_postgres_persistent():
+@pytest.mark.parametrize('pessimistic', [
+    False,
+    True,
+])
+def test_postgres_non_persistent(pessimistic):
     from psycopg2.extensions import connection
+    non_persistent(util.PGSQL_URI, connection, pessimistic)
 
-    conn = connect(util.PGSQL_URI, persist=True)
+
+@pytest.mark.mysql
+@pytest.mark.parametrize('pessimistic', [
+    False,
+    True,
+])
+def test_mysql_non_persistent(pessimistic):
+    from MySQLdb.connections import Connection
+    non_persistent(util.MYSQL_URI, Connection, pessimistic)
+
+
+def persistent(uri, connection):
+    conn = connect(uri, persist=True)
     cn1 = conn.get()
     assert cn1.closed == 0
     assert conn.conn == cn1
@@ -114,25 +138,20 @@ def test_postgres_persistent():
 
 
 @pytest.mark.postgres
-def test_postgres_failing_check():
-    import psycopg2
-    conn = connect(util.PGSQL_URI, pessimistic=True)
-    connmock = Mock()
-    connmock.cursor = get_cursor_mock(psycopg2.OperationalError)
-    with pytest.raises(exc.OperationalError):
-        conn._check(connmock)
-
-
-@pytest.mark.postgres
-@pytest.mark.parametrize('pessimistic', [
-    False,
-    True,
-])
-def test_postgres_pool(pessimistic):
+def test_postgres_persistent():
     from psycopg2.extensions import connection
-    from .. import pool
+    persistent(util.PGSQL_URI, connection)
 
-    conn = connect(util.PGSQL_POOL_URI, pessimistic=pessimistic)
+
+@pytest.mark.mysql
+def test_mysql_persistent():
+    from MySQLdb.connections import Connection
+    persistent(util.MYSQL_URI, Connection)
+
+
+def pool(uri, pessimistic, connection):
+    from .. import pool
+    conn = connect(uri, pessimistic=pessimistic)
     assert type(conn) is pool.Pool
     assert conn.size == 5
     cn1 = conn.get()
@@ -154,13 +173,51 @@ def test_postgres_pool(pessimistic):
 
 
 @pytest.mark.postgres
-def test_postgres_pool_overflow_counting():
-    pool_overflow_counting(util.PGSQL_POOL_URI)
+@pytest.mark.parametrize('pessimistic', [
+    False,
+    True,
+])
+def test_postgres_pool(pessimistic):
+    from psycopg2.extensions import connection
+    pool(util.PGSQL_POOL_URI, pessimistic, connection)
+
+
+@pytest.mark.mysql
+@pytest.mark.parametrize('pessimistic', [
+    False,
+    True,
+])
+def test_mysql_pool(pessimistic):
+    from MySQLdb.connections import Connection
+    pool(util.MYSQL_POOL_URI, pessimistic, Connection)
+
+
+def pessimistic_failure(uri):
+    conn = connect(uri, size=1, overflow=-1, pessimistic=True)
+    c1 = conn.get()
+    conn.put(c1)
+    c2 = conn.get()
+    assert c1 == c2
+    conn._conn.check = Mock()
+    conn._conn.check.side_effect = exc.OperationalError
+    c1 = conn.get()
+    conn.put(c1)
+    c2 = conn.get()
+    assert c1 != c2
 
 
 @pytest.mark.postgres
-def test_postgres_finit_pool():
-    conn = connect(util.PGSQL_POOL_URI, size=1, overflow=4, timeout=0.05)
+def test_postgres_pessimistic_failure():
+    pessimistic_failure(util.PGSQL_POOL_URI)
+
+
+@pytest.mark.mysql
+def test_mysql_pessimistic_failure():
+    pessimistic_failure(util.MYSQL_POOL_URI)
+
+
+def finite_pool(uri):
+    conn = connect(uri, size=1, overflow=4, timeout=0.05)
     conns = queue.Queue()
     exces = queue.Queue()
 
@@ -188,8 +245,17 @@ def test_postgres_finit_pool():
 
 
 @pytest.mark.postgres
-def test_postgres_infinit_pool():
-    conn = connect(util.PGSQL_POOL_URI, size=1, overflow=-1)
+def test_postgres_finite_pool():
+    finite_pool(util.PGSQL_POOL_URI)
+
+
+@pytest.mark.mysql
+def test_mysql_finite_pool():
+    finite_pool(util.MYSQL_POOL_URI)
+
+
+def infinite_pool(uri):
+    conn = connect(uri, size=1, overflow=-1)
     conns = queue.Queue()
 
     def addconn(conns, conn):
@@ -221,180 +287,46 @@ def test_postgres_infinit_pool():
 
 
 @pytest.mark.postgres
-def test_postgres_pessimistic_failure():
-    conn = connect(util.PGSQL_POOL_URI, size=1, overflow=-1, pessimistic=True)
-    c1 = conn.get()
-    conn.put(c1)
-    c2 = conn.get()
-    assert c1 == c2
-    conn._conn.check = Mock()
-    conn._conn.check.side_effect = exc.OperationalError
-    c1 = conn.get()
-    conn.put(c1)
-    c2 = conn.get()
-    assert c1 != c2
+def test_postgres_infinite_pool():
+    infinite_pool(util.PGSQL_POOL_URI)
+
+
+@pytest.mark.mysql
+def test_mysql_infinite_pool():
+    infinite_pool(util.MYSQL_POOL_URI)
+
+
+def persistent_pool(uri, sqldirs):
+    with pytest.raises(ValueError) as e:
+        Database(uri, sqldirs, persist=True)
+    assert str(e.value).startswith('Persistent connections')
 
 
 @pytest.mark.postgres
 def test_postgres_persistent_pool(pyformat_sqldirs):
-    from . import util
-    with pytest.raises(ValueError) as e:
-        Database(util.PGSQL_POOL_URI, pyformat_sqldirs, persist=True)
-    assert str(e.value).startswith('Persistent connections')
+    persistent_pool(util.PGSQL_POOL_URI, pyformat_sqldirs)
 
 
 @pytest.mark.mysql
-@pytest.mark.parametrize('pessimistic', [
-    False,
-    True,
-])
-def test_mysql_non_persistent(pessimistic):
-    from MySQLdb.connections import Connection
-
-    conn = connect(util.MYSQL_URI, pessimistic=pessimistic)
-    cn1 = conn.get()
-    assert cn1.open == 1
-    with pytest.raises(AttributeError):
-        conn.conn
-    assert type(cn1) is Connection
-    cn2 = conn.get()
-    assert cn1 != cn2
-    conn.put(cn1)
-    assert cn1.open == 0
-    assert cn2.open == 1
-    conn.put(cn2)
-    assert cn2.open == 0
-    with pytest.raises(exc.APIError):
-        conn.close()
+def test_mysql_persistent_pool(pyformat_sqldirs):
+    persistent_pool(util.MYSQL_POOL_URI, pyformat_sqldirs)
 
 
-@pytest.mark.mysql
-def test_mysql_persistent():
-    from MySQLdb.connections import Connection
+def failing_check(uri, error):
+    conn = connect(uri, pessimistic=True)
+    connmock = Mock()
+    connmock.cursor = get_cursor_mock(error)
+    with pytest.raises(exc.OperationalError):
+        conn._check(connmock)
 
-    conn = connect(util.MYSQL_URI, persist=True)
-    cn1 = conn.get()
-    assert cn1.closed == 0
-    assert conn.conn == cn1
-    assert type(cn1) is Connection
-    conn.put(cn1)
-    assert cn1.closed == 0
-    cn2 = conn.get()
-    assert cn1 == cn2
-    assert conn.conn is not None
-    conn.close()
-    assert cn1.closed == 1
-    assert cn2.closed == 1
-    with pytest.raises(AttributeError):
-        conn.conn
+
+@pytest.mark.postgres
+def test_postgres_failing_check():
+    import psycopg2
+    failing_check(util.PGSQL_URI, psycopg2.OperationalError)
 
 
 @pytest.mark.mysql
 def test_mysql_failing_check():
     import MySQLdb
-    conn = connect(util.MYSQL_URI, pessimistic=True)
-    connmock = Mock()
-    connmock.cursor = get_cursor_mock(MySQLdb.OperationalError)
-    with pytest.raises(exc.OperationalError):
-        conn._check(connmock)
-
-
-@pytest.mark.mysql
-def test_mysql_pool():
-    from MySQLdb.connections import Connection
-    from .. import pool
-
-    conn = connect(util.MYSQL_POOL_URI)
-    assert type(conn) is pool.Pool
-    assert conn.size == 5
-    cn1 = conn.get()
-    assert conn.overflow == -4
-    cn2 = conn.get()
-    assert conn.overflow == -3
-    assert type(cn1) is Connection
-    assert type(cn2) is Connection
-    assert cn1 != cn2
-    conn.put(cn1)
-    conn.put(cn2)
-    assert conn.status().startswith('Pool size: 5 Connections')
-    assert conn.checkedin == 2
-    cn3 = conn.get()
-    assert conn.checkedin == 1
-    assert cn3 == cn1
-    conn.close()
-    assert conn.checkedin == 0
-
-
-@pytest.mark.mysql
-def test_mysql_pool_overflow_counting():
-    pool_overflow_counting(util.MYSQL_POOL_URI)
-
-
-@pytest.mark.mysql
-def test_mysql_pessimistic_failure():
-    conn = connect(util.MYSQL_POOL_URI, size=1, overflow=-1, pessimistic=True)
-    c1 = conn.get()
-    conn.put(c1)
-    c2 = conn.get()
-    assert c1 == c2
-    conn._conn.check = Mock()
-    conn._conn.check.side_effect = exc.OperationalError
-    c1 = conn.get()
-    conn.put(c1)
-    c2 = conn.get()
-    assert c1 != c2
-
-
-@pytest.mark.mysql
-def test_mysql_persistent_pool(pyformat_sqldirs):
-    from . import util
-    with pytest.raises(ValueError) as e:
-        Database(util.MYSQL_POOL_URI, pyformat_sqldirs, persist=True)
-    assert str(e.value).startswith('Persistent connections')
-
-
-@pytest.mark.mysql
-def test_mysql_finit_pool():
-    conn = connect(util.MYSQL_POOL_URI, size=1, overflow=4, timeout=0.1)
-    conns = []
-    with pytest.raises(exc.TimeoutError) as e:
-        for _ in range(20):
-            conns.append(conn.get())
-    assert str(e.value).startswith('QueuePool limit of size')
-    while conns:
-        c = conns.pop()
-        conn.put(c)
-    conn.close()
-
-
-@pytest.mark.mysql
-def test_mysql_infinit_pool():
-    conn = connect(util.MYSQL_POOL_URI, size=1, overflow=-1)
-    conns = queue.Queue()
-
-    def addconn(conns, conn):
-        conns.put(conn.get())
-
-    threads = []
-    for _ in range(20):
-        t = threading.Thread(target=addconn, args=(conns, conn))
-        t.start()
-        threads.append(t)
-    for t in threads:
-        t.join()
-    threads = []
-    for _ in range(5):
-        c = conns.get()
-        conn.put(c)
-    for _ in range(10):
-        t = threading.Thread(target=addconn, args=(conns, conn))
-        t.start()
-        threads.append(t)
-    for t in threads:
-        t.join()
-    assert conns.qsize() == 25
-
-    while not conns.empty():
-        c = conns.get()
-        conn.put(c)
-    conn.close()
+    failing_check(util.MYSQL_URI, MySQLdb.OperationalError)
