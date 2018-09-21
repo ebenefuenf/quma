@@ -9,7 +9,6 @@ from queue import (
     Empty,
 )
 
-from .conn import Connection
 from .exc import (
     OperationalError,
     TimeoutError

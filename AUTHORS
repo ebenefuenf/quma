@@ -5,6 +5,7 @@ Major contributing authors include:
 - Thomas Ernst <thomas.ernst@ebenefuenf.de>
 - Sebastian Zwack <sebastian.zwack@ebenefuenf.de>
 
-The Pool class uses portions of SQLAlchemy which is copyrighted
-by Michael Bayer also under the terms of the MIT license.
+The Pool class and parts of the README uses portions 
+of SQLAlchemy which is copyrighted by Michael Bayer 
+also under the terms of the MIT license.
 https://www.sqlalchemy.org/
