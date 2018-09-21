@@ -221,6 +221,39 @@ simple (`%s`) and named (`%(name)s`) *pyformat* placeholders:
     # named style (:name or %(name)s)
     db.users.by_id.get(c, id=1)
 
+Templates
+---------
+
+*quma* supports SQL script templates using the
+`Mako template library <http://www.makotemplates.org>`. By default
+template files must have the file extension `msql` 
+(can be overwritten). Using this feature you can write dynamic
+queries which would not be possible with SQL alone. 
+**Beware of SQL injections**.
+
+Example:
+
+.. code-block:: sql
+
+    -- sql/users/by_group.msql
+    SELECT
+        name,
+    % if admin:
+        birthday,
+    % endif
+        city
+    FROM users
+    WHERE 
+    % if admin:
+        group IN ('admins', %(group)s)
+    % else:
+        group = %(group)s
+    % endif
+
+.. code-block:: python
+
+    db.users.by_group(c, admin=True, group='public')
+        
 
 Testing
 =======
