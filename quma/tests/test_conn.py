@@ -22,6 +22,29 @@ def get_cursor_mock(exception):
     return cursor
 
 
+def pool_overflow_counting(uri):
+    conn = connect(uri, size=1, overflow=4)
+    cn1 = conn.get()
+    cn2 = conn.get()
+    conn.get()
+    assert conn.overflow == 2
+    conn.put(cn1)
+    # Queue not full yet, overflow does not decrease
+    assert conn.overflow == 2
+    conn.put(cn2)
+    # Queue is full now, overflow must be lower
+    assert conn.overflow == 1
+    conn.get()
+    conn.get()
+    assert conn.overflow == 2
+    conn._conn.get = Mock()
+    conn._conn.get.side_effect = ValueError
+    with pytest.raises(ValueError):
+        conn.get()
+    assert conn.overflow == 2
+    conn.close()
+
+
 def test_base_connection(dburl):
     cn = conn.Connection(dburl, persist=True)
     assert cn.database == util.DB_NAME
@@ -128,6 +151,11 @@ def test_postgres_pool(pessimistic):
     assert cn3 == cn1
     conn.close()
     assert conn.checkedin == 0
+
+
+@pytest.mark.postgres
+def test_postgres_pool_overflow_counting():
+    pool_overflow_counting(util.PGSQL_POOL_URI)
 
 
 @pytest.mark.postgres
@@ -295,6 +323,11 @@ def test_mysql_pool():
     assert cn3 == cn1
     conn.close()
     assert conn.checkedin == 0
+
+
+@pytest.mark.mysql
+def test_mysql_pool_overflow_counting():
+    pool_overflow_counting(util.MYSQL_POOL_URI)
 
 
 @pytest.mark.mysql
