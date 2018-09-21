@@ -99,22 +99,17 @@ class Pool(object):
             # people the real error is queue.Empty which it isn't.
             pass
         if use_overflow and self._overflow >= self._MAX:
-            if not wait:
-                return self.get()
-            else:
-                raise TimeoutError(
-                    'QueuePool limit of size %d overflow %d reached, '
-                    'connection timed out, timeout %d' %
-                    (self.size, self.overflow, self._timeout))
+            raise TimeoutError(
+                'QueuePool limit of size %d overflow %d reached, '
+                'connection timed out, timeout %d' %
+                (self.size, self.overflow, self._timeout))
 
-        if not self._inc_overflow() is None:
+        if self._inc_overflow() is True:
             try:
                 return self._conn.get()
             except Exception as e:
                 self._dec_overflow()
                 raise e
-        else:
-            return self.get()
 
     def cursor(self, conn):
         return conn.cursor()
