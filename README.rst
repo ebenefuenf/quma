@@ -22,9 +22,6 @@ If you want to use templates install *mako*.
 Usage
 =====
 
-Example:
---------
-
 Given a directory with some SQL scripts:
 
 ::
@@ -32,6 +29,7 @@ Given a directory with some SQL scripts:
     /home/user/sql-scripts
     ├── users
     │    ├── all.sql
+    │    ├── by_city.sql
     │    ├── by_id.sql
     │    ├── rename.sql
     │    └── remove.sql
@@ -41,23 +39,49 @@ Given a directory with some SQL scripts:
 
 .. code-block:: python
 
-    from quma import Database
+    from quma import (
+        Database,
+        DoesNotExistError, 
+        MultipleRecordsError,
+    )
 
-    db = Database('sqlite:////path/to/db.sqlite', '/path/to/sql-scripts')
+    db = Database('postgresql://user:pw@/database', 
+                  '/path/to/sql-scripts')
+
+    # Run a SQL statement. Commits every call.
+    db.execute('CREATE TABLE users ...')
 
     with db.cursor as c:
-        # get a list of records
+        # get multiple records
         all_users = db.users.all(c)
+        for user in all_users:
+            print(user['name'])
+
+
+        # get data in chunks (fetchmany)
+        #
+        # the first two
+        users = db.users.by_city.many(c, 2, city='City')
+        # the next three
+        users = db.users.by_city.next(c, 3)
+        # the next two
+        users = db.users.by_city.next(c, 2)
+
 
         # get a single item
-        user = db.users.by_id.get(c, 13)
+        try:
+            user = db.users.by_id.get(c, id=13)
+        except DoesNotExistError:
+            print('The user does not exist')
+        except MultipleRecordsError:
+            print('There are multiple users with the same id')
 
         # multiple changes and commit 
-        db.users.remove(c, user.id)
-        db.users.rename(c, 14, 'New Name')
+        db.users.remove(c, id=user['id'])
+        db.users.rename(c, id=14, name='New Name')
         c.commit()
 
-        # access the root level script
+        # call the root level script
         admin = db.get_admin(c)
 
 **Without:**
@@ -74,6 +98,21 @@ Given a directory with some SQL scripts:
         c.commit()
     finally:
         c.close()
+
+`Database` initialization parameters:
+
+::
+    Database(dburi, sqldirs, file_ext='sql', tmpl_ext='msql', 
+            show=False, cache=False)
+
+* **dburi** the connection string. See section "Connection Examples"
+* **sqldirs** one or more filesystem paths pointing to the sql scripts.
+* **file_ext** (default 'sql') the file extension of sql files
+* **tmpl_ext** (default 'msql') the file extension of template files 
+  (see section "Templates").
+* **show** (default False) print the executed query to stdout if True
+* **cache** (default False) cache the queries in memory if True. Other
+  wise re-read each script when the query is executed.
 
 
 Connection Examples
@@ -118,6 +157,7 @@ Setup a pool:
 
 Initialization parameters:
 
+* all general parameters. See "Usage"
 * **size** (default 5) the size of the pool to be maintained. This is the
   largest number of connections that will be kept persistently in the
   pool. The pool begins with no connections.
@@ -176,7 +216,7 @@ simple (`%s`) and named (`%(name)s`) *pyformat* placeholders:
 
 .. code-block:: python
 
-    # simple sequential style (? or %s)
+    # simple style (? or %s)
     db.users.by_id.get(c, 1)
     # named style (:name or %(name)s)
     db.users.by_id.get(c, id=1)
