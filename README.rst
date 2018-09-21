@@ -26,6 +26,8 @@ Example:
 
 Given a directory with some SQL scripts:
 
+::
+
     /home/user/sql-scripts
     ├── users
     │    ├── all.sql
@@ -33,6 +35,8 @@ Given a directory with some SQL scripts:
     │    ├── rename.sql
     │    └── remove.sql
     └── get_admin.sql
+    
+Python:
 
 .. code-block:: python
 
