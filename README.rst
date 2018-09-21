@@ -2,7 +2,7 @@
 quma
 ****
 
-A simple **Python** >= v3.5 and **SQLite**/**PostgreSQL**/**MySQL** library 
+A simple **Python** >= v3.5 and **SQLite**/**PostgreSQL**/**MySQL**/**MariaDB** library 
 which maps methods to SQL scripts. Unlike ORMs, it allows to write SQL as
 it was intented and to use all featuers the DBMS provides.
 
@@ -14,7 +14,7 @@ Download the git repository and run ``python setup.py install``.
 Development: ``pip install -e '.[test,templates,postgres,mysql]'``
 
 If you like to use SQLite, Python has everything covered. To use PostgreSQL
-you need to install *psycopg2* or *psycopg2cffi*. For MySQL it's *mysqlclient*.
+you need to install *psycopg2* or *psycopg2cffi*. For MySQL/MariaDB it's *mysqlclient*.
 
 If you want to use templates install *mako*.
 
@@ -93,9 +93,9 @@ Connection Examples
     # PostgreSQL network server
     db = Database('postgresql://username:password@192.168.1.1:5432/db_name', sqldir)
 
-    # MySQL localhost
+    # MySQL/MariaDB localhost
     db = Database('mysql://username:password@/db_name', sqldir)
-    # MySQL network server
+    # MySQL/MariaDB network server
     db = Database('mysql://username:password@192.168.1.1:5432/db_name', sqldir)
 
 Connection Pool
@@ -112,7 +112,7 @@ Setup a pool:
     # PostgreSQL pool (keeps 5 connections open and allows 10 more)
     db = Database('postgresql+pool://username:password@/db_name', sqldir,
                   size=5, overflow=10)
-    # MySQL pool 
+    # MySQL/MariaDB pool 
     db = Database('mysql+pool://username:password@/db_name', sqldir,
                   size=5, overflow=10)
 
@@ -151,8 +151,36 @@ By default changling is *False* which is slightly faster. Then SQLite
 supports access by index only. PostgreSQL by key and index (we use 
 *psycopg.extras.DictCursor* internally).
 
-MySQL supports access by index only, except you pass ``dict_cursor=True`` on 
-initialization. Then it supports access by key only.
+MySQL/MariaDB supports access by index only, except you pass 
+``dict_cursor=True`` on initialization. Then it supports access by 
+key only.
+
+Passing Parameters to SQL Queries
+---------------------------------
+
+SQLite supports two kinds of placeholders: question marks (*qmark* style)
+and named placeholders (named style). PostgreSQL/MySQL/MariaDB support 
+simple (`%s`) and named (`%(name)s`) *pyformat* placeholders:
+
+.. code-block:: sql
+
+    -- SQLite qmark
+    SELECT name, email FROM users WHERE id = ?
+    -- named
+    SELECT name, email FROM users WHERE id = :id
+
+    -- PostgreSQL/MySQL/MariaDB pyformat
+    SELECT name, email FROM users WHERE id = %s
+    -- named
+    SELECT name, email FROM users WHERE id = %(id)s
+
+.. code-block:: python
+
+    # simple sequential style (? or %s)
+    db.users.by_id.get(c, 1)
+    # named style (:name or %(name)s)
+    db.users.by_id.get(c, id=1)
+
 
 Testing
 =======
