@@ -5,11 +5,9 @@ import pytest
 
 from . import util
 from ..exc import (
-    DoesNotExistError,
     FetchError,
     MultipleRecordsError,
 )
-from ..mapper import Cursor
 from ..provider.postgresql import Connection
 
 
@@ -18,100 +16,67 @@ def setup_function(function):
 
 
 @pytest.mark.postgres
-def test_cursor(pgdb):
-    with pgdb().cursor as cursor:
-        assert type(cursor) is Cursor
-        assert len(pgdb.users.all(cursor)) == 4
+def test_conn_attr(pgdb, pgpooldb):
+    from .test_db import conn_attr
+    for db in (pgdb, pgpooldb):
+        conn_attr(db, 'autocommit', False, True)
 
 
 @pytest.mark.postgres
-def test_cursor_call(pgdb):
-    cursor = pgdb.cursor()
-    try:
-        pgdb.user.add(cursor,
-                      name='Test User',
-                      email='test.user@example.com',
-                      city='Test City')
-        cursor.commit()
-        pgdb.user.remove(cursor, name='Test User')
-        cursor.commit()
-    finally:
-        cursor.close()
+def test_cursor(pgdb, pgpooldb):
+    from .test_db import cursor
+    for db in (pgdb, pgpooldb):
+        cursor(db)
 
 
 @pytest.mark.postgres
-def test_conn_attr(pgdb):
-    with pgdb.cursor as c:
-        assert c.raw_conn.autocommit is False
-        assert c.get_conn_attr('autocommit') is c.raw_conn.autocommit
-        c.set_conn_attr('autocommit', True)
-        assert c.raw_conn.autocommit is True
-        assert c.get_conn_attr('autocommit') is c.raw_conn.autocommit
-        pgdb.user.add(c,
-                      name='Test User',
-                      email='test.user@example.com',
-                      city='Test City')
-        # no explicit commit
-    with pgdb.cursor as cursor:
-        assert cursor.get_conn_attr('autocommit') is False
-        user = pgdb.user.by_name.get(cursor, name='Test User')
-    assert user.email == 'test.user@example.com'
+def test_cursor_call(pgdb, pgpooldb):
+    from .test_db import cursor_call
+    for db in (pgdb, pgpooldb):
+        cursor_call(db)
 
 
 @pytest.mark.postgres
-def test_rollback(pgdb):
-    cursor = pgdb.cursor()
-    pgdb.user.add(cursor,
-                  name='Test User',
-                  email='test.user@example.com',
-                  city='Test City')
-    pgdb.user.by_name.get(cursor, name='Test User')
-    cursor.rollback()
-    with pytest.raises(DoesNotExistError):
-        pgdb.user.by_name.get(cursor, name='Test User')
-    cursor.close()
+def test_commit(pgdb, pgpooldb):
+    from .test_db import commit
+    for db in (pgdb, pgpooldb):
+        commit(db)
 
 
 @pytest.mark.postgres
-def test_changeling_cursor(pgdb):
-    with pgdb.cursor as cursor:
-        user = pgdb.user.by_name.get(cursor, name='User 3')
-        assert user[0] == 'user.3@example.com'
-        assert user['email'] == 'user.3@example.com'
-        assert user.email == 'user.3@example.com'
-        user.email = 'test@example.com'
-        assert user.email == 'test@example.com'
-        with pytest.raises(AttributeError):
-            user.wrong_attr
-        assert 'email' in user.keys()
+def test_rollback(pgdb, pgpooldb):
+    from .test_db import rollback
+    for db in (pgdb, pgpooldb):
+        rollback(db)
+
+
+@pytest.mark.postgres
+def test_changeling_cursor(pgdb, pgpooldb):
+    from .test_db import changeling_cursor
+    for db in (pgdb, pgpooldb):
+        changeling_cursor(db)
 
 
 @pytest.mark.postgres
 def test_no_changeling_cursor(pgdb_persist):
-    # pgdb_persist does not use the changeling factory
-    with pgdb_persist.cursor as cursor:
-        user = pgdb_persist.user.by_name.get(cursor, name='User 3')
-        assert user[0] == 'user.3@example.com'
-        assert user['email'] == 'user.3@example.com'
-        with pytest.raises(AttributeError):
-            user.email
-        cursor.rollback()
+    from .test_db import no_changeling_cursor
+    no_changeling_cursor(pgdb_persist,
+                         lambda user: user.email,
+                         AttributeError)
 
 
 @pytest.mark.postgres
-def test_multiple_records(pgdb):
-    with pgdb.cursor as cursor:
-        users = pgdb.users.by_city(cursor, city='City A')
-        assert len(users) == 2
-        for user in users:
-            assert user.name in ('User 1', 'User 2')
+def test_multiple_records(pgdb, pgpooldb):
+    from .test_db import multiple_records
+    for db in (pgdb, pgpooldb):
+        multiple_records(db, lambda user: user.name)
 
 
 @pytest.mark.postgres
-def test_multiple_records_error(pgdb):
-    with pgdb.cursor as cursor:
-        with pytest.raises(MultipleRecordsError):
-            pgdb.user.by_city.get(cursor, city='City A')
+def test_multiple_records_error(pgdb, pgpooldb):
+    from .test_db import multiple_records_error
+    for db in (pgdb, pgpooldb):
+        multiple_records_error(db)
 
 
 @pytest.mark.postgres

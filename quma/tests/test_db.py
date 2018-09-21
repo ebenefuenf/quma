@@ -24,6 +24,19 @@ def test_init(db):
     assert 'users' in db.namespaces
 
 
+def conn_attr(db, attr, defval, setval):
+    with db.cursor as c:
+        assert getattr(c.raw_conn, attr) == defval
+        assert c.get_conn_attr(attr) == getattr(c.raw_conn, attr)
+        c.set_conn_attr(attr, setval)
+        assert getattr(c.raw_conn, attr) == setval
+        assert c.get_conn_attr(attr) is getattr(c.raw_conn, attr)
+
+
+def test_conn_attr(db):
+    conn_attr(db, 'isolation_level', '', 'EXCLUSIVE')
+
+
 def test_failing_init(db):
     with pytest.raises(ValueError) as e:
         Database(1, 2, 3)
@@ -58,12 +71,16 @@ def test_query(db):
     assert str(db.users.all).startswith('SELECT * FROM users')
 
 
-def test_cursor(db):
+def cursor(db):
     with db().cursor as cursor:
         assert type(cursor) is Cursor
         assert len(db.users.all(cursor)) == 4
         with pytest.raises(AttributeError):
             cursor.raw_cursor.non_existent_attr
+
+
+def test_cursor(db):
+    cursor(db)
 
 
 def test_carrier(db):
@@ -86,7 +103,7 @@ def test_custom_namespace(db):
         assert db.user.get_test(cursor) == 'Test'
 
 
-def test_cursor_call(db):
+def cursor_call(db):
     cursor = db.cursor()
     try:
         db.user.add(cursor,
@@ -98,6 +115,10 @@ def test_cursor_call(db):
         cursor.commit()
     finally:
         cursor.close()
+
+
+def test_cursor_call(db):
+    cursor_call(db)
 
 
 def commit(db):
@@ -130,19 +151,7 @@ def test_commit(dbfile):
     commit(dbfile)
 
 
-@pytest.mark.postgres
-def test_postgres_commit(pgdb, pgpooldb):
-    for db in (pgdb, pgpooldb):
-        commit(db)
-
-
-@pytest.mark.mysql
-def test_mysql_commit(mydb, mypooldb):
-    for db in (mydb, mypooldb):
-        commit(db)
-
-
-def test_rollback(db):
+def rollback(db):
     cursor = db.cursor()
     db.user.add(cursor,
                 name='Test User',
@@ -155,6 +164,10 @@ def test_rollback(db):
     cursor.close()
 
 
+def test_rollback(dbfile):
+    rollback(dbfile)
+
+
 def test_overwrite_query_class(pyformat_sqldirs):
     class MyQuery(Query):
         def the_test(self):
@@ -163,15 +176,40 @@ def test_overwrite_query_class(pyformat_sqldirs):
     assert db.user.all.the_test() == 'Test'
 
 
-def test_changeling_cursor(db):
+def changeling_cursor(db):
     with db.cursor as cursor:
-        user = db.user.by_name.get(cursor, name='User 2')
-        assert user[0] == 'user.2@example.com'
-        assert user['email'] == 'user.2@example.com'
-        assert user.email == 'user.2@example.com'
+        user = db.user.by_name.get(cursor, name='User 3')
+        assert user[0] == 'user.3@example.com'
+        assert user['email'] == 'user.3@example.com'
+        assert user.email == 'user.3@example.com'
+        user.email = 'test@example.com'
+        assert user.email == 'test@example.com'
         with pytest.raises(AttributeError):
             user.wrong_attr
         assert 'email' in user.keys()
+
+
+def test_changeling_cursor(db):
+    changeling_cursor(db)
+
+
+def no_changeling_cursor(pgdb_persist, getter, error):
+    # pgdb_persist does not use the changeling factory
+    with pgdb_persist.cursor as cursor:
+        user = pgdb_persist.user.by_name.get(cursor, name='User 3')
+        assert user[0] == 'user.3@example.com'
+        with pytest.raises(error):
+            getter(user)
+        cursor.rollback()
+
+
+def test_no_changeling_cursor(db_no_changeling):
+    no_changeling_cursor(db_no_changeling,
+                         lambda user: user['email'],
+                         TypeError)
+    no_changeling_cursor(db_no_changeling,
+                         lambda user: user.email,
+                         AttributeError)
 
 
 def test_qmark_query(db):
@@ -226,18 +264,26 @@ def test_seq_callback(dbseqcb, carrier):
         assert user['city'] == 'City B'
 
 
-def test_multiple_records(db):
+def multiple_records(db, getter):
     with db.cursor as cursor:
         users = db.users.by_city(cursor, city='City A')
         assert len(users) == 2
         for user in users:
-            assert user.name in ('User 1', 'User 2')
+            assert getter(user) in ('User 1', 'User 2')
 
 
-def test_multiple_records_error(db):
+def test_multiple_records(dbfile):
+    multiple_records(dbfile, lambda user: user.name)
+
+
+def multiple_records_error(db):
     with db.cursor as cursor:
         with pytest.raises(MultipleRecordsError):
             db.user.by_city.get(cursor, city='City A')
+
+
+def test_multiple_records_error(dbfile):
+    multiple_records_error(dbfile)
 
 
 def test_shadowing(db, dbshadow):

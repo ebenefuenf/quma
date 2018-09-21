@@ -38,7 +38,7 @@ def qmark_shadow_sqldirs():
 
 @pytest.fixture
 def pgpooldb(pyformat_sqldirs):
-    db = Database(util.PGSQL_POOL_URI, pyformat_sqldirs)
+    db = Database(util.PGSQL_POOL_URI, pyformat_sqldirs, changeling=True)
     return db
 
 

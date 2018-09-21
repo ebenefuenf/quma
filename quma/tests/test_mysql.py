@@ -10,39 +10,52 @@ def setup_function(function):
 
 
 @pytest.mark.mysql
-def test_cursor(mydb):
-    with mydb().cursor as cursor:
-        assert type(cursor) is Cursor
-        assert len(mydb.users.all(cursor)) == 4
+def test_mysql_conn_attr(mydb, mypooldb):
+    from .test_db import conn_attr
+    for db in (mydb, mypooldb):
+        conn_attr(db, 'encoding', 'latin1', 'utf-8')
 
 
 @pytest.mark.mysql
-def test_cursor_call(mydb):
-    cursor = mydb.cursor()
-    try:
-        mydb.user.add(cursor,
-                      name='Anneliese Günthner',
-                      email='anneliese.guenthner@example.com',
-                      city='city')
-        cursor.commit()
-        mydb.user.remove(cursor, name='Anneliese Günthner')
-        cursor.commit()
-    finally:
-        cursor.close()
+def test_mysql_cursor(mydb, mypooldb):
+    from .test_db import cursor
+    for db in (mydb, mypooldb):
+        cursor(db)
 
 
 @pytest.mark.mysql
-def test_rollback(mydb):
-    cursor = mydb.cursor()
-    mydb.user.add(cursor,
-                  name='Test User',
-                  email='test.user@example.com',
-                  city='Test City')
-    mydb.user.by_name.get(cursor, name='Test User')
-    cursor.rollback()
-    with pytest.raises(DoesNotExistError):
-        mydb.user.by_name.get(cursor, name='Test User')
-    cursor.close()
+def test_mysql_cursor_call(mydb, mypooldb):
+    from .test_db import cursor_call
+    for db in (mydb, mypooldb):
+        cursor_call(db)
+
+
+@pytest.mark.mysql
+def test_mysql_commit(mydb, mypooldb):
+    from .test_db import commit
+    for db in (mydb, mypooldb):
+        commit(db)
+
+
+@pytest.mark.mysql
+def test_mysql_rollback(mydb, mypooldb):
+    from .test_db import rollback
+    for db in (mydb, mypooldb):
+        rollback(db)
+
+
+@pytest.mark.mysql
+def test_mysql_multiple_records(mydb, mypooldb):
+    from .test_db import multiple_records
+    multiple_records(mydb, lambda user: user['name'])
+    multiple_records(mypooldb, lambda user: user[0])
+
+
+@pytest.mark.mysql
+def test_mysql_multiple_records_error(mydb, mypooldb):
+    from .test_db import multiple_records_error
+    for db in (mydb, mypooldb):
+        multiple_records_error(db)
 
 
 @pytest.mark.mysql
