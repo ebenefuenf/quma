@@ -13,16 +13,17 @@ Download the git repository and run ``python setup.py install``.
 
 Development: ``pip install -e '.[test,templates,postgres,mysql]'``
 
-
-Usage
-=====
-
 If you like to use SQLite, Python has everything covered. To use PostgreSQL
 you need to install *psycopg2* or *psycopg2cffi*. For MySQL it's *mysqlclient*.
 
 If you want to use templates install *mako*.
 
+
+Usage
+=====
+
 Example:
+--------
 
 Given a directory with some SQL scripts:
 
@@ -42,7 +43,7 @@ Python:
 
     from quma import Database
 
-    db = Database('sqlite:////path/to/db.sqlite', '/home/user/sql-scripts')
+    db = Database('sqlite:////path/to/db.sqlite', '/path/to/sql-scripts')
 
     with db.cursor as c:
         # get a list of records
@@ -59,6 +60,59 @@ Python:
         # access the root level script
         admin = db.get_admin(c)
 
+
+Connection Examples
+-------------------
+
+.. code-block:: python
+
+    sqldir = '/path/to/sql-scripts'
+
+    # SQLite
+    db = Database('sqlite:////path/to/db.sqlite', sqldir)
+    # SQLite in memory db
+    db = Database('sqlite:///', sqldir)
+
+    # PostgreSQL localhost
+    db = Database('postgresql://username:password@/db_name', sqldir)
+    # PostgreSQL network server
+    db = Database('postgresql://username:password@192.168.1.1:5432/db_name', sqldir)
+    # PostgreSQL pool (keeps 5 connections open and allows 10 more)
+    db = Database('postgresql+pool://username:password@/db_name', sqldir,
+                  size=5, overflow=10)
+
+    # MySQL localhost
+    db = Database('mysql://username:password@/db_name', sqldir)
+    # MySQL network server
+    db = Database('mysql://username:password@192.168.1.1:5432/db_name', sqldir)
+    # MySQL pool (keeps 5 connections open and allows 10 more)
+    db = Database('mysql+pool://username:password@/db_name', sqldir,
+                  size=5, overflow=10)
+
+
+Changling Cursor
+----------------
+
+If you are using **SQLite** or **PostgreSQL** you can access result 
+object attribute with three different methods if you pass 
+``changling=True`` on db initialization. (MySQL does not support it. See below)
+
+.. code-block:: python
+
+    db = Database('sqlite:///', sqldir, changeling=True)
+
+    with db.cursor as c:
+        user = db.users.by_id.get(c, 13)
+        name = user[0]       # by index
+        name = user['name']  # by key
+        name = user.name     # by attribute
+
+By default changling is *False* which is slightly faster. Then SQLite 
+supports access by index only. PostgreSQL by key and index (we use 
+*psycopg.extras.DictCursor* internally).
+
+MySQL supports access by index only, except you pass ``dict_cursor=True`` on 
+initialization. Then it supports access by key only.
 
 Testing
 =======

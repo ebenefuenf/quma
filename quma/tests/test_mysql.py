@@ -60,7 +60,6 @@ def test_mysql_multiple_records_error(mydb, mypooldb):
 
 @pytest.mark.mysql
 def test_tuple_cursor(mydb_persist):
-    # pgdb_persist does not use the changeling factory
     with mydb_persist.cursor as cursor:
         user = mydb_persist.user.by_name.get(cursor, name='User 4')
         assert user[0] == 'user.4@example.com'
@@ -71,7 +70,6 @@ def test_tuple_cursor(mydb_persist):
 
 @pytest.mark.mysql
 def test_dict_cursor(mydb):
-    # pgdb_persist does not use the changeling factory
     with mydb.cursor as cursor:
         user = mydb.user.by_name.get(cursor, name='User 3')
         assert user['email'] == 'user.3@example.com'
