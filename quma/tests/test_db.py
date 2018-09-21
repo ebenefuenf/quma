@@ -88,7 +88,7 @@ def test_carrier(db):
     with db(carrier).cursor as cursor:
         assert len(db.users.all(cursor)) == 4
         rc = cursor.raw_conn
-    assert hasattr(carrier, '_quma_conn')
+    assert hasattr(carrier, '__quma_conn__')
     with db(carrier).cursor as cursor:
         assert len(db.users.all(cursor)) == 4
         assert rc == cursor.raw_conn

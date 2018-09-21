@@ -47,10 +47,10 @@ class Cursor(object):
 
     def create_cursor(self):
         if self.carrier:
-            if hasattr(self.carrier, '_quma_conn'):
-                self.raw_conn = self.carrier._quma_conn
+            if hasattr(self.carrier, '__quma_conn__'):
+                self.raw_conn = self.carrier.__quma_conn__
             else:
-                self.raw_conn = self.carrier._quma_conn = self.conn.get()
+                self.raw_conn = self.carrier.__quma_conn__ = self.conn.get()
         else:
             self.raw_conn = self.conn.get()
         self.raw_cursor = CursorWrapper(self.conn,
@@ -66,7 +66,7 @@ class Cursor(object):
 
         # If the connection is bound to the carrier it
         # needs to be returned manually.
-        if not hasattr(self.carrier, '_quma_conn'):
+        if not hasattr(self.carrier, '__quma_conn__'):
             self.conn.put(self.raw_conn)
 
     def close(self):
