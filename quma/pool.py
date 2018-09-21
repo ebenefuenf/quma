@@ -127,7 +127,7 @@ class Pool(object):
         self._overflow = 0 - self.size
 
     def status(self):
-        return ('Pool size: %d  Connections in pool: %d '
+        return ('Pool size: %d Connections in pool: %d '
                 'Current Overflow: %d Current Checked out '
                 'connections: %d' % (self.size,
                                      self.checkedin,

@@ -121,6 +121,7 @@ def test_postgres_pool(pessimistic):
     assert cn1 != cn2
     conn.put(cn1)
     conn.put(cn2)
+    assert conn.status().startswith('Pool size: 5 Connections')
     assert conn.checkedin == 2
     cn3 = conn.get()
     assert conn.checkedin == 1
@@ -287,6 +288,7 @@ def test_mysql_pool():
     assert cn1 != cn2
     conn.put(cn1)
     conn.put(cn2)
+    assert conn.status().startswith('Pool size: 5 Connections')
     assert conn.checkedin == 2
     cn3 = conn.get()
     assert conn.checkedin == 1
