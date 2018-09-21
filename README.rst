@@ -42,7 +42,7 @@ Python:
 
     from quma import Database
 
-    db = Database('sqlite:////path/to/db.sqlite')
+    db = Database('sqlite:////path/to/db.sqlite', '/home/user/sql-scripts')
 
     with db.cursor as c:
         # get a list of records

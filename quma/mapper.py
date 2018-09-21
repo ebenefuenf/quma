@@ -265,8 +265,13 @@ class Database(object):
 
         self.namespaces = {}
 
-        for sqldir in self.sqldirs:
-            self.register_namespace(sqldir)
+        try:
+            # A single directory
+            self.register_namespace(self.sqldirs)
+        except TypeError:
+            # A list/collection of directories
+            for sqldir in self.sqldirs:
+                self.register_namespace(sqldir)
 
     def __call__(self, carrier=None):
         return CallWrapper(self, carrier)

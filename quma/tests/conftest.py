@@ -15,16 +15,13 @@ def dburl():
 
 @pytest.fixture('session')
 def pyformat_sqldirs():
-    return [
-        pathlib.Path(__file__).parent / 'fixtures' / 'queries' / 'pyformat'
-    ]
+    p = pathlib.Path(__file__).parent / 'fixtures' / 'queries' / 'pyformat'
+    return str(p)
 
 
 @pytest.fixture('session')
 def qmark_sqldirs():
-    return [
-        pathlib.Path(__file__).parent / 'fixtures' / 'queries' / 'qmark',
-    ]
+    return pathlib.Path(__file__).parent / 'fixtures' / 'queries' / 'qmark'
 
 
 @pytest.fixture('session')
@@ -32,7 +29,7 @@ def qmark_shadow_sqldirs():
     parent = pathlib.Path(__file__).parent
     return [
         parent / 'fixtures' / 'queries' / 'qmark',
-        parent / 'fixtures' / 'queries' / 'qmark_shadow',
+        str(parent / 'fixtures' / 'queries' / 'qmark_shadow'),
     ]
 
 
