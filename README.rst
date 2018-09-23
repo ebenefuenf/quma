@@ -29,13 +29,15 @@ Given a directory with some SQL scripts e. g.:
     │    └── remove.sql
     └── get_admin.sql
     
+You can access these scripts after connecting to the database (we connect
+to a SQLite in memory database in this example):
+    
 
 .. code-block:: python
 
     from quma import Database
 
-    db = Database('postgresql://user:pw@/database', 
-                  '/path/to/sql/scripts')
+    db = Database('sqlite:///', '/path/to/sql/scripts')
 
     db.execute('CREATE TABLE users ...')
 
