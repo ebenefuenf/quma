@@ -15,7 +15,7 @@ Download the git repository and run ``python setup.py install``.
 Development: ``pip install -e '.[test,templates,postgres,mysql]'``
 
 If you like to use SQLite, Python has everything covered. To use PostgreSQL
-you need to install *psycopg2* or *psycopg2cffi*. For MySQL/MariaDB it's *mysqlclient*.
+you need to install *psycopg2* or *psycopg2cffi*. For MySQL/MariaDB install *mysqlclient*.
 
 If you want to use templates install *mako*.
 
@@ -104,8 +104,9 @@ Given a directory with some SQL scripts e. g.:
 
 ::
 
-    Database(dburi, sqldirs, file_ext='sql', tmpl_ext='msql', 
-            show=False, cache=False)
+    Database(dburi, sqldirs, persist=False, pessimistic=False, 
+             file_ext='sql', tmpl_ext='msql', 
+             show=False, cache=False)
 
 * **dburi** the connection string. See section "Connection Examples"
 * **sqldirs** one or more filesystem paths pointing to the sql scripts.
@@ -121,8 +122,8 @@ Given a directory with some SQL scripts e. g.:
 * **tmpl_ext** (default 'msql') the file extension of template files 
   (see section "Templates").
 * **show** (default False) print the executed query to stdout if True
-* **cache** (default False) cache the queries in memory if True. Other
-  wise re-read each script when the query is executed.
+* **cache** (default False) cache the queries in memory if True. 
+  Otherwise re-read each script when the query is executed.
 
 
 Connection Examples
