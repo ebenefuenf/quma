@@ -24,4 +24,4 @@ __all__ = [
     'OperationalError',
     'TimeoutError',
 ]
-__version__ = '0.1a1.dev1'
+__version__ = '0.1.0a1'
