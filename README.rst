@@ -2,9 +2,10 @@
 quma
 ****
 
-A simple **Python** >= v3.5 and **SQLite**/**PostgreSQL**/**MySQL**/**MariaDB** library 
-which maps methods to SQL scripts. Unlike ORMs, it allows to write SQL as
-it was intented and to use all featuers the DBMS provides.
+A simple **Python** >= v3.5 and **SQLite**/**PostgreSQL**/**MySQL**/**MariaDB**
+library which maps methods to SQL scripts. Unlike ORMs, it allows to write SQL 
+as it was intented and to use all featuers the DBMS provides. It also provides 
+a simple connection pool.
 
 Installation
 ============
@@ -22,7 +23,7 @@ If you want to use templates install *mako*.
 Usage
 =====
 
-Given a directory with some SQL scripts:
+Given a directory with some SQL scripts e. g.:
 
 ::
 
@@ -108,6 +109,14 @@ Given a directory with some SQL scripts:
 
 * **dburi** the connection string. See section "Connection Examples"
 * **sqldirs** one or more filesystem paths pointing to the sql scripts.
+* **persist** (default False) if True **quma** immediately opens a 
+  connection and keeps it open througout the complete application run time.
+  Setting it to True will raise an error if you try to initialize a 
+  connection pool.
+* **pessimistic** (default False) if True *quma* emits a test statement on 
+  a persistent SQL connection every time it is accessed or at the start of
+  each connection pool checkout (see section "Connection Pool"), to test 
+  that the database connection is still viable.
 * **file_ext** (default 'sql') the file extension of sql files
 * **tmpl_ext** (default 'msql') the file extension of template files 
   (see section "Templates").
@@ -167,9 +176,6 @@ Initialization parameters:
   additional connections will be returned up to this limit.
 * **timeout** (default None) the number of seconds to wait before giving
   up on returning a connection.
-* **pessimistic** (default False) if True *quma* emits a test statement on 
-  the SQL connection at the start of each connection pool checkout, 
-  to test that the database connection is still viable.
 
 Reusing connections
 -------------------

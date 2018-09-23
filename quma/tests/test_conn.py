@@ -48,6 +48,17 @@ def test_failing_check():
         conn._check(connmock)
 
 
+def test_persistent_pessimistic(dbpess):
+    with dbpess.cursor as cursor:
+        cn = cursor.raw_conn
+    with dbpess.cursor as cursor:
+        assert cn is cursor.raw_conn
+    dbpess.conn._check = Mock()
+    dbpess.conn._check.side_effect = exc.OperationalError
+    with dbpess.cursor as cursor:
+        assert cn is not cursor.raw_conn
+
+
 def pool_overflow_counting(uri):
     conn = connect(uri, size=1, overflow=4)
     cn1 = conn.get()

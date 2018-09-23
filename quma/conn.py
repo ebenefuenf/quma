@@ -9,13 +9,14 @@ class Connection(object):
         self.url = url
 
         self.factory = None
-        self.persist = kwargs.pop('persist', False)
         self.changeling = kwargs.pop('changeling', False)
+        self.persist = kwargs.pop('persist', False)
+        self.pessimistic = kwargs.get('pessimistic', False)
         self.has_rowcount = True
 
     def _init_conn(self, **kwargs):
         if self.persist:
-            self.conn = self.get()
+            self.conn = self.create_conn()
 
     def cursor(self, conn):
         return conn.cursor()
@@ -27,7 +28,14 @@ class Connection(object):
         raise NotImplementedError
 
     def get(self):
-        return getattr(self, 'conn', self.create_conn())
+        if self.persist:
+            if self.pessimistic:
+                try:
+                    self.check()
+                except exc.OperationalError:
+                    self.conn = self.create_conn()
+            return self.conn
+        return self.create_conn()
 
     def put(self, conn):
         if not self.persist:
@@ -49,5 +57,6 @@ class Connection(object):
 
     def check(self, conn=None):
         if conn:
-            return self._check(conn)
-        return self._check(self.conn)
+            self._check(conn)
+            return
+        self._check(self.conn)
