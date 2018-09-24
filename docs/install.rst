@@ -27,7 +27,7 @@ the matching driver:
 Templates
 ---------
 
-You need to install the `*Mako template library* <http://www.makotemplates.org>`_ 
+You need to install the `Mako template library <http://www.makotemplates.org>`_
 if you want to use dynamic sql scripts using :doc:`templates <templates>`.
 
 ::

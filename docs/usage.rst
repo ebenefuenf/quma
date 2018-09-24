@@ -2,10 +2,10 @@
 How to use quma
 ===============
 
-quma reads sql files from given file system paths and passes their
+quma reads sql files from the file system and passes their
 content as queries to a connected database management system (DBMS).
 
-Given a directory with some SQL scripts e. g.:
+Throughout this document we assume a directory with the following file structure:
 
 ::
 
@@ -36,11 +36,13 @@ are available:
     db.users.remove(...
     db.get_admin(...
 
+Read on to see how this works.
+
 Opening a connection
 --------------------
 
 To connect to a DBMS you need to instantiate an object of the ``Database`` class
-and provide a connection string and either single path or a list
+and provide a connection string and either a single path or a list
 of paths to your SQL scripts.
 
 .. code-block:: python
@@ -52,33 +54,46 @@ of paths to your SQL scripts.
 
 For more connection examples 
 (e. g. PostgreSQL or MySQL/MariaDB) and parameters see 
-:doc:`Connecting <connecting>`
+:doc:`Connecting <connecting>`. quma also supports 
+:doc:`connection pooling <pool>`.
 
 **From now on we assume an established connection in the examples.**
 
 Creating a cursor
 -----------------
 
-Context manager:
+DBAPI libs like psycopg2 or sqlite3 have the notion of a cursor,  which is used to
+manage the context of a fetch operation. quma is similar in that way. 
+To run queries you need to create a cursor instance.
+
+quma provides two ways to create a cursor object. Either by using a context manager:
 
 .. code-block:: python
 
     with db.cursor as c:
-        db.users.all(c)
+        ...
 
-Cursor method:
+Or by calling the ``cursor`` method of the ``Database`` instance:
 
 .. code-block:: python
 
     try:
         c = db.cursor()
-        db.users.all(c)
     finally:
         c.close()
 
 
-Fetching multiple records
---------------------------
+Running queries
+---------------
+
+To run the sql script from the path(s) you passed to the ``Database`` constructor
+you call members of the Database instance (*db* from now on). 
+
+Scripts and directories at the root of the path(s) are available as members of *db*. 
+After initialisation of our example dir above, the script ``/get_admin.sql`` is
+is accessible as a instance of ``Query`` (``db.get_admin``) and the directory ``/users``
+as instance of ``Namespace`` (``db.users``).
+
 
 .. code-block:: python
 

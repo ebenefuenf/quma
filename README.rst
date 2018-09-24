@@ -2,10 +2,14 @@
 quma
 ====
 
-quma is a simple **Python** >= v3.5 and **SQLite**/**PostgreSQL**/**MySQL**/**MariaDB**
-library which maps object methods to SQL scripts. Unlike ORMs, it allows to write SQL 
-as it was intented and to use all featuers the DBMS provides. It also provides 
-a simple connection pool.
+quma is a little SQL database library for **Python** version 3.5 and higher.
+It maps object methods to SQL script files and supports **SQLite**, **PostgreSQL**,
+**MySQL** and **MariaDB**.
+
+Unlike ORMs it allows to write SQL as it was intented and to use all featuers
+the DBMS provides. As it uses plain SQL files you can fully utilize your database GUI tool.
+
+It also provides a simple connection pool.
 
 Installation
 ------------
@@ -29,8 +33,8 @@ Given a directory with some SQL scripts e. g.:
     │    └── remove.sql
     └── get_admin.sql
     
-You can access these scripts after connecting to the database (we connect
-to a SQLite in memory database in this example):
+You can access these scripts after connecting to the database (in this example
+we use a SQLite in memory database):
     
 
 .. code-block:: python

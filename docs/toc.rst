@@ -5,11 +5,13 @@
 
    Home <index>
    install
-   Usage <firststeps>
+   usage
    connecting
    pool
    carrier
    changeling
    Passing parameters <parameters>
    templates
+   shadowing
+   namespaces
    tests
