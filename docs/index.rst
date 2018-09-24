@@ -5,7 +5,7 @@ Welcome to quma's docs
 
     This is alpha software and subject to change!
 
-quma is a little SQL database library for **Python** version 3.5 and higher.
+quma is a small SQL database library for **Python** version 3.5 and higher.
 It maps object methods to SQL script files and supports **SQLite**, **PostgreSQL**,
 **MySQL** and **MariaDB**.
 
@@ -29,9 +29,9 @@ Learn more
   :doc:`Passing parameters <parameters>` shows how it works in quma.
 * SQL doesn't support every kind of dynamic queries. If you reach its limits
   you can circumvent this by using :doc:`Templates <templates>`.
-* If you add more than one directory quma shadows duplicate files.
-  See how it works in :doc:`Shadowing <shadowing>`.
-* You can add custom methods to namespaces. Learn how to in 
+* If you pass more than one directory to the constructor, quma shadows 
+  duplicate files. See how this works in :doc:`Shadowing <shadowing>`.
+* You can add custom methods to namespaces. Learn how to do it in 
   :doc:`Custom namespaces <namespaces>`.
 * If you like to work on quma itself, :doc:`Testing <tests>` has the
   information on how to run its tests.

@@ -16,9 +16,9 @@ Throughout this document we assume a directory with the following file structure
     │   ├─ all.sql         │   SELECT * FROM users
     │   ├─ by_city.sql     │   SELECT * FROM users WHERE city = :city
     │   ├─ by_id.sql       │   SELECT * FROM users WHERE id = :id
-    │   ├─ rename.sql      │   UPDATE TABLE users 
-    │   │                  │       SET name = :name WHERE id = :id
-    │   └─ remove.sql      │   DELETE FROM users WHERE id = :id
+    │   ├─ remove.sql      │   DELETE FROM users WHERE id = :id
+    │   └─ rename.sql      │   UPDATE TABLE users 
+    │                      │       SET name = :name WHERE id = :id
     └─ get_admin.sql       │   SELECT * FROM users WHERE admin = 1
 
 
