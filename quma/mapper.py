@@ -15,77 +15,17 @@ except ImportError:
     Template = None
 
 
-class CursorWrapper(object):
-    def __init__(self, conn, raw_cursor):
-        self.conn = conn
-        self.raw_cursor = raw_cursor
-        self.has_rowcount = conn.has_rowcount
+def get_namespace(self, attr):
+    if attr in self.namespaces:
+        return self.namespaces[attr]
 
-    def __getattr__(self, key):
+    root = self.namespaces['__root__']
+    while root:
         try:
-            return self.conn.get_cursor_attr(self.raw_cursor, key)
-        except AttributeError as e:
-            raise e
-
-
-class Cursor(object):
-    def __init__(self, conn, carrier=None):
-        self.conn = conn
-        self.carrier = carrier
-        self.raw_conn = None
-        self.raw_cursor = None
-
-    def __enter__(self):
-        return self.create_cursor()
-
-    def __exit__(self, *args):
-        if self.conn:
-            self.put()
-
-    def __call__(self):
-        return self.create_cursor()
-
-    def create_cursor(self):
-        if self.carrier:
-            if hasattr(self.carrier, '__quma_conn__'):
-                self.raw_conn = self.carrier.__quma_conn__
-            else:
-                self.raw_conn = self.carrier.__quma_conn__ = self.conn.get()
-        else:
-            self.raw_conn = self.conn.get()
-        self.raw_cursor = CursorWrapper(self.conn,
-                                        self.conn.cursor(self.raw_conn))
-        return self
-
-    def put(self):
-        """
-        Ensures that not only the cursor is closed but also
-        the connection if necessary.
-        """
-        self.raw_cursor.close()
-
-        # If the connection is bound to the carrier it
-        # needs to be returned manually.
-        if not hasattr(self.carrier, '__quma_conn__'):
-            self.conn.put(self.raw_conn)
-
-    def close(self):
-        self.put()
-
-    def commit(self):
-        self.raw_conn.commit()
-
-    def rollback(self):
-        self.raw_conn.rollback()
-
-    def get_conn_attr(self, attr):
-        return getattr(self.raw_conn, attr)
-
-    def set_conn_attr(self, attr, value):
-        setattr(self.raw_conn, attr, value)
-
-    def __getattr__(self, attr):
-        return getattr(self.raw_cursor, attr)
+            return getattr(root, attr)
+        except AttributeError:
+            root = root.shadow
+    raise AttributeError
 
 
 class Query(object):
@@ -232,14 +172,140 @@ class Namespace(object):
             return getattr(self.shadow, attr)
 
 
-class CallWrapper(object):
+class CursorQuery(object):
+    def __init__(self, query, cursor):
+        self.query = query
+        self.cursor = cursor
+
+    def __call__(self, *args, **kwargs):
+        return self.query(self.cursor, *args, **kwargs)
+
+    def __str__(self):
+        return self.query.query
+
+    def get(self, *args, init_params=None, **kwargs):
+        return self.query.get(self.cursor, *args,
+                              init_params=init_params, **kwargs)
+
+    def many(self, *args, **kwargs):
+        return self.query.many(self.cursor, *args, **kwargs)
+
+    def next(self, size=None):
+        return self.query.next(self.cursor, size=size)
+
+
+class CursorNamespace(object):
+    def __init__(self, namespace, cursor):
+        self.namespace = namespace
+        self.cursor = cursor
+
+    def __getattr__(self, attr):
+        if type(self.namespace) is Query:
+            return getattr(CursorQuery(self.namespace, self.cursor), attr)
+        attr_obj = getattr(self.namespace, attr)
+        if type(attr_obj) is Query:
+            return CursorQuery(attr_obj, self.cursor)
+        return attr_obj
+
+    def __call__(self, *args, **kwargs):
+        if type(self.namespace) is Query:
+            return self.namespace(self.cursor, *args, **kwargs)
+        # Should be a custom namespace method
+        return self.namespace(*args, **kwargs)
+
+
+class NativeCursorWrapper(object):
+    def __init__(self, conn, raw_cursor):
+        self.conn = conn
+        self.raw_cursor = raw_cursor
+        self.has_rowcount = conn.has_rowcount
+
+    def __getattr__(self, key):
+        try:
+            return self.conn.get_cursor_attr(self.raw_cursor, key)
+        except AttributeError as e:
+            raise e
+
+
+class Cursor(object):
+    def __init__(self, conn, namespaces, carrier=None):
+        self.conn = conn
+        self.namespaces = namespaces
+        self.carrier = carrier
+        self.raw_conn = None
+        self.raw_cursor = None
+
+    def __enter__(self):
+        return self.create_cursor()
+
+    def __exit__(self, *args):
+        if self.conn:
+            self.put()
+
+    def __call__(self):
+        return self.create_cursor()
+
+    def create_cursor(self):
+        if self.carrier:
+            if hasattr(self.carrier, '__quma_conn__'):
+                self.raw_conn = self.carrier.__quma_conn__
+            else:
+                self.raw_conn = self.carrier.__quma_conn__ = self.conn.get()
+        else:
+            self.raw_conn = self.conn.get()
+        self.raw_cursor = NativeCursorWrapper(self.conn,
+                                              self.conn.cursor(self.raw_conn))
+        return self
+
+    def put(self):
+        """
+        Ensures that not only the cursor is closed but also
+        the connection if necessary.
+        """
+        self.raw_cursor.close()
+
+        # If the connection is bound to the carrier it
+        # needs to be returned manually.
+        if not hasattr(self.carrier, '__quma_conn__'):
+            self.conn.put(self.raw_conn)
+
+    def close(self):
+        self.put()
+
+    def commit(self):
+        self.raw_conn.commit()
+
+    def rollback(self):
+        self.raw_conn.rollback()
+
+    def get_conn_attr(self, attr):
+        return getattr(self.raw_conn, attr)
+
+    def set_conn_attr(self, attr, value):
+        setattr(self.raw_conn, attr, value)
+
+    def __getattr__(self, attr):
+        try:
+            return getattr(self.raw_cursor, attr)
+        except AttributeError:
+            pass
+        try:
+            return CursorNamespace(get_namespace(self, attr), self)
+        except AttributeError:
+            raise AttributeError('Namespace, Root method, or cursor '
+                                 f'attribute "{attr}" not found.')
+
+
+class DatabaseCallWrapper(object):
     def __init__(self, database, carrier):
         self.database = database
         self.carrier = carrier
 
     @property
     def cursor(self):
-        return Cursor(self.database.conn, self.carrier)
+        return Cursor(self.database.conn,
+                      self.database.namespaces,
+                      self.carrier)
 
 
 class Database(object):
@@ -274,7 +340,7 @@ class Database(object):
                 self.register_namespace(sqldir)
 
     def __call__(self, carrier=None):
-        return CallWrapper(self, carrier)
+        return DatabaseCallWrapper(self, carrier)
 
     def register_namespace(self, sqldir):
         def instantiate(ns, ns_class, path):
@@ -323,20 +389,14 @@ class Database(object):
 
     @property
     def cursor(self):
-        return Cursor(self.conn)
+        return Cursor(self.conn, self.namespaces)
 
     def __getattr__(self, attr):
-        if attr in self.namespaces:
-            return self.namespaces[attr]
-
-        root = self.namespaces['__root__']
-        while root:
-            try:
-                return getattr(root, attr)
-            except AttributeError:
-                root = root.shadow
-        raise AttributeError(f'Namespace or Root method "{attr}" '
-                             'not found.')
+        try:
+            return get_namespace(self, attr)
+        except AttributeError:
+            raise AttributeError(f'Namespace or Root method "{attr}" '
+                                 'not found.')
 
 
 def connect(dburi, **kwargs):

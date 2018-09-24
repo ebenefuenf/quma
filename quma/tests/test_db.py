@@ -52,15 +52,26 @@ def test_failing_connect():
 def test_namespace(db):
     assert type(db.addresses) is Namespace
     assert isinstance(db.users, Namespace)
+    with pytest.raises(AttributeError) as e:
+        db.nonexistent
+    assert str(e.value).startswith('Namespace or Root method')
+    with db.cursor as cursor:
+        with pytest.raises(AttributeError) as e:
+            cursor.nonexistent
+        assert str(e.value).startswith('Namespace, Root method, or')
 
 
 def test_root_attr(db):
     assert isinstance(db.get_users, Query)
     with db().cursor as cursor:
         assert len(db.get_users(cursor)) == 4
+        assert len(cursor.get_users()) == 4
         assert len(db.root.get_users(cursor)) == 4
+        assert len(cursor.root.get_users()) == 4
         assert db.get_test(cursor) == 'Test'
+        assert cursor.get_test(cursor) == 'Test'
         assert db.root.get_test(cursor) == 'Test'
+        assert cursor.root.get_test(cursor) == 'Test'
         with pytest.raises(AttributeError):
             db.get_faulty_test(cursor)
         with pytest.raises(AttributeError):
@@ -69,12 +80,15 @@ def test_root_attr(db):
 
 def test_query(db):
     assert str(db.users.all).startswith('SELECT * FROM users')
+    with db.cursor as cursor:
+        assert str(cursor.users.all).startswith('SELECT * FROM users')
 
 
 def cursor(db):
     with db().cursor as cursor:
         assert type(cursor) is Cursor
         assert len(db.users.all(cursor)) == 4
+        assert len(cursor.users.all()) == 4
         with pytest.raises(AttributeError):
             cursor.raw_cursor.non_existent_attr
 
@@ -87,17 +101,21 @@ def test_carrier(db):
     carrier = type('Carrier', (), {})
     with db(carrier).cursor as cursor:
         assert len(db.users.all(cursor)) == 4
+        assert len(cursor.users.all()) == 4
         rc = cursor.raw_conn
     assert hasattr(carrier, '__quma_conn__')
     with db(carrier).cursor as cursor:
         assert len(db.users.all(cursor)) == 4
+        assert len(cursor.users.all()) == 4
         assert rc == cursor.raw_conn
 
 
 def test_custom_namespace(db):
     with db.cursor as cursor:
         assert type(db.users).__module__ == 'quma.mapping.users'
+        assert type(cursor.users.namespace).__module__ == 'quma.mapping.users'
         assert type(db.users).__name__ == 'Users'
+        assert type(cursor.users.namespace).__name__ == 'Users'
         assert db.users.get_test(cursor) == 'Test'
         # Test the namespace alias
         assert db.user.get_test(cursor) == 'Test'
@@ -107,11 +125,15 @@ def cursor_call(db):
     cursor = db.cursor()
     try:
         db.user.add(cursor,
-                    name='Test User',
+                    name='Test User 1',
                     email='test.user@example.com',
                     city='Test City')
+        cursor.user.add(name='Test User 2',
+                        email='test.user@example.com',
+                        city='Test City')
         cursor.commit()
-        db.user.remove(cursor, name='Test User')
+        db.user.remove(cursor, name='Test User 1')
+        cursor.user.remove(name='Test User 2')
         cursor.commit()
     finally:
         cursor.close()
@@ -133,17 +155,24 @@ def commit(db):
 
     with db.cursor as cursor:
         db.user.add(cursor,
-                    name='Test User',
+                    name='Test User 1',
                     email='test.user@example.com',
                     city='Test City')
+        cursor.user.add(name='Test User 2',
+                        email='test.user@example.com',
+                        city='Test City')
         cursor.commit()
 
     cursor = db.cursor()
-    db.user.by_name.get(cursor, name='Test User')
-    db.user.remove(cursor, name='Test User')
+    db.user.by_name.get(cursor, name='Test User 1')
+    cursor.user.by_name.get(name='Test User 2')
+    db.user.remove(cursor, name='Test User 1')
+    cursor.user.remove(name='Test User 2')
     cursor.commit()
     with pytest.raises(DoesNotExistError):
-        db.user.by_name.get(cursor, name='Test User')
+        db.user.by_name.get(cursor, name='Test User 1')
+    with pytest.raises(DoesNotExistError):
+        db.user.by_name.get(cursor, name='Test User 2')
     cursor.close()
 
 
@@ -286,6 +315,27 @@ def test_multiple_records_error(dbfile):
     multiple_records_error(dbfile)
 
 
+def many(db):
+    with db.cursor as cursor:
+        users = db.users.all.many(cursor, 2)
+        assert len(users) == 2
+        users = db.users.all.next(cursor, 1)
+        assert len(users) == 1
+        users = db.users.all.next(cursor, 1)
+        assert len(users) == 1
+        users = db.users.all.next(cursor, 1)
+        assert len(users) == 0
+
+        users = cursor.users.all.many(2)
+        assert len(users) == 2
+        users = cursor.users.all.next(1)
+        assert len(users) == 1
+        users = cursor.users.all.next(1)
+        assert len(users) == 1
+        users = cursor.users.all.next(1)
+        assert len(users) == 0
+
+
 def test_shadowing(db, dbshadow):
     with db.cursor as cursor:
         assert len(dbshadow.get_users(cursor)) == 4
@@ -296,21 +346,31 @@ def test_shadowing(db, dbshadow):
     with dbshadow.cursor as cursor:
         # root script from shadowed dir
         assert len(dbshadow.get_users(cursor)) == 4
+        assert len(cursor.get_users()) == 4
         # masking root script
         assert dbshadow.get_city.get(cursor).name == 'Masking City'
+        assert cursor.get_city.get().name == 'Masking City'
         # root script from masking dir
         assert len(dbshadow.get_trees(cursor)) == 2
+        assert len(cursor.get_trees()) == 2
         # root method from shadowed dir
         assert dbshadow.get_shadowed_test(cursor) == 'Shadowed Test'
+        assert cursor.get_shadowed_test(cursor) == 'Shadowed Test'
         # masking root method
         assert dbshadow.get_test(cursor) == 'Masking Test'
+        assert cursor.get_test(cursor) == 'Masking Test'
         # namespace script from shadowed dir
         user = dbshadow.addresses.by_user.get(cursor)
         assert user.address == 'Shadowed Address'
+        user = cursor.addresses.by_user.get()
+        assert user.address == 'Shadowed Address'
         # namespace script from masking dir
         assert dbshadow.addresses.get_tree.get(cursor).name == 'Masking Oak'
+        assert cursor.addresses.get_tree.get().name == 'Masking Oak'
         # masking namespace script
         address = dbshadow.addresses.by_zip.get(cursor).address
+        assert address == 'Masking Address'
+        address = cursor.addresses.by_zip.get().address
         assert address == 'Masking Address'
 
 
@@ -327,6 +387,9 @@ def test_show_parameter(dbshow):
     with dbshow.cursor as cursor:
         dbshow.user.by_name(cursor, name='User 1')
         assert 'SELECT email, city' in sql['sql']
+        cursor.user.by_city(city='City 1')
+        assert 'SELECT name, email' in sql['sql']
+
     sys.stdout = tmp
 
 
@@ -338,6 +401,11 @@ def test_caching(db, dbcache):
         assert user.city == 'City A'
         assert dbcache.user.get_test(cursor) == 'Test'
         assert len(dbcache.user._queries) >= 0
+
+        user = cursor.user.by_name.get(name='User 1')
+        assert user.city == 'City A'
+        assert cursor.user.get_test(cursor) == 'Test'
+        assert len(cursor.user._queries) >= 0
 
 
 def test_close(db):

@@ -79,14 +79,10 @@ def test_dict_cursor(mydb):
 
 
 @pytest.mark.mysql
-def test_many(mydb):
-    with mydb.cursor as cursor:
-        users = mydb.users.all.many(cursor, 2)
-        assert len(users) == 2
-        users = mydb.users.all.next(cursor, 2)
-        assert len(users) == 2
-        users = mydb.users.all.next(cursor, 2)
-        assert len(users) == 0
+def test_many(mydb, mypooldb):
+    from .test_db import many
+    for db in (mydb, mypooldb):
+        many(db)
 
 
 @pytest.mark.mysql
@@ -105,4 +101,19 @@ def test_many_default(mydb):
         users = mydb.users.all.many(cursor, test='test', size=2)
         assert len(users) == 2
         users = mydb.users.all.next(cursor, size=2)
+        assert len(users) == 2
+
+        users = cursor.users.all.many()
+        assert len(users) == 1
+        users = cursor.users.all.next()
+        assert len(users) == 1
+
+        users = cursor.users.all.many(2, test='test')
+        assert len(users) == 2
+        users = cursor.users.all.next(2)
+        assert len(users) == 2
+
+        users = cursor.users.all.many(test='test', size=2)
+        assert len(users) == 2
+        users = cursor.users.all.next(size=2)
         assert len(users) == 2

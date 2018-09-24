@@ -120,16 +120,10 @@ def test_get_cursor_attr(pgdb):
 
 
 @pytest.mark.postgres
-def test_many(pgdb):
-    with pgdb.cursor as cursor:
-        users = pgdb.users.all.many(cursor, 2)
-        assert len(users) == 2
-        users = pgdb.users.all.next(cursor, 1)
-        assert len(users) == 1
-        users = pgdb.users.all.next(cursor, 1)
-        assert len(users) == 1
-        users = pgdb.users.all.next(cursor, 1)
-        assert len(users) == 0
+def test_many(pgdb, pgpooldb):
+    from .test_db import many
+    for db in (pgdb, pgpooldb):
+        many(db)
 
 
 @pytest.mark.postgres
@@ -153,4 +147,24 @@ def test_many_default(pgdb):
         users = pgdb.users.all.many(cursor, 2, 'test')
         assert len(users) == 2
         users = pgdb.users.all.next(cursor)
+        assert len(users) == 1
+
+        users = cursor.users.all.many()
+        assert len(users) == 1
+        users = cursor.users.all.next()
+        assert len(users) == 1
+
+        users = cursor.users.all.many(2, test='test')
+        assert len(users) == 2
+        users = cursor.users.all.next(2)
+        assert len(users) == 2
+
+        users = cursor.users.all.many(test='test', size=2)
+        assert len(users) == 2
+        users = cursor.users.all.next(size=2)
+        assert len(users) == 2
+
+        users = cursor.users.all.many(2, 'test')
+        assert len(users) == 2
+        users = cursor.users.all.next()
         assert len(users) == 1
