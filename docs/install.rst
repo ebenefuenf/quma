@@ -34,8 +34,8 @@ if you want to use dynamic sql scripts using :doc:`templates <templates>`.
 
     pip install mako
 
-Development:
-------------
+Development
+-----------
 
 ::
 

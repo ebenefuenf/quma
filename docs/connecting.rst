@@ -33,7 +33,7 @@ Connection Examples
 
 .. code-block:: python
 
-    sqldir = '/path/to/sql-scripts'
+    sqldir = '/path/to/sql/scripts'
 
     # SQLite
     db = Database('sqlite:////path/to/db.sqlite', sqldir)

@@ -25,7 +25,7 @@ Learn more
 * :doc:`Connection pool <pool>` shows how
 * Learn what a :doc:`Changling cursor <changeling>` is and how it enables
   you to access result data in three different ways.
-* Database management systems use different ways to use parameter binding.
+* Database management systems have different ways of parameter binding.
   :doc:`Passing parameters <parameters>` shows how it works in quma.
 * SQL doesn't support every kind of dynamic queries. If you reach its limits
   you can circumvent this by using :doc:`Templates <templates>`.

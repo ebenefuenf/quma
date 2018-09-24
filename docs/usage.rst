@@ -150,8 +150,11 @@ Getting data in chunks
     users = db.users.by_city.next(c, 2)
 
 
-Changing data
--------------
+Committing changes
+------------------
+
+quma does not autocommit.
+
 
 .. code-block:: python
 
@@ -162,7 +165,7 @@ Changing data
 Executing literal statements
 ----------------------------
 
-Database instances provide the method ``execude``. You can pass
+Database instances provide the method ``execute``. You can pass
 arbitrary sql strings. Each call will be automatically committed.
 
 .. code-block:: python
