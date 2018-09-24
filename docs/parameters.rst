@@ -21,7 +21,8 @@ simple (`%s`) and named (`%(name)s`) *pyformat* placeholders:
 .. code-block:: python
 
     # simple style (? or %s)
+    cur.users.by_id.get(1)
     db.users.by_id.get(c, 1)
     # named style (:name or %(name)s)
+    cur.users.by_id.get(id=1)
     db.users.by_id.get(c, id=1)
-

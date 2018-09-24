@@ -20,14 +20,14 @@ object in web applications:
     def do_more(request, user_id):
         # reuses the same connection which was opened
         # in user_view.
-        with db(request).cursor as c:
-            db.user.remove(c, id=user_id)
+        with db(request).cursor as cur:
+            cur.user.remove(id=user_id)
 
 
     @view_config(route_name='user')
     def user_view(request):
-        with db(request).cursor as c:
-            user = db.user.by_name(c, name='Username')
+        with db(request).cursor as cur:
+            user = cur.user.by_name(name='Username')
             do_more(request, user.id)
             c.commit()
 

@@ -49,12 +49,12 @@ quma creates the following members:
 
 .. code-block:: python
 
-                            # From directory:
-    db.addresses.all        #   one
-    db.addresses.remove     #   one
-    db.users.all            #   two (shadows all.sql from dir one)
-    db.users.remove         #   one
-    db.users.rename         #   two
-    db.create_admin         #   two
-    db.get_admin            #   two (shadows get_admin.sql from dir one)
-    db.remove_admin         #   one
+                             # From directory:
+    cur.addresses.all        #   one
+    cur.addresses.remove     #   one
+    cur.users.all            #   two (shadows all.sql from dir one)
+    cur.users.remove         #   one
+    cur.users.rename         #   two
+    cur.create_admin         #   two
+    cur.get_admin            #   two (shadows get_admin.sql from dir one)
+    cur.remove_admin         #   one

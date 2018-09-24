@@ -44,16 +44,16 @@ we use a SQLite in memory database):
 
     db.execute('CREATE TABLE users ...')
 
-    with db.cursor as c:
-        all_users = db.users.all(c)
+    with db.cursor as cur:
+        all_users = cur.users.all()
 
         for user in all_users:
             print(user['name'])
 
-        db.users.remove(c, id=user['id'])
-        c.commit()
+        cur.users.remove(id=user['id'])
+        cur.commit()
 
-        admin = db.get_admin(c)
+        admin = cur.get_admin()
 
 License
 -------

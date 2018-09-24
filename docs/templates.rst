@@ -32,5 +32,5 @@ In Python you call it the same way like simple SQL queries:
 
 .. code-block:: python
 
-    db.users.by_group(c, admin=True)
+    cur.users.by_group(admin=True)
 

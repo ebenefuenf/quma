@@ -23,18 +23,18 @@ Throughout this document we assume a directory with the following file structure
 
 
 After initialization you can run these scripts by calling members of
-a ``Database`` instance. Using the example above the following members 
-are available: 
+a ``Database`` instance or a cursor. Using the example above the 
+following members are available: 
 
 .. code-block:: python
     
-    # 'db' is an instance of the class Database
-    db.users.all(...
-    db.users.by_city(...
-    db.users.by_id(...
-    db.users.rename(...
-    db.users.remove(...
-    db.get_admin(...
+    # 'cur' is a cursor instance 
+    cur.users.all(...
+    cur.users.by_city(...
+    cur.users.by_id(...
+    cur.users.rename(...
+    cur.users.remove(...
+    cur.get_admin(...
 
 Read on to see how this works.
 
@@ -70,7 +70,7 @@ quma provides two ways to create a cursor object. Either by using a context mana
 
 .. code-block:: python
 
-    with db.cursor as c:
+    with db.cursor as cur:
         ...
 
 Or by calling the ``cursor`` method of the ``Database`` instance:
@@ -78,34 +78,39 @@ Or by calling the ``cursor`` method of the ``Database`` instance:
 .. code-block:: python
 
     try:
-        c = db.cursor()
+        cur = db.cursor()
     finally:
-        c.close()
+        cur.close()
 
 
 Running queries
 ---------------
 
 To run the sql script from the path(s) you passed to the ``Database`` constructor
-you call members of the Database instance (*db* from now on). 
+you call members of the Database instance or the cursor (*db* and *cur* from now on). 
 
-Scripts and directories at the root of the path(s) are available as members of *db*. 
+Scripts and directories at the root of the path(s) are available as members of *db* or *cur*. 
 After initialisation of our example dir above, the script ``/get_admin.sql`` is
-is accessible as a instance of ``Query`` (``db.get_admin``) and the directory ``/users``
-as instance of ``Namespace`` (``db.users``).
+is accessible as an instance of ``Query`` (``db.get_admin`` or ``cur.get_admin``) and the 
+directory ``/users`` as instance of ``Namespace`` (``db.users`` or ``cur.users``). 
 
+Call members of *cur*:
 
 .. code-block:: python
 
-    ...
-    with db.cursor as c:
-        # get multiple records
-        all_users = db.users.all(c)
-        for user in all_users:
-            print(user['name'])
+    with db.cursor as cur:
+        all_users = cur.users.all()
 
+The same using the *db* API:
 
+.. code-block:: python
 
+    with db.cursor as cur:
+        all_users = db.users.all(cur)
+
+As you can see *cur* provides a nicer API as you don't have to pass the cursor when
+you call a query or a method. Then again the *db* API has the advantage of being 
+around 30% faster.
 
 
 Fetching a single record
@@ -119,9 +124,9 @@ Fetching a single record
     )
     ...
 
-    with db.cursor as c:
+    with db.cursor as cur:
         try:
-            user = db.users.by_id.get(c, id=13)
+            user = cur.users.by_id.get(id=13)
         except DoesNotExistError:
             print('The user does not exist')
         except MultipleRecordsError:
@@ -132,9 +137,9 @@ on the result set:
 
 .. code-block:: python
 
-    user = db.users.by_id(c, id=13)[0]
+    user = cur.users.by_id(id=13)[0]
     # or
-    users = db.users.by_id(c, id=13)
+    users = cur.users.by_id(id=13)
     user = users[0]
 
 Getting data in chunks
@@ -143,11 +148,11 @@ Getting data in chunks
 .. code-block:: python
 
     # the first two
-    users = db.users.by_city.many(c, 2, city='City')
+    users = cur.users.by_city.many(2, city='City')
     # the next three
-    users = db.users.by_city.next(c, 3)
+    users = cur.users.by_city.next(3)
     # the next two
-    users = db.users.by_city.next(c, 2)
+    users = cur.users.by_city.next(2)
 
 
 Committing changes
@@ -158,8 +163,8 @@ quma does not autocommit.
 
 .. code-block:: python
 
-    db.users.remove(c, id=user['id'])
-    db.users.rename(c, id=14, name='New Name')
+    cur.users.remove(id=user['id'])
+    cur.users.rename(id=14, name='New Name')
     c.commit()
 
 Executing literal statements
