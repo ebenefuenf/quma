@@ -420,3 +420,7 @@ def test_execute(db):
     assert len(c.fetchall()) > 0
     with pytest.raises(sqlite3.OperationalError):
         c = db.execute('SELECT * FRO')
+
+    with db.cursor as cursor:
+        cursor.execute('SELECT * FROM users')
+        assert len(cursor.fetchall()) > 0

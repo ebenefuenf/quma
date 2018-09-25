@@ -58,6 +58,6 @@ we use a SQLite in memory database):
 License
 -------
 
-Pony ORM is released under the MIT license.
+quma is released under the MIT license.
 
 Copyright © 2018 ebene fünf GmbH. All rights reserved.

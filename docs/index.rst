@@ -35,3 +35,10 @@ Learn more
   :doc:`Custom namespaces <namespaces>`.
 * If you like to work on quma itself, :doc:`Testing <tests>` has the
   information on how to run its tests.
+
+License
+-------
+
+quma is released under the MIT license.
+
+Copyright © 2018 ebene fünf GmbH. All rights reserved.
