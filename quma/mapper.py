@@ -228,17 +228,20 @@ class NativeCursorWrapper(object):
 
 
 class Cursor(object):
-    def __init__(self, conn, namespaces, carrier=None):
+    def __init__(self, conn, namespaces, commit_context, carrier=None):
         self.conn = conn
         self.namespaces = namespaces
         self.carrier = carrier
         self.raw_conn = None
         self.raw_cursor = None
+        self.commit_context = commit_context
 
     def __enter__(self):
         return self.create_cursor()
 
     def __exit__(self, *args):
+        if self.commit_context:
+            self.commit()
         if self.conn:
             self.put()
 
@@ -305,6 +308,7 @@ class DatabaseCallWrapper(object):
     def cursor(self):
         return Cursor(self.database.conn,
                       self.database.namespaces,
+                      self.database.commit_context,
                       self.carrier)
 
 
@@ -323,6 +327,7 @@ class Database(object):
         self.tmpl_ext = kwargs.pop('tmpl_ext', 'msql')
         self.query_factory = kwargs.pop('query_factory', Query)
         self.init_params = kwargs.pop('init_params', None)
+        self.commit_context = kwargs.pop('commit_context', False)
         self.show = kwargs.pop('show', False)
         self.cache = kwargs.pop('cache', False)
 
@@ -389,7 +394,7 @@ class Database(object):
 
     @property
     def cursor(self):
-        return Cursor(self.conn, self.namespaces)
+        return Cursor(self.conn, self.namespaces, self.commit_context)
 
     def __getattr__(self, attr):
         try:

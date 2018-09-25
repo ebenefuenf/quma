@@ -110,7 +110,8 @@ The same using the *db* API:
 
 As you can see *cur* provides a nicer API as you don't have to pass the cursor when
 you call a query or a method. Then again the *db* API has the advantage of being 
-around 30% faster.
+around 30% faster. But this should only be noticable if you run hundreds or thousands
+of queries in a row for example in a loop.
 
 
 Fetching a single record
@@ -158,14 +159,26 @@ Getting data in chunks
 Committing changes
 ------------------
 
-quma does not autocommit.
-
+quma does not autocommit by default.
 
 .. code-block:: python
 
-    cur.users.remove(id=user['id'])
+    cur.users.remove(id=13)
     cur.users.rename(id=14, name='New Name')
     c.commit()
+
+If *db* is initialized with the flag ``commit_context`` set to ``True``
+and a context manager is used, quma will commit automatically when the
+context manager ends.
+
+.. code-block:: python
+
+    db = Database('sqlite:///:memory:', commit_context=True)
+
+    with db.cursor as cur:
+        cur.users.remove(id=13)
+        cur.users.rename(id=14, name='New Name')
+    # cur.commit() will be called automatically
 
 Executing literal statements
 ----------------------------

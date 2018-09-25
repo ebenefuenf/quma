@@ -102,6 +102,18 @@ def dbfile(qmark_sqldirs):
 
 
 @pytest.fixture
+def dbcommit(qmark_sqldirs):
+    db = Database(util.SQLITE_URI,
+                  qmark_sqldirs,
+                  commit_context=True,
+                  changeling=True)
+    db.execute(util.DROP_USERS)
+    db.execute(util.CREATE_USERS)
+    db.execute(util.INSERT_USERS)
+    return db
+
+
+@pytest.fixture
 def db_no_changeling(qmark_sqldirs):
     db = Database(util.SQLITE_MEMORY,
                   qmark_sqldirs,

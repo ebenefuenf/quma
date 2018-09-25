@@ -183,6 +183,17 @@ def test_commit(dbfile):
     commit(dbfile)
 
 
+def test_commit_context(dbcommit):
+    with dbcommit.cursor as cursor:
+        dbcommit.user.add(cursor,
+                          name='Test User',
+                          email='test.user@example.com',
+                          city='Test City')
+    with dbcommit.cursor as cursor:
+        user = dbcommit.user.by_name.get(cursor, name='Test User')
+        assert user.email == 'test.user@example.com'
+
+
 def rollback(db):
     cursor = db.cursor()
     db.user.add(cursor,
