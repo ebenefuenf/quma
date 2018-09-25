@@ -38,7 +38,7 @@ Connection Examples
     # SQLite
     db = Database('sqlite:////path/to/db.sqlite', sqldir)
     # SQLite in memory db
-    db = Database('sqlite:///', sqldir)
+    db = Database('sqlite:///:memory:', sqldir)
 
     # PostgreSQL localhost
     db = Database('postgresql://username:password@/db_name', sqldir)

@@ -11,7 +11,7 @@ sql_path = os.path.join(here, '../quma/tests/fixtures/queries/qmark')
 
 
 def get_db():
-    db = quma.Database('sqlite:///', sql_path,
+    db = quma.Database('sqlite:///:memory:', sql_path,
                        persist=True, changeling=True, cache=True)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)

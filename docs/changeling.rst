@@ -8,7 +8,7 @@ object attributes by three different methods if you pass
 
 .. code-block:: python
 
-    db = Database('sqlite:///', sqldir, changeling=True)
+    db = Database('sqlite:///:memory:', sqldir, changeling=True)
 
     with db.cursor as c:
         user = db.users.by_id.get(c, 13)

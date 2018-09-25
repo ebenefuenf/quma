@@ -25,9 +25,8 @@ class Connection(conn.Connection):
     def __init__(self, url, **kwargs):
         super().__init__(url, **kwargs)
         if not self.database:
-            self.database = ':memory:'
+            raise ValueError('Required database path missing')
         self.has_rowcount = False
-
         self._init_conn(**kwargs)
 
     def create_conn(self):

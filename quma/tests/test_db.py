@@ -45,8 +45,11 @@ def test_failing_init(db):
 
 def test_failing_connect():
     with pytest.raises(ValueError) as e:
-        mapper.connect('sqlite+wrong-scheme://test')
+        mapper.connect('sqlite+wrong-scheme:///:memory:')
     assert str(e.value).startswith('Wrong scheme')
+    with pytest.raises(ValueError) as e:
+        mapper.connect('sqlite:///')
+    assert str(e.value).startswith('Required database path')
 
 
 def test_namespace(db):

@@ -48,7 +48,7 @@ of paths to your SQL scripts.
 .. code-block:: python
 
     from quma import Database
-    db = Database('sqlite:///', '/path/to/sql-scripts')
+    db = Database('sqlite:///:memory:', '/path/to/sql-scripts')
 
 **Note**: ``Database`` instances are threadsafe. 
 

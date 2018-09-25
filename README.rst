@@ -40,7 +40,7 @@ we use a SQLite in memory database):
 
     from quma import Database
 
-    db = Database('sqlite:///', '/path/to/sql/scripts')
+    db = Database('sqlite:///:memory:', '/path/to/sql/scripts')
 
     db.execute('CREATE TABLE users ...')
 
