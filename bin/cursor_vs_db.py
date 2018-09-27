@@ -34,6 +34,7 @@ def db_namespaces():
             db.user.by_name.get(cursor, name='User 1')
             db.user.by_name.get(cursor, name='Test User')
             db.user.remove(cursor, name='Test User')
+            cursor.commit()
 
 
 def cursor_namespaces():
@@ -52,6 +53,7 @@ def cursor_namespaces():
             cursor.user.by_name.get(name='User 1')
             cursor.user.by_name.get(name='Test User')
             cursor.user.remove(name='Test User')
+            cursor.commit()
 
 
 t = Timer(lambda: db_namespaces())
