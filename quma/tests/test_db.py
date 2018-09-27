@@ -34,7 +34,7 @@ def conn_attr(db, attr, defval, setval):
 
 
 def test_conn_attr(db):
-    conn_attr(db, 'isolation_level', '', 'EXCLUSIVE')
+    conn_attr(db, 'isolation_level', 'DEFERRED', 'EXCLUSIVE')
 
 
 def test_failing_init(db):
@@ -183,7 +183,7 @@ def test_commit(dbfile):
     commit(dbfile)
 
 
-def test_commit_context(dbcommit):
+def test_contextcommit(dbcommit):
     with dbcommit.cursor as cursor:
         dbcommit.user.add(cursor,
                           name='Test User',
@@ -192,6 +192,74 @@ def test_commit_context(dbcommit):
     with dbcommit.cursor as cursor:
         user = dbcommit.user.by_name.get(cursor, name='Test User')
         assert user.email == 'test.user@example.com'
+
+
+def autocommit(uri, sqldirs, insert_error, select_error):
+    db = Database(uri, sqldirs)
+    cursor = db.cursor(autocommit=True)
+    cursor.execute('DROP TABLE IF EXISTS test;')
+    with pytest.raises(insert_error):
+        cursor.execute("INSERT INTO test (name) VALUES ('Test 1');")
+    cursor.execute('CREATE TABLE test (name VARCHAR(10));')
+    cursor.close()
+    db = Database(uri, sqldirs)
+    with db.cursor as cursor:
+        cursor.execute("INSERT INTO test (name) VALUES ('Test 1');")
+        cursor.execute("INSERT INTO test (name) VALUES ('Test 2');")
+    db = Database(uri, sqldirs)
+    with db.cursor as cursor:
+        cursor.execute('SELECT * FROM test;')
+        assert len(cursor.fetchall()) == 0
+    db = Database(uri, sqldirs)
+    with db(autocommit=True).cursor as cursor:
+        cursor.execute("INSERT INTO test (name) VALUES ('Test 1');")
+        cursor.execute("INSERT INTO test (name) VALUES ('Test 2');")
+    db = Database(uri, sqldirs)
+    with db.cursor as cursor:
+        cursor.execute('SELECT * FROM test;')
+        assert len(cursor.fetchall()) == 2
+    db = Database(uri, sqldirs)
+    cursor = db.cursor()
+    cursor.execute("INSERT INTO test (name) VALUES ('Test 3');")
+    cursor.execute("INSERT INTO test (name) VALUES ('Test 4');")
+    cursor.close()
+    db = Database(uri, sqldirs)
+    cursor = db.cursor()
+    cursor.execute('SELECT * FROM test;')
+    assert len(cursor.fetchall()) == 2
+    cursor.close()
+    db = Database(uri, sqldirs)
+    cursor = db.cursor(autocommit=True)
+    cursor.execute("INSERT INTO test (name) VALUES ('Test 3');")
+    cursor.execute("INSERT INTO test (name) VALUES ('Test 4');")
+    cursor.close()
+    db = Database(uri, sqldirs)
+    cursor = db.cursor()
+    cursor.execute('SELECT * FROM test;')
+    assert len(cursor.fetchall()) == 4
+    cursor.close()
+
+
+def test_autocommit(qmark_sqldirs):
+    util.remove_db(util.SQLITE_FILE)
+    db = Database(util.SQLITE_URI, qmark_sqldirs)
+    with db.cursor as cursor:
+        cursor.execute('CREATE TABLE test (name);')
+        cursor.execute("INSERT INTO test (name) VALUES ('Test 1');")
+        cursor.execute("INSERT INTO test (name) VALUES ('Test 2');")
+    db = Database(util.SQLITE_URI, qmark_sqldirs)
+    with db().cursor as cursor:
+        with pytest.raises(sqlite3.OperationalError):
+            cursor.execute('SELECT * FROM test;')
+    db = Database(util.SQLITE_URI, qmark_sqldirs)
+    with db(autocommit=True).cursor as cursor:
+        cursor.execute('CREATE TABLE test (name);')
+        cursor.execute("INSERT INTO test (name) VALUES ('Test 1');")
+        cursor.execute("INSERT INTO test (name) VALUES ('Test 2');")
+    db = Database(util.SQLITE_URI, qmark_sqldirs)
+    with db().cursor as cursor:
+        cursor.execute('SELECT * FROM test;')
+        assert len(cursor.fetchall()) == 2
 
 
 def rollback(db):
@@ -215,7 +283,7 @@ def test_overwrite_query_class(pyformat_sqldirs):
     class MyQuery(Query):
         def the_test(self):
             return 'Test'
-    db = Database(util.PGSQL_POOL_URI, pyformat_sqldirs, query_factory=MyQuery)
+    db = Database(util.SQLITE_MEMORY, pyformat_sqldirs, query_factory=MyQuery)
     assert db.user.all.the_test() == 'Test'
 
 

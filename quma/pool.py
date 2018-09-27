@@ -71,6 +71,7 @@ class Pool(object):
         # state with no references held to the previous series of
         # operations.
         conn.rollback()
+        self._conn.disable_autocommit(conn)
         try:
             self._pool.put(conn, False)
         except Full:
@@ -79,7 +80,7 @@ class Pool(object):
             finally:
                 self._dec_overflow()
 
-    def get(self):
+    def get(self, autocommit=False):
         use_overflow = self._MAX > -1
 
         try:
@@ -90,7 +91,7 @@ class Pool(object):
                     self._conn.check(conn)
                 except OperationalError:
                     self._conn.close(conn)
-                    return self._conn.get()
+                    return self._conn.get(autocommit=autocommit)
             return conn
         except Empty:
             # Don't do things inside of "except Empty", because when we say
@@ -105,13 +106,16 @@ class Pool(object):
 
         if self._inc_overflow() is True:
             try:
-                return self._conn.get()
+                return self._conn.get(autocommit=autocommit)
             except Exception as e:
                 self._dec_overflow()
                 raise e
 
     def cursor(self, conn):
         return conn.cursor()
+
+    def init_transaction(self, cursor):
+        return self._conn.init_transaction(cursor)
 
     def get_cursor_attr(self, cursor, key):
         return self._conn.get_cursor_attr(cursor, key)

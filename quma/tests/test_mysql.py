@@ -1,5 +1,7 @@
 import pytest
 
+import MySQLdb
+
 from . import util
 from ..exc import DoesNotExistError
 from ..mapper import Cursor
@@ -10,49 +12,59 @@ def setup_function(function):
 
 
 @pytest.mark.mysql
-def test_mysql_conn_attr(mydb, mypooldb):
+def test_conn_attr(mydb, mypooldb):
     from .test_db import conn_attr
     for db in (mydb, mypooldb):
         conn_attr(db, 'encoding', 'latin1', 'utf-8')
 
 
 @pytest.mark.mysql
-def test_mysql_cursor(mydb, mypooldb):
+def test_cursor(mydb, mypooldb):
     from .test_db import cursor
     for db in (mydb, mypooldb):
         cursor(db)
 
 
 @pytest.mark.mysql
-def test_mysql_cursor_call(mydb, mypooldb):
+def test_cursor_call(mydb, mypooldb):
     from .test_db import cursor_call
     for db in (mydb, mypooldb):
         cursor_call(db)
 
 
 @pytest.mark.mysql
-def test_mysql_commit(mydb, mypooldb):
+def test_commit(mydb, mypooldb):
     from .test_db import commit
     for db in (mydb, mypooldb):
         commit(db)
 
 
 @pytest.mark.mysql
-def test_mysql_rollback(mydb, mypooldb):
+def test_autocommit(pyformat_sqldirs):
+    from .test_db import autocommit
+    for uri in (util.MYSQL_URI, util.MYSQL_POOL_URI):
+        autocommit(uri,
+                   pyformat_sqldirs,
+                   MySQLdb.ProgrammingError,
+                   MySQLdb.OperationalError)
+
+
+@pytest.mark.mysql
+def test_rollback(mydb, mypooldb):
     from .test_db import rollback
     for db in (mydb, mypooldb):
         rollback(db)
 
 
 @pytest.mark.mysql
-def test_mysql_multiple_records(mydb, mypooldb):
+def test_multiple_records(mydb, mypooldb):
     from .test_db import multiple_records
     multiple_records(mydb, lambda user: user['name'])
     multiple_records(mypooldb, lambda user: user[0])
 
 
 @pytest.mark.mysql
-def test_mysql_multiple_records_error(mydb, mypooldb):
+def test_multiple_records_error(mydb, mypooldb):
     from .test_db import multiple_records_error
     for db in (mydb, mypooldb):
         multiple_records_error(db)

@@ -1,8 +1,12 @@
+import os
+
+
+SQLITE_FILE = '/tmp/quma_test.sqlite'
 DB_NAME = 'quma_test_db'
 DB_USER = 'quma_test_user'
 DB_PASS = 'quma_test_password'
 DSN = f'dbname={DB_NAME} user={DB_USER} password={DB_PASS}'
-SQLITE_URI = 'sqlite:////tmp/quma.sqlite'
+SQLITE_URI = f'sqlite:///{SQLITE_FILE}'
 SQLITE_MEMORY = 'sqlite:///:memory:'
 PGSQL_URI = f'postgresql://{DB_USER}:{DB_PASS}@/{DB_NAME}'
 PGSQL_POOL_URI = f'postgresql+pool://{DB_USER}:{DB_PASS}@/{DB_NAME}'
@@ -50,3 +54,9 @@ def setup_mysql_db():
     conn.commit()
     cur.close()
     conn.close()
+
+def remove_db(path):
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass

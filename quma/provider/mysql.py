@@ -30,11 +30,21 @@ class Connection(conn.Connection):
         return conn.cursor(self.cursor_factory)
 
     def create_conn(self):
-        return MySQLdb.connect(db=self.database,
+        conn = MySQLdb.connect(db=self.database,
                                user=self.username,
                                passwd=self.password,
                                host=self.hostname,
                                port=self.port)
+        return self.disable_autocommit(conn)
+
+    def enable_autocommit_if(self, autocommit, conn):
+        if autocommit:
+            conn.autocommit(True)
+        return conn
+
+    def disable_autocommit(self, conn):
+        conn.autocommit(False)
+        return conn
 
     def _check(self, conn):
         try:

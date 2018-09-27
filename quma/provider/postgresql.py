@@ -95,6 +95,15 @@ class Connection(conn.Connection):
             port=self.port,
             cursor_factory=self.factory)
 
+    def enable_autocommit_if(self, autocommit, conn):
+        if autocommit:
+            conn.autocommit = True
+        return conn
+
+    def disable_autocommit(self, conn):
+        conn.autocommit = False
+        return conn
+
     def _check(self, conn):
         try:
             cur = conn.cursor()

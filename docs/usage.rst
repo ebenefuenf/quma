@@ -159,17 +159,21 @@ Getting data in chunks
 Committing changes
 ------------------
 
-quma does not autocommit by default.
+quma does not automatically commit by default. You have to commit 
+all changes.
 
 .. code-block:: python
 
     cur.users.remove(id=13)
     cur.users.rename(id=14, name='New Name')
-    c.commit()
+    cur.commit()
+
+**Note**: If you are using MySQL some statements will automatically
+cause a commit. See the `MySQL docs <http://https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html>`_
 
 If *db* is initialized with the flag ``commit_context`` set to ``True``
 and a context manager is used, quma will commit automatically when the
-context manager ends.
+context manager ends. So you don't need to call ``cur.commit()``.
 
 .. code-block:: python
 
@@ -178,7 +182,27 @@ context manager ends.
     with db.cursor as cur:
         cur.users.remove(id=13)
         cur.users.rename(id=14, name='New Name')
-    # cur.commit() will be called automatically
+
+
+Autocommit
+~~~~~~~~~~
+
+If you pass ``autocommit=True`` on cursor init each statement (query) 
+will be executed in its own transaction that is implicitly committed.
+
+.. code-block:: python
+
+    with db(autocommit=True).cursor as cur:
+        cur.users.remove(id=13) 
+
+.. code-block:: python
+
+    try:
+        cur = db.cursor(autocommit=True)
+        cur.users.remove(id=13) 
+    finally:
+        cur.close()
+
 
 Executing literal statements
 ----------------------------

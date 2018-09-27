@@ -228,10 +228,12 @@ class NativeCursorWrapper(object):
 
 
 class Cursor(object):
-    def __init__(self, conn, namespaces, commit_context, carrier=None):
+    def __init__(self, conn, namespaces, commit_context,
+                 carrier=None, autocommit=False):
         self.conn = conn
         self.namespaces = namespaces
         self.carrier = carrier
+        self.autocommit = autocommit
         self.raw_conn = None
         self.raw_cursor = None
         self.commit_context = commit_context
@@ -242,22 +244,29 @@ class Cursor(object):
     def __exit__(self, *args):
         if self.commit_context:
             self.commit()
+        else:
+            # always call rollback to make sure the transaction ends
+            self.rollback()
         if self.conn:
             self.put()
 
-    def __call__(self):
-        return self.create_cursor()
+    def __call__(self, autocommit=None):
+        return self.create_cursor(autocommit=autocommit)
 
-    def create_cursor(self):
+    def create_cursor(self, autocommit=None):
+        autocommit = autocommit if autocommit is not None else self.autocommit
         if self.carrier:
             if hasattr(self.carrier, '__quma_conn__'):
                 self.raw_conn = self.carrier.__quma_conn__
             else:
-                self.raw_conn = self.carrier.__quma_conn__ = self.conn.get()
+                conn = self.conn.get(autocommit=autocommit)
+                self.raw_conn = self.carrier.__quma_conn__ = conn
         else:
-            self.raw_conn = self.conn.get()
+            self.raw_conn = self.conn.get(autocommit=autocommit)
         self.raw_cursor = NativeCursorWrapper(self.conn,
                                               self.conn.cursor(self.raw_conn))
+        if not autocommit:
+            self.raw_cursor = self.conn.init_transaction(self.raw_cursor)
         return self
 
     def put(self):
@@ -300,16 +309,18 @@ class Cursor(object):
 
 
 class DatabaseCallWrapper(object):
-    def __init__(self, database, carrier):
+    def __init__(self, database, carrier, autocommit):
         self.database = database
         self.carrier = carrier
+        self.autocommit = autocommit
 
     @property
     def cursor(self):
         return Cursor(self.database.conn,
                       self.database.namespaces,
                       self.database.commit_context,
-                      self.carrier)
+                      carrier=self.carrier,
+                      autocommit=self.autocommit)
 
 
 class Database(object):
@@ -344,8 +355,8 @@ class Database(object):
             for sqldir in self.sqldirs:
                 self.register_namespace(sqldir)
 
-    def __call__(self, carrier=None):
-        return DatabaseCallWrapper(self, carrier)
+    def __call__(self, carrier=None, autocommit=False):
+        return DatabaseCallWrapper(self, carrier=carrier, autocommit=autocommit)
 
     def register_namespace(self, sqldir):
         def instantiate(ns, ns_class, path):

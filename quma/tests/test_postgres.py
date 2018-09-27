@@ -4,6 +4,7 @@ import psycopg2
 import pytest
 
 from . import util
+from .. import Database
 from ..exc import (
     FetchError,
     MultipleRecordsError,
@@ -41,6 +42,16 @@ def test_commit(pgdb, pgpooldb):
     from .test_db import commit
     for db in (pgdb, pgpooldb):
         commit(db)
+
+
+@pytest.mark.postgres
+def test_autocommit(pyformat_sqldirs):
+    from .test_db import autocommit
+    for uri in (util.PGSQL_URI, util.PGSQL_POOL_URI):
+        autocommit(uri,
+                   pyformat_sqldirs,
+                   psycopg2.ProgrammingError,
+                   psycopg2.ProgrammingError)
 
 
 @pytest.mark.postgres

@@ -92,10 +92,10 @@ def dbshadow(qmark_shadow_sqldirs):
 
 @pytest.fixture
 def dbfile(qmark_sqldirs):
+    util.remove_db(util.SQLITE_FILE)
     db = Database(util.SQLITE_URI,
                   qmark_sqldirs,
                   changeling=True)
-    db.execute(util.DROP_USERS)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
     return db
@@ -103,11 +103,11 @@ def dbfile(qmark_sqldirs):
 
 @pytest.fixture
 def dbcommit(qmark_sqldirs):
+    util.remove_db(util.SQLITE_FILE)
     db = Database(util.SQLITE_URI,
                   qmark_sqldirs,
                   commit_context=True,
                   changeling=True)
-    db.execute(util.DROP_USERS)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
     return db
