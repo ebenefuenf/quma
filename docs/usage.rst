@@ -143,6 +143,7 @@ on the result set:
     users = cur.users.by_id(id=13)
     user = users[0]
 
+
 Getting data in chunks
 ----------------------
 
@@ -154,6 +155,18 @@ Getting data in chunks
     users = cur.users.by_city.next(3)
     # the next two
     users = cur.users.by_city.next(2)
+
+Getting the number of records
+-----------------------------
+
+If you are only interested in the number of records and
+don't want to work with the result you can call the 
+``count`` method:
+
+.. code-block:: python
+
+    number_of_users = cur.users.all.count()
+    number_of_users = db.users.all.count(cur)
 
 
 Committing changes

@@ -120,6 +120,15 @@ class Query(object):
             size = cursor.arraysize
         return self._fetch(partial(cursor.fetchmany, size))
 
+    def count(self, cursor, *args, prepare_params=None, **kwargs):
+        self._execute(cursor, list(args), kwargs, prepare_params)
+
+        if cursor.has_rowcount:
+            return cursor.rowcount
+        else:
+            result = cursor.fetchall()
+            return len(result)
+
 
 class Namespace(object):
     def __init__(self, db, sqldir, shadow=None):
@@ -194,6 +203,9 @@ class CursorQuery(object):
 
     def next(self, size=None):
         return self.query.next(self.cursor, size=size)
+
+    def count(self, *args, **kwargs):
+        return self.query.count(self.cursor, *args, **kwargs)
 
 
 class CursorNamespace(object):

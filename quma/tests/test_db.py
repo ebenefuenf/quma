@@ -146,6 +146,16 @@ def test_cursor_call(db):
     cursor_call(db)
 
 
+def count(db):
+    cursor = db.cursor()
+    assert cursor.users.all.count() == 4
+    assert db.users.all.count(cursor) == 4
+
+
+def test_count(db):
+    count(db)
+
+
 def commit(db):
     with db.cursor as cursor:
         db.user.add(cursor,

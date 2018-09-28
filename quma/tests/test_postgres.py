@@ -38,6 +38,13 @@ def test_cursor_call(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_count(pgdb, pgpooldb):
+    from .test_db import count
+    for db in (pgdb, pgpooldb):
+        count(db)
+
+
+@pytest.mark.postgres
 def test_commit(pgdb, pgpooldb):
     from .test_db import commit
     for db in (pgdb, pgpooldb):
