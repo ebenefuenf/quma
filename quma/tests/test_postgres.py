@@ -45,6 +45,13 @@ def test_count(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_first(pgdb, pgpooldb):
+    from .test_db import first
+    for db in (pgdb, pgpooldb):
+        first(db)
+
+
+@pytest.mark.postgres
 def test_commit(pgdb, pgpooldb):
     from .test_db import commit
     for db in (pgdb, pgpooldb):

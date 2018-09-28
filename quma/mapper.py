@@ -109,6 +109,10 @@ class Query(object):
             check_rowcount(len(result))
             return result[0]
 
+    def first(self, cursor, *args, prepare_params=None, **kwargs):
+        self._execute(cursor, list(args), kwargs, prepare_params)
+        return self._fetch(cursor.fetchall)[0]
+
     def many(self, cursor, size=None, *args, **kwargs):
         if size is None:
             size = cursor.arraysize
@@ -197,6 +201,9 @@ class CursorQuery(object):
     def get(self, *args, prepare_params=None, **kwargs):
         return self.query.get(self.cursor, *args,
                               prepare_params=prepare_params, **kwargs)
+
+    def first(self, *args, **kwargs):
+        return self.query.first(self.cursor, *args, **kwargs)
 
     def many(self, *args, **kwargs):
         return self.query.many(self.cursor, *args, **kwargs)

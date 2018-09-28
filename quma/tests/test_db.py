@@ -156,6 +156,16 @@ def test_count(db):
     count(db)
 
 
+def first(db):
+    cursor = db.cursor()
+    assert cursor.users.all.first()['name'] == 'User 1'
+    assert db.users.all.first(cursor)['name'] == 'User 1'
+
+
+def test_first(db):
+    first(db)
+
+
 def commit(db):
     with db.cursor as cursor:
         db.user.add(cursor,

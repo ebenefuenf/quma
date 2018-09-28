@@ -143,6 +143,12 @@ on the result set:
     users = cur.users.by_id(id=13)
     user = users[0]
 
+If you want the first record of a result set you can use the
+``first`` method:
+
+.. code-block:: python
+
+    user = cur.users.all.first()
 
 Getting data in chunks
 ----------------------
@@ -155,6 +161,7 @@ Getting data in chunks
     users = cur.users.by_city.next(3)
     # the next two
     users = cur.users.by_city.next(2)
+
 
 Getting the number of records
 -----------------------------

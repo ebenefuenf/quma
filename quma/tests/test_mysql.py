@@ -40,6 +40,13 @@ def test_count(mydb, mypooldb):
 
 
 @pytest.mark.mysql
+def test_first(mydb, mypooldbdict):
+    from .test_db import first
+    for db in (mydb, mypooldbdict):
+        first(db)
+
+
+@pytest.mark.mysql
 def test_commit(mydb, mypooldb):
     from .test_db import commit
     for db in (mydb, mypooldb):
@@ -78,23 +85,25 @@ def test_multiple_records_error(mydb, mypooldb):
 
 
 @pytest.mark.mysql
-def test_tuple_cursor(mydb_persist):
-    with mydb_persist.cursor as cursor:
-        user = mydb_persist.user.by_name.get(cursor, name='User 4')
-        assert user[0] == 'user.4@example.com'
-        with pytest.raises(TypeError):
-            user['email']
-        cursor.rollback()
+def test_tuple_cursor(mydbpersist, mypooldb):
+    for db in (mydbpersist, mypooldb):
+        with db.cursor as cursor:
+            user = db.user.by_name.get(cursor, name='User 4')
+            assert user[0] == 'user.4@example.com'
+            with pytest.raises(TypeError):
+                user['email']
+            cursor.rollback()
 
 
 @pytest.mark.mysql
-def test_dict_cursor(mydb):
-    with mydb.cursor as cursor:
-        user = mydb.user.by_name.get(cursor, name='User 3')
-        assert user['email'] == 'user.3@example.com'
-        with pytest.raises(KeyError):
-            user[0]
-        cursor.rollback()
+def test_dict_cursor(mydb, mypooldbdict):
+    for db in (mydb, mypooldbdict):
+        with db.cursor as cursor:
+            user = db.user.by_name.get(cursor, name='User 3')
+            assert user['email'] == 'user.3@example.com'
+            with pytest.raises(KeyError):
+                user[0]
+            cursor.rollback()
 
 
 @pytest.mark.mysql
