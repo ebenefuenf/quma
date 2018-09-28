@@ -27,14 +27,15 @@ class Connection(conn.Connection):
         self._init_conn(**kwargs)
 
     def cursor(self, conn):
-        return conn.cursor(self.cursor_factory)
+        return conn.cursor()
 
     def create_conn(self):
         conn = MySQLdb.connect(db=self.database,
                                user=self.username,
                                passwd=self.password,
                                host=self.hostname,
-                               port=self.port)
+                               port=self.port,
+                               cursorclass=self.cursor_factory)
         return self.disable_autocommit(conn)
 
     def enable_autocommit_if(self, autocommit, conn):
