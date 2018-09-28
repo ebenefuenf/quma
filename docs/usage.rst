@@ -171,13 +171,13 @@ all changes.
 **Note**: If you are using MySQL some statements will automatically
 cause a commit. See the `MySQL docs <http://https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html>`_
 
-If *db* is initialized with the flag ``commit_context`` set to ``True``
+If *db* is initialized with the flag ``contextcommit`` set to ``True``
 and a context manager is used, quma will commit automatically when the
 context manager ends. So you don't need to call ``cur.commit()``.
 
 .. code-block:: python
 
-    db = Database('sqlite:///:memory:', commit_context=True)
+    db = Database('sqlite:///:memory:', contextcommit=True)
 
     with db.cursor as cur:
         cur.users.remove(id=13)

@@ -106,7 +106,7 @@ def dbcommit(qmark_sqldirs):
     util.remove_db(util.SQLITE_FILE)
     db = Database(util.SQLITE_URI,
                   qmark_sqldirs,
-                  commit_context=True,
+                  contextcommit=True,
                   changeling=True)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
