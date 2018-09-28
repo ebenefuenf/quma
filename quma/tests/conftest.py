@@ -131,7 +131,7 @@ def dbdictcb(qmark_sqldirs):
 
     db = Database(util.SQLITE_MEMORY,
                   qmark_sqldirs,
-                  init_params=dict_callback,
+                  prepare_params=dict_callback,
                   persist=True,
                   changeling=True)
     db.execute(util.CREATE_USERS)
@@ -147,7 +147,7 @@ def dbseqcb(qmark_sqldirs):
 
     db = Database(util.SQLITE_MEMORY,
                   qmark_sqldirs,
-                  init_params=sequence_callback,
+                  prepare_params=sequence_callback,
                   persist=True,
                   changeling=True)
     db.execute(util.CREATE_USERS)

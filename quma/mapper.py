@@ -29,10 +29,10 @@ def get_namespace(self, attr):
 
 
 class Query(object):
-    def __init__(self, query, show, is_template, init_params=None):
+    def __init__(self, query, show, is_template, prepare_params=None):
         self.show = show
         self.query = query
-        self.init_params = init_params
+        self.prepare_params = prepare_params
         self.is_template = is_template
         self.params = None
 
@@ -42,8 +42,8 @@ class Query(object):
         except exc.FetchError as e:
             raise e.error
 
-    def __call__(self, cursor, *args, **kwargs):
-        self._execute(cursor, list(args), kwargs)
+    def __call__(self, cursor, *args, prepare_params=None, **kwargs):
+        self._execute(cursor, list(args), kwargs, prepare_params)
         return self._fetch(cursor.fetchall)
 
     def __str__(self):
@@ -55,10 +55,12 @@ class Query(object):
             sys.stdout.write('\n')
             sys.stdout.write(self.query)
 
-    def _prepare(self, cursor, payload, init_params):
+    def _prepare(self, cursor, payload, prepare_params):
+        # create an empty list if payload == args
+        # create an empty dict if payload == kwargs
         params = type(payload)()
 
-        init = init_params or self.init_params
+        init = prepare_params or self.prepare_params
         if init:
             params = init(cursor.carrier, params)
 
@@ -75,19 +77,19 @@ class Query(object):
                     'To use templates you need to install Mako')
         return self.query, params
 
-    def _execute(self, cursor, args, kwargs, init_params=None):
+    def _execute(self, cursor, args, kwargs, prepare_params=None):
         if args:
-            query, params = self._prepare(cursor, args, init_params)
+            query, params = self._prepare(cursor, args, prepare_params)
         else:
-            query, params = self._prepare(cursor, kwargs, init_params)
+            query, params = self._prepare(cursor, kwargs, prepare_params)
         try:
             cursor.execute(query, params)
         finally:
             self.show and self._print_sql()
 
-    def get(self, cursor, *args, init_params=None, **kwargs):
+    def get(self, cursor, *args, prepare_params=None, **kwargs):
         try:
-            self._execute(cursor, list(args), kwargs, init_params)
+            self._execute(cursor, list(args), kwargs, prepare_params)
         finally:
             self.show and self._print_sql()
 
@@ -149,7 +151,7 @@ class Namespace(object):
                     f.read(),
                     self.show,
                     ext.lower() == f'.{self.db.tmpl_ext}',
-                    init_params=self.db.init_params)
+                    prepare_params=self.db.prepare_params)
 
     def __getattr__(self, attr):
         if self.cache:
@@ -167,7 +169,7 @@ class Namespace(object):
                     f.read(),
                     self.show,
                     Path(sqlfile).suffix == f'.{self.db.tmpl_ext}',
-                    init_params=self.db.init_params)
+                    prepare_params=self.db.prepare_params)
         except FileNotFoundError:
             return getattr(self.shadow, attr)
 
@@ -183,9 +185,9 @@ class CursorQuery(object):
     def __str__(self):
         return self.query.query
 
-    def get(self, *args, init_params=None, **kwargs):
+    def get(self, *args, prepare_params=None, **kwargs):
         return self.query.get(self.cursor, *args,
-                              init_params=init_params, **kwargs)
+                              prepare_params=prepare_params, **kwargs)
 
     def many(self, *args, **kwargs):
         return self.query.many(self.cursor, *args, **kwargs)
@@ -337,7 +339,7 @@ class Database(object):
         self.file_ext = kwargs.pop('file_ext', 'sql')
         self.tmpl_ext = kwargs.pop('tmpl_ext', 'msql')
         self.query_factory = kwargs.pop('query_factory', Query)
-        self.init_params = kwargs.pop('init_params', None)
+        self.prepare_params = kwargs.pop('prepare_params', None)
         self.contextcommit = kwargs.pop('contextcommit', False)
         self.show = kwargs.pop('show', False)
         self.cache = kwargs.pop('cache', False)
@@ -356,7 +358,8 @@ class Database(object):
                 self.register_namespace(sqldir)
 
     def __call__(self, carrier=None, autocommit=False):
-        return DatabaseCallWrapper(self, carrier=carrier, autocommit=autocommit)
+        return DatabaseCallWrapper(self, carrier=carrier,
+                                   autocommit=autocommit)
 
     def register_namespace(self, sqldir):
         def instantiate(ns, ns_class, path):

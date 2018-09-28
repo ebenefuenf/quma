@@ -22,6 +22,9 @@ Connecting
   that the database connection is still viable.
 * **contextcommit** (default False) if True and a context manager is used
   quma will automatically commit all changes when the context manager exits.
+* **prepare_params** (default None) A callback function which will be called before
+  every query to prepare the params which will be passed to the query.
+  Its arguments should be: ``function(carrier, *args, **kwargs)``.
 * **file_ext** (default 'sql') the file extension of sql files
 * **tmpl_ext** (default 'msql') the file extension of template files 
   (see section "Templates").

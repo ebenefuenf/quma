@@ -23,7 +23,7 @@ class PostgresChangelingRow(DictRow):
     """
     A row object that allows by-column-name access to data.
 
-    Either by index (row[0], row['field']) or by attr (row.field).
+    Either by index (row[0]), key (row['field']) or by attr (row.field).
     """
     __slots__ = DictRow.__slots__
 

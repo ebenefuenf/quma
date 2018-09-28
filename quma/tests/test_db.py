@@ -358,7 +358,7 @@ def test_dict_callback(dbdictcb, carrier):
     with db(carrier).cursor as c:
         user = db.user.by_name.get(c)
         assert user['city'] == 'City A'
-        user = db.user.by_name.get(c, init_params=dict_callback)
+        user = db.user.by_name.get(c, prepare_params=dict_callback)
         assert user['city'] == 'City B'
 
 
@@ -371,7 +371,7 @@ def test_seq_callback(dbseqcb, carrier):
     with db(carrier).cursor as c:
         user = db.user.by_email.get(c, 1)
         assert user['city'] == 'City A'
-        user = db.user.by_email.get(c, 1, init_params=seq_callback)
+        user = db.user.by_email.get(c, 1, prepare_params=seq_callback)
         assert user['city'] == 'City B'
 
 
