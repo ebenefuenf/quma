@@ -100,17 +100,25 @@ def test_cursor(db):
     cursor(db)
 
 
-def test_carrier(db):
+def test_carrier(dbfile):
     carrier = type('Carrier', (), {})
-    with db(carrier).cursor as cursor:
-        assert len(db.users.all(cursor)) == 4
+    with dbfile(carrier).cursor as cursor:
+        assert len(dbfile.users.all(cursor)) == 4
         assert len(cursor.users.all()) == 4
         rc = cursor.raw_conn
     assert hasattr(carrier, '__quma_conn__')
-    with db(carrier).cursor as cursor:
-        assert len(db.users.all(cursor)) == 4
-        assert len(cursor.users.all()) == 4
-        assert rc == cursor.raw_conn
+    with dbfile(carrier).cursor as cursor:
+        assert rc is cursor.raw_conn
+    cursor.close()
+    assert not hasattr(carrier, '__quma_conn__')
+    with dbfile(carrier).cursor as cursor:
+        assert rc is not cursor.raw_conn
+        rc = cursor.raw_conn
+    assert hasattr(carrier, '__quma_conn__')
+    with dbfile(carrier).cursor as cursor:
+        assert rc is cursor.raw_conn
+    dbfile.release(carrier)
+    assert not hasattr(carrier, '__quma_conn__')
 
 
 def test_custom_namespace(db):

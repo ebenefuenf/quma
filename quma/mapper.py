@@ -241,7 +241,13 @@ class CursorNamespace(object):
         return self.namespace(*args, **kwargs)
 
 
-class NativeCursorWrapper(object):
+class CarriedConnection(object):
+    def __init__(self, conn, raw_conn):
+        self.conn = conn
+        self.raw_conn = raw_conn
+
+
+class RawCursorWrapper(object):
     def __init__(self, conn, raw_cursor):
         self.conn = conn
         self.raw_cursor = raw_cursor
@@ -284,19 +290,20 @@ class Cursor(object):
         autocommit = autocommit if autocommit is not None else self.autocommit
         if self.carrier:
             if hasattr(self.carrier, '__quma_conn__'):
-                self.raw_conn = self.carrier.__quma_conn__
+                self.raw_conn = self.carrier.__quma_conn__.raw_conn
             else:
                 conn = self.conn.get(autocommit=autocommit)
-                self.raw_conn = self.carrier.__quma_conn__ = conn
+                self.carrier.__quma_conn__ = CarriedConnection(self.conn, conn)
+                self.raw_conn = conn
         else:
             self.raw_conn = self.conn.get(autocommit=autocommit)
-        self.raw_cursor = NativeCursorWrapper(self.conn,
-                                              self.conn.cursor(self.raw_conn))
+        self.raw_cursor = RawCursorWrapper(self.conn,
+                                           self.conn.cursor(self.raw_conn))
         if not autocommit:
             self.raw_cursor = self.conn.init_transaction(self.raw_cursor)
         return self
 
-    def put(self):
+    def put(self, force=False):
         """
         Ensures that not only the cursor is closed but also
         the connection if necessary.
@@ -305,11 +312,15 @@ class Cursor(object):
 
         # If the connection is bound to the carrier it
         # needs to be returned manually.
-        if not hasattr(self.carrier, '__quma_conn__'):
-            self.conn.put(self.raw_conn)
+        if hasattr(self.carrier, '__quma_conn__'):
+            if force:
+                del self.carrier.__quma_conn__
+            else:
+                return
+        self.conn.put(self.raw_conn)
 
     def close(self):
-        self.put()
+        self.put(force=True)
 
     def commit(self):
         self.raw_conn.commit()
@@ -420,6 +431,10 @@ class Database(object):
     def close(self):
         self.conn.close()
         self.conn = None
+
+    def release(self, carrier):
+        carrier.__quma_conn__.conn.put(carrier.__quma_conn__.raw_conn)
+        del carrier.__quma_conn__
 
     def execute(self, sql, **kwargs):
         c = self.cursor()
