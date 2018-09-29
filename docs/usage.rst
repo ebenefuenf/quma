@@ -114,8 +114,14 @@ around 30% faster. But this should only be noticable if you run hundreds or thou
 of queries in a row for example in a loop.
 
 
-Fetching a single record
-------------------------
+Getting a single record
+-----------------------
+
+If you now there will be only one record in the result of a query
+you can use the ``get`` method to get it. quma will raise a 
+``DoesNotExistError`` error if there is no record in the result 
+and a ``MultipleRecordsError`` if there are returned more than one
+record. 
 
 .. code-block:: python
 
@@ -133,6 +139,20 @@ Fetching a single record
         except MultipleRecordsError:
             print('There are multiple users with the same id')
 
+``DoesNotExistError`` and ``MultipleRecordsError`` are also attached
+to the ``Database`` class so you can access it from the db instance.
+For example:
+
+.. code-block:: python
+
+    with db.cursor as cur:
+        try:
+            user = cur.users.by_id.get(id=13)
+        except db.DoesNotExistError:
+            print('The user does not exist')
+        except db.MultipleRecordsError:
+            print('There are multiple users with the same id')
+
 It is also possible to get a single record by accessing its index
 on the result set:
 
@@ -143,8 +163,8 @@ on the result set:
     users = cur.users.by_id(id=13)
     user = users[0]
 
-If you want the first record of a result set you can use the
-``first`` method:
+If you want the first record of a result set which may have more
+than one record you can use the ``first`` method:
 
 .. code-block:: python
 
@@ -163,6 +183,9 @@ id after a insert.
 Getting data in chunks
 ----------------------
 
+quma supports the ``fetchmany`` method of Python's DBAPI by
+providing the ``many`` and ``next`` methods of ``Query``.
+
 .. code-block:: python
 
     # the first two
@@ -176,9 +199,8 @@ Getting data in chunks
 Getting the number of records
 -----------------------------
 
-If you are only interested in the number of records and
-don't want to work with the result you can call the 
-``count`` method:
+If you are only interested in the number of records in a result
+set  you can call the ``count`` method:
 
 .. code-block:: python
 
@@ -202,7 +224,7 @@ all changes.
 cause a commit. See the `MySQL docs <http://https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html>`_
 
 If *db* is initialized with the flag ``contextcommit`` set to ``True``
-and a context manager is used, quma will commit automatically when the
+and a context manager is used, quma will automatically commit when the
 context manager ends. So you don't need to call ``cur.commit()``.
 
 .. code-block:: python
@@ -212,6 +234,7 @@ context manager ends. So you don't need to call ``cur.commit()``.
     with db.cursor as cur:
         cur.users.remove(id=13)
         cur.users.rename(id=14, name='New Name')
+        # no need to call cur.commit()
 
 
 Autocommit
@@ -239,7 +262,11 @@ Executing literal statements
 
 Database instances provide the method ``execute``. You can pass
 arbitrary sql strings. Each call will be automatically committed.
+If there is a result it will be returned otherwise it returns ``None``.
 
 .. code-block:: python
 
     db.execute('CREATE TABLE users ...')
+    users = db.execute('SELECT * FROM users')
+    for user in users:
+        print(user.name)
