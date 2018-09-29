@@ -101,8 +101,7 @@ class Query(object):
 
         # SQLite does not support rowcount
         if cursor.has_rowcount:
-            rowcount = cursor.rowcount
-            check_rowcount(rowcount)
+            check_rowcount(cursor.rowcount)
             return cursor.fetchone()
         else:
             result = cursor.fetchall()

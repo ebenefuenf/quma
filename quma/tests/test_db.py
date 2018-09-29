@@ -186,37 +186,46 @@ def test_value(db):
 
 def commit(db):
     with db.cursor as cursor:
-        db.user.add(cursor,
-                    id=5,
-                    name='Test User',
-                    email='test.user@example.com',
-                    city='Test City')
-    with db.cursor as cursor:
-        with pytest.raises(db.DoesNotExistError):
-            db.user.by_name.get(cursor, name='Test User')
-
-    with db.cursor as cursor:
-        db.user.add(cursor,
-                    id=5,
-                    name='Test User 1',
-                    email='test.user@example.com',
-                    city='Test City')
-        cursor.user.add(id=6,
-                        name='Test User 2',
+        for i in range(5, 13, 2):
+            db.user.add(cursor,
+                        id=i,
+                        name=f'Test User {i}',
                         email='test.user@example.com',
                         city='Test City')
+            cursor.user.add(id=i + 1,
+                            name=f'Test User {i + 1}',
+                            email='test.user@example.com',
+                            city='Test City')
+    with db.cursor as cursor:
+        with pytest.raises(db.DoesNotExistError):
+            db.user.by_name.get(cursor, name='Test Use 5')
+        with pytest.raises(db.DoesNotExistError):
+            db.user.by_name.get(cursor, name='Test Use 11')
+
+    with db.cursor as cursor:
+        for i in range(5, 13, 2):
+            db.user.add(cursor,
+                        id=i,
+                        name=f'Test User {i}',
+                        email='test.user@example.com',
+                        city='Test City')
+            cursor.user.add(id=i + 1,
+                            name=f'Test User {i + 1}',
+                            email='test.user@example.com',
+                            city='Test City')
         cursor.commit()
 
     cursor = db.cursor()
-    db.user.by_name.get(cursor, name='Test User 1')
-    cursor.user.by_name.get(name='Test User 2')
-    db.user.remove(cursor, name='Test User 1')
-    cursor.user.remove(name='Test User 2')
+    for i in range(5, 13, 2):
+        db.user.by_name.get(cursor, name=f'Test User {i}')
+        cursor.user.by_name.get(name=f'Test User {i + 1}')
+        db.user.remove(cursor, name=f'Test User {i}')
+        cursor.user.remove(name=f'Test User {i + 1}')
     cursor.commit()
     with pytest.raises(db.DoesNotExistError):
-        db.user.by_name.get(cursor, name='Test User 1')
+        db.user.by_name.get(cursor, name='Test User 7')
     with pytest.raises(db.DoesNotExistError):
-        db.user.by_name.get(cursor, name='Test User 2')
+        db.user.by_name.get(cursor, name='Test User 8')
     cursor.close()
 
 
