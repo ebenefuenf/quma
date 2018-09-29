@@ -208,17 +208,20 @@ set  you can call the ``count`` method:
     number_of_users = db.users.all.count(cur)
 
 
-Committing changes
-------------------
+Committing changes and rollback
+-------------------------------
 
-quma does not automatically commit by default. You have to commit 
-all changes.
+quma does not automatically commit by default. You have to manually
+commit all changes. As well as rolling back if a error occurs.
 
 .. code-block:: python
 
-    cur.users.remove(id=13)
-    cur.users.rename(id=14, name='New Name')
-    cur.commit()
+    try:
+        cur.users.remove(id=13)
+        cur.users.rename(id=14, name='New Name')
+        cur.commit()
+    except Exception:
+        cur.rollback()
 
 **Note**: If you are using MySQL some statements will automatically
 cause a commit. See the `MySQL docs <http://https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html>`_

@@ -276,9 +276,6 @@ class Cursor(object):
     def __exit__(self, *args):
         if self.contextcommit:
             self.commit()
-        else:
-            # always call rollback to make sure the transaction ends
-            self.rollback()
         if self.conn:
             self.put()
 
