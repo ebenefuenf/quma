@@ -3,11 +3,12 @@ Importable instance
 ===================
 
 Sometimes it isn't enough to create a global ``Database`` instance 
-and import it into other modules. For example if you read the
-database credentials from a configuration file at runtime while
-the global is already imported into other modules. The following 
-code shows a way to keep the quma API in place and allows to import
-the ``db`` wrapper class even if the connection is not established yet.
+and import it into other modules. For example if you read the database 
+credentials from a configuration file at runtime and then initialize
+the instance while the uninitialized global was already imported 
+elsewhere. The following code shows a way to keep the quma API in place
+and allows to import the ``db`` wrapper class even if the connection is
+not established yet.
 
 .. code-block:: python
     
