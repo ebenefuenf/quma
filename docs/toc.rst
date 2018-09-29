@@ -14,4 +14,5 @@
    templates
    shadowing
    namespaces
+   import
    tests
