@@ -435,18 +435,22 @@ class Database(object):
         self.conn = None
 
     def release(self, carrier):
-        carrier.__quma_conn__.conn.put(carrier.__quma_conn__.raw_conn)
-        del carrier.__quma_conn__
+        if hasattr(carrier, '__quma_conn__'):
+            carrier.__quma_conn__.conn.put(carrier.__quma_conn__.raw_conn)
+            del carrier.__quma_conn__
 
     def execute(self, sql, **kwargs):
-        c = self.cursor()
+        result = None
+        cur = self.cursor()
         try:
-            c.execute(sql, **kwargs)
-            c.commit()
+            cur.execute(sql, **kwargs)
+            cur.commit()
+            if cur.description:
+                result = cur.fetchall()
         except Exception as e:
-            c.rollback()
+            cur.rollback()
             raise e
-        return c
+        return result
 
     @property
     def cursor(self):

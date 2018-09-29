@@ -3,8 +3,6 @@ import pytest
 import MySQLdb
 
 from . import util
-from ..exc import DoesNotExistError
-from ..mapper import Cursor
 
 
 def setup_function(function):
@@ -63,11 +61,19 @@ def test_commit(mydb, mypooldb):
 @pytest.mark.mysql
 def test_autocommit(pyformat_sqldirs):
     from .test_db import autocommit
-    for uri in (util.MYSQL_URI, util.MYSQL_POOL_URI):
-        autocommit(uri,
-                   pyformat_sqldirs,
-                   MySQLdb.ProgrammingError,
-                   MySQLdb.OperationalError)
+    autocommit(util.MYSQL_URI,
+               pyformat_sqldirs,
+               MySQLdb.ProgrammingError,
+               MySQLdb.OperationalError)
+
+
+@pytest.mark.mysql
+def test_autocommit_pool(pyformat_sqldirs):
+    from .test_db import autocommit
+    autocommit(util.MYSQL_POOL_URI,
+               pyformat_sqldirs,
+               MySQLdb.ProgrammingError,
+               MySQLdb.OperationalError)
 
 
 @pytest.mark.mysql
@@ -152,3 +158,10 @@ def test_many_default(mydb):
         assert len(users) == 2
         users = cursor.users.all.next(size=2)
         assert len(users) == 2
+
+
+@pytest.mark.mysql
+def test_execute(mydb, mypooldbdict):
+    from .test_db import execute
+    for db in (mydb, mypooldbdict):
+        execute(db, MySQLdb.ProgrammingError)

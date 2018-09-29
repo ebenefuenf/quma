@@ -39,6 +39,7 @@ def setup_pg_db():
     cur.execute(DROP_USERS)
     cur.execute(CREATE_USERS)
     cur.execute(INSERT_USERS)
+    cur.execute('DROP TABLE IF EXISTS test;')
     conn.commit()
     cur.close()
     conn.close()
@@ -51,9 +52,14 @@ def setup_mysql_db():
     cur.execute(DROP_USERS)
     cur.execute(CREATE_USERS)
     cur.execute(INSERT_USERS)
+    # To suppress warning 1051 "Unknown table"
+    cur.execute("SHOW TABLES LIKE 'test';")
+    if len(cur.fetchall()) > 0:
+        cur.execute('DROP TABLE test;')
     conn.commit()
     cur.close()
     conn.close()
+
 
 def remove_db(path):
     try:

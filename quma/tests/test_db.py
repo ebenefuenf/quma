@@ -239,7 +239,6 @@ def test_contextcommit(dbcommit):
 def autocommit(uri, sqldirs, insert_error, select_error):
     db = Database(uri, sqldirs)
     cursor = db.cursor(autocommit=True)
-    cursor.execute('DROP TABLE IF EXISTS test;')
     with pytest.raises(insert_error):
         cursor.execute("INSERT INTO test (name) VALUES ('Test 1');")
     cursor.execute('CREATE TABLE test (name VARCHAR(10));')
@@ -540,12 +539,19 @@ def test_close(db):
     assert db.conn is None
 
 
-def test_execute(db):
-    c = db.execute('SELECT * FROM users')
-    assert len(c.fetchall()) > 0
-    with pytest.raises(sqlite3.OperationalError):
-        c = db.execute('SELECT * FRO')
+def execute(db, error):
+    db.execute('CREATE TABLE test (test int);')
+    result = db.execute('DROP TABLE test;')
+    assert result is None
+    result = db.execute('SELECT * FROM users')
+    assert len(result) > 0
+    with pytest.raises(error):
+        db.execute('SELECT * FRO')
 
     with db.cursor as cursor:
         cursor.execute('SELECT * FROM users')
         assert len(cursor.fetchall()) > 0
+
+
+def test_execute(db):
+    execute(db, sqlite3.OperationalError)

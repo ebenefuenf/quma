@@ -4,11 +4,7 @@ import psycopg2
 import pytest
 
 from . import util
-from .. import Database
-from ..exc import (
-    FetchError,
-    MultipleRecordsError,
-)
+from ..exc import FetchError
 from ..provider.postgresql import Connection
 
 
@@ -68,11 +64,19 @@ def test_commit(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_autocommit(pyformat_sqldirs):
     from .test_db import autocommit
-    for uri in (util.PGSQL_URI, util.PGSQL_POOL_URI):
-        autocommit(uri,
-                   pyformat_sqldirs,
-                   psycopg2.ProgrammingError,
-                   psycopg2.ProgrammingError)
+    autocommit(util.PGSQL_URI,
+               pyformat_sqldirs,
+               psycopg2.ProgrammingError,
+               psycopg2.ProgrammingError)
+
+
+@pytest.mark.postgres
+def test_autocommit_pool(pyformat_sqldirs):
+    from .test_db import autocommit
+    autocommit(util.PGSQL_POOL_URI,
+               pyformat_sqldirs,
+               psycopg2.ProgrammingError,
+               psycopg2.ProgrammingError)
 
 
 @pytest.mark.postgres
@@ -200,3 +204,10 @@ def test_many_default(pgdb):
         assert len(users) == 2
         users = cursor.users.all.next()
         assert len(users) == 1
+
+
+@pytest.mark.postgres
+def test_execute(pgdb, pgpooldb):
+    from .test_db import execute
+    for db in (pgdb, pgpooldb):
+        execute(db, psycopg2.ProgrammingError)
