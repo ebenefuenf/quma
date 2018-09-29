@@ -7,10 +7,6 @@ from .. import (
     Database,
     Namespace,
 )
-from ..exc import (
-    DoesNotExistError,
-    MultipleRecordsError,
-)
 from .. import mapper
 from ..mapper import (
     Cursor,
@@ -196,7 +192,7 @@ def commit(db):
                     email='test.user@example.com',
                     city='Test City')
     with db.cursor as cursor:
-        with pytest.raises(DoesNotExistError):
+        with pytest.raises(db.DoesNotExistError):
             db.user.by_name.get(cursor, name='Test User')
 
     with db.cursor as cursor:
@@ -217,9 +213,9 @@ def commit(db):
     db.user.remove(cursor, name='Test User 1')
     cursor.user.remove(name='Test User 2')
     cursor.commit()
-    with pytest.raises(DoesNotExistError):
+    with pytest.raises(db.DoesNotExistError):
         db.user.by_name.get(cursor, name='Test User 1')
-    with pytest.raises(DoesNotExistError):
+    with pytest.raises(db.DoesNotExistError):
         db.user.by_name.get(cursor, name='Test User 2')
     cursor.close()
 
@@ -317,7 +313,7 @@ def rollback(db):
                 city='Test City')
     db.user.by_name.get(cursor, name='Test User')
     cursor.rollback()
-    with pytest.raises(DoesNotExistError):
+    with pytest.raises(db.DoesNotExistError):
         db.user.by_name.get(cursor, name='Test User')
     cursor.close()
 
@@ -436,7 +432,7 @@ def test_multiple_records(dbfile):
 
 def multiple_records_error(db):
     with db.cursor as cursor:
-        with pytest.raises(MultipleRecordsError):
+        with pytest.raises(db.MultipleRecordsError):
             db.user.by_city.get(cursor, city='City A')
 
 

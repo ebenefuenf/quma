@@ -362,6 +362,8 @@ class DatabaseCallWrapper(object):
 
 
 class Database(object):
+    DoesNotExistError = exc.DoesNotExistError
+    MultipleRecordsError = exc.MultipleRecordsError
 
     def __init__(self, dburi, *args, **kwargs):
         # if the second arg is present it must be sqldirs
