@@ -82,9 +82,9 @@ def test_root_attr(db):
 
 
 def test_query(db):
-    assert str(db.users.all).startswith('SELECT * FROM users')
+    assert str(db.users.all).startswith('SELECT id, name, email')
     with db.cursor as cursor:
-        assert str(cursor.users.all).startswith('SELECT * FROM users')
+        assert str(cursor.users.all).startswith('SELECT id, name, email')
 
 
 def cursor(db):
@@ -128,10 +128,12 @@ def cursor_call(db):
     cursor = db.cursor()
     try:
         db.user.add(cursor,
+                    id=5,
                     name='Test User 1',
                     email='test.user@example.com',
                     city='Test City')
-        cursor.user.add(name='Test User 2',
+        cursor.user.add(id=6,
+                        name='Test User 2',
                         email='test.user@example.com',
                         city='Test City')
         cursor.commit()
@@ -160,15 +162,28 @@ def first(db):
     cursor = db.cursor()
     assert cursor.users.all.first()['name'] == 'User 1'
     assert db.users.all.first(cursor)['name'] == 'User 1'
+    cursor.close()
 
 
 def test_first(db):
     first(db)
 
 
+def value(db):
+    cursor = db.cursor()
+    assert cursor.users.all.value() == 1
+    assert db.users.all.value(cursor) == 1
+    cursor.close()
+
+
+def test_value(db):
+    value(db)
+
+
 def commit(db):
     with db.cursor as cursor:
         db.user.add(cursor,
+                    id=5,
                     name='Test User',
                     email='test.user@example.com',
                     city='Test City')
@@ -178,10 +193,12 @@ def commit(db):
 
     with db.cursor as cursor:
         db.user.add(cursor,
+                    id=5,
                     name='Test User 1',
                     email='test.user@example.com',
                     city='Test City')
-        cursor.user.add(name='Test User 2',
+        cursor.user.add(id=6,
+                        name='Test User 2',
                         email='test.user@example.com',
                         city='Test City')
         cursor.commit()
@@ -206,6 +223,7 @@ def test_commit(dbfile):
 def test_contextcommit(dbcommit):
     with dbcommit.cursor as cursor:
         dbcommit.user.add(cursor,
+                          id=5,
                           name='Test User',
                           email='test.user@example.com',
                           city='Test City')
@@ -285,6 +303,7 @@ def test_autocommit(qmark_sqldirs):
 def rollback(db):
     cursor = db.cursor()
     db.user.add(cursor,
+                id=5,
                 name='Test User',
                 email='test.user@example.com',
                 city='Test City')

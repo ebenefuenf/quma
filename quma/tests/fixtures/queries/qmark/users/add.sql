@@ -1,4 +1,4 @@
 INSERT INTO users
-    (name, email, city)
+    (id, name, email, city)
 VALUES
-    (:name, :email, :city);
+    (:id, :name, :email, :city);

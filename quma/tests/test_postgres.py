@@ -52,6 +52,13 @@ def test_first(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_value(pgdb, pgpooldb):
+    from .test_db import value
+    for db in (pgdb, pgpooldb):
+        value(db)
+
+
+@pytest.mark.postgres
 def test_commit(pgdb, pgpooldb):
     from .test_db import commit
     for db in (pgdb, pgpooldb):

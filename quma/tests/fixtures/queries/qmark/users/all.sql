@@ -1,1 +1,1 @@
-SELECT * FROM users ORDER BY name;
+SELECT id, name, email, city FROM users ORDER BY id;

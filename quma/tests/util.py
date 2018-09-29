@@ -16,19 +16,19 @@ MYSQL_POOL_URI = f'mysql+pool://{DB_USER}:{DB_PASS}@/{DB_NAME}'
 DROP_USERS = 'DROP TABLE IF EXISTS users;'
 CREATE_USERS = ("""
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
+    id INT PRIMARY KEY,
     name VARCHAR(128) NOT NULL,
     email VARCHAR(128) NOT NULL,
     city VARCHAR(128) NOT NULL);
 """)
 INSERT_USERS = ("""
 INSERT INTO
-    users (name, email, city)
+    users (id, name, email, city)
 VALUES
-    ('User 1', 'user.1@example.com', 'City A'),
-    ('User 2', 'user.2@example.com', 'City A'),
-    ('User 3', 'user.3@example.com', 'City B'),
-    ('User 4', 'user.4@example.com', 'City B');
+    (1, 'User 1', 'user.1@example.com', 'City A'),
+    (2, 'User 2', 'user.2@example.com', 'City A'),
+    (3, 'User 3', 'user.3@example.com', 'City B'),
+    (4, 'User 4', 'user.4@example.com', 'City B');
 """)
 
 

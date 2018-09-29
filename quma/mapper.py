@@ -113,6 +113,9 @@ class Query(object):
         self._execute(cursor, list(args), kwargs, prepare_params)
         return self._fetch(cursor.fetchall)[0]
 
+    def value(self, cursor, *args, prepare_params=None, **kwargs):
+        return self.first(cursor, *args, prepare_params=None, **kwargs)[0]
+
     def many(self, cursor, size=None, *args, **kwargs):
         if size is None:
             size = cursor.arraysize
@@ -204,6 +207,9 @@ class CursorQuery(object):
 
     def first(self, *args, **kwargs):
         return self.query.first(self.cursor, *args, **kwargs)
+
+    def value(self, *args, **kwargs):
+        return self.query.first(self.cursor, *args, **kwargs)[0]
 
     def many(self, *args, **kwargs):
         return self.query.many(self.cursor, *args, **kwargs)

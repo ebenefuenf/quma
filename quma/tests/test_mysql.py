@@ -47,6 +47,13 @@ def test_first(mydb, mypooldbdict):
 
 
 @pytest.mark.mysql
+def test_value(mydbpersist, mypooldb):
+    from .test_db import value
+    for db in (mydbpersist, mypooldb):
+        value(db)
+
+
+@pytest.mark.mysql
 def test_commit(mydb, mypooldb):
     from .test_db import commit
     for db in (mydb, mypooldb):

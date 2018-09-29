@@ -150,6 +150,16 @@ If you want the first record of a result set you can use the
 
     user = cur.users.all.first()
 
+``value`` returns the first value of the first row (i. e. 
+``fetchall()[0][0]``). This comes in handy if you are using a
+``RETURNING`` clause, for example, or return the last inserted
+id after a insert.
+
+.. code-block:: python
+
+    last_inserted_id = cur.users.insert.value()
+
+
 Getting data in chunks
 ----------------------
 
