@@ -1,9 +1,9 @@
-from .mapper import (
+from .mapper import (  # noqa: F401
     Database,
     Namespace,
     connect,
 )
-from .exc import (
+from .exc import (  # noqa: F401
     APIError,
     DoesNotExistError,
     FetchError,

@@ -4,14 +4,14 @@
 
 import threading
 from queue import (
-    Queue as BaseQueue,
-    Full,
     Empty,
+    Full,
 )
+from queue import Queue as BaseQueue
 
 from .exc import (
     OperationalError,
-    TimeoutError
+    TimeoutError,
 )
 
 

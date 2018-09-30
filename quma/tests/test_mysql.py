@@ -1,6 +1,5 @@
-import pytest
-
 import MySQLdb
+import pytest
 
 from . import util
 

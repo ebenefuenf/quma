@@ -1,16 +1,17 @@
-import pytest
 import queue
 import sqlite3
 import threading
 from unittest.mock import Mock
 
+import pytest
+
 from . import util
-from .. import conn
 from .. import (
-    connect,
     Database,
+    conn,
+    connect,
+    exc,
 )
-from .. import exc
 
 
 def get_cursor_mock(exception):

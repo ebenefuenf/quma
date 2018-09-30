@@ -1,13 +1,15 @@
+import sys
 from functools import partial
 from importlib import import_module
 from importlib.machinery import SourceFileLoader
 from itertools import chain
 from pathlib import Path
-import sys
 from urllib.parse import urlparse
 
-from . import exc
-from . import pool
+from . import (
+    exc,
+    pool,
+)
 
 try:
     from mako.template import Template

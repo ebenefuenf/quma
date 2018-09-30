@@ -1,6 +1,5 @@
 import os
 
-
 SQLITE_FILE = '/tmp/quma_test.sqlite'
 DB_NAME = 'quma_test_db'
 DB_USER = 'quma_test_user'

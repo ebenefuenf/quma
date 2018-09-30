@@ -6,8 +6,8 @@ from . import util
 from .. import (
     Database,
     Namespace,
+    mapper,
 )
-from .. import mapper
 from ..mapper import (
     Cursor,
     Query,
