@@ -10,6 +10,7 @@
 .pyre
 .pytest_cache
 .tags*
+.tox*
 MANIFEST
 __pycache__/
 build/

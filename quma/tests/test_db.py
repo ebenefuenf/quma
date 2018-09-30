@@ -298,12 +298,7 @@ def test_autocommit(qmark_sqldirs):
         cursor.execute("INSERT INTO test (name) VALUES ('Test 1');")
         cursor.execute("INSERT INTO test (name) VALUES ('Test 2');")
     db = Database(util.SQLITE_URI, qmark_sqldirs)
-    with db().cursor as cursor:
-        with pytest.raises(sqlite3.OperationalError):
-            cursor.execute('SELECT * FROM test;')
-    db = Database(util.SQLITE_URI, qmark_sqldirs)
     with db(autocommit=True).cursor as cursor:
-        cursor.execute('CREATE TABLE test (name);')
         cursor.execute("INSERT INTO test (name) VALUES ('Test 1');")
         cursor.execute("INSERT INTO test (name) VALUES ('Test 2');")
     db = Database(util.SQLITE_URI, qmark_sqldirs)

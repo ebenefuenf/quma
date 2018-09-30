@@ -23,9 +23,6 @@ class Connection(object):
     def cursor(self, conn):
         return conn.cursor()
 
-    def init_transaction(self, cursor):
-        return cursor
-
     def get_cursor_attr(self, cursor, key):
         return getattr(cursor, key)
 

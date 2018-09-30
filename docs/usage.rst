@@ -223,8 +223,9 @@ commit all changes. As well as rolling back if a error occurs.
     except Exception:
         cur.rollback()
 
-**Note**: If you are using MySQL some statements will automatically
+**Note**: If you are using MySQL or SQLite some statements will automatically
 cause a commit. See the `MySQL docs <http://https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html>`_
+and `SQLite docs <https://docs.python.org/3/library/sqlite3.html#controlling-transactions>`_
 
 If *db* is initialized with the flag ``contextcommit`` set to ``True``
 and a context manager is used, quma will automatically commit when the

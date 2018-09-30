@@ -295,8 +295,6 @@ class Cursor(object):
             self.raw_conn = self.conn.get(autocommit=autocommit)
         self.raw_cursor = RawCursorWrapper(self.conn,
                                            self.conn.cursor(self.raw_conn))
-        if not autocommit:
-            self.raw_cursor = self.conn.init_transaction(self.raw_cursor)
         return self
 
     def put(self, force=False):

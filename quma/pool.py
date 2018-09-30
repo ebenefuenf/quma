@@ -114,9 +114,6 @@ class Pool(object):
     def cursor(self, conn):
         return conn.cursor()
 
-    def init_transaction(self, cursor):
-        return self._conn.init_transaction(cursor)
-
     def get_cursor_attr(self, cursor, key):
         return self._conn.get_cursor_attr(cursor, key)
 

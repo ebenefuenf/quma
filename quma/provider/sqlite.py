@@ -38,12 +38,6 @@ class Connection(conn.Connection):
             conn.row_factory = SQLiteChangelingRow
         return self.disable_autocommit(conn)
 
-    def init_transaction(self, cursor):
-        # We need to exlicitly start a transcaction.
-        # Otherwise sqlite would not support DDL transactions.
-        cursor.execute('BEGIN DEFERRED TRANSACTION;')
-        return cursor
-
     def enable_autocommit_if(self, autocommit, conn):
         if autocommit:
             conn.isolation_level = None
