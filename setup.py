@@ -31,8 +31,10 @@ if impl == 'PyPy':
 setup(
     name='quma',
     version=version,
-    description='quma',
+    description='A SQL/database library',
     long_description=README,
+    long_description_content_type='text/x-rst',
+    keywords='sql database',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
@@ -48,6 +50,8 @@ setup(
     author='ebene fünf GmbH',
     author_email='info@ebenefuenf.de',
     license='MIT License',
+    url='https://github.com/ebenefuenf/quma',
+    python_requires='>=3.5',
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
