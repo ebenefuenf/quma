@@ -6,16 +6,12 @@ DB_PASS = 'quma_test_password'
 try:
     PGSQL_USER = os.environ['QUMA_PGSQL_USER']
     PGSQL_PASS = os.environ['QUMA_PGSQL_PASS']
-    if PGSQL_PASS == '__EMPTY__':
-        PGSQL_PASS = ''
 except KeyError:
     PGSQL_USER = DB_USER
     PGSQL_PASS = DB_PASS
 try:
     MYSQL_USER = os.environ['QUMA_MYSQL_USER']
     MYSQL_PASS = os.environ['QUMA_MYSQL_PASS']
-    if MYSQL_PASS == '__EMPTY__':
-        MYSQL_PASS = ''
 except KeyError:
     MYSQL_USER = DB_USER
     MYSQL_PASS = DB_PASS
