@@ -33,8 +33,7 @@ Given a directory with some SQL scripts e. g.:
     │    └── remove.sql
     └── get_admin.sql
     
-You can access these scripts after connecting to the database (in this example
-we use a SQLite in memory database):
+You can access these scripts after connecting to the database:
     
 .. code-block:: python
 

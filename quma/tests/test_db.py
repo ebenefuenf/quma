@@ -6,11 +6,11 @@ from . import util
 from .. import (
     Database,
     Namespace,
-    mapper,
 )
-from ..mapper import (
-    Cursor,
-    Query,
+from .. import cursor as cursor_
+from .. import (
+    database,
+    query,
 )
 
 
@@ -41,10 +41,10 @@ def test_failing_init(db):
 
 def test_failing_connect():
     with pytest.raises(ValueError) as e:
-        mapper.connect('sqlite+wrong-scheme:///:memory:')
+        database.connect('sqlite+wrong-scheme:///:memory:')
     assert str(e.value).startswith('Wrong scheme')
     with pytest.raises(ValueError) as e:
-        mapper.connect('sqlite:///')
+        database.connect('sqlite:///')
     assert str(e.value).startswith('Required database path')
 
 
@@ -61,7 +61,7 @@ def test_namespace(db):
 
 
 def test_root_attr(db):
-    assert isinstance(db.get_users, Query)
+    assert isinstance(db.get_users, query.Query)
     with db().cursor as cursor:
         assert len(db.get_users(cursor)) == 4
         assert len(cursor.get_users()) == 4
@@ -85,7 +85,7 @@ def test_query(db):
 
 def cursor(db):
     with db().cursor as cursor:
-        assert type(cursor) is Cursor
+        assert type(cursor) is cursor_.Cursor
         assert len(db.users.all(cursor)) == 4
         assert len(cursor.users.all()) == 4
         with pytest.raises(AttributeError):
@@ -327,7 +327,7 @@ def test_rollback(dbfile):
 
 
 def test_overwrite_query_class(pyformat_sqldirs):
-    class MyQuery(Query):
+    class MyQuery(query.Query):
         def the_test(self):
             return 'Test'
     db = Database(util.SQLITE_MEMORY, pyformat_sqldirs, query_factory=MyQuery)
@@ -388,12 +388,12 @@ def test_template_query(db):
         user = db.user.by_name_tmpl.get(cursor, name='User 2')
         assert user.intro == "I'm not User 1"
 
-        tmpl = mapper.Template
-        mapper.Template = None
+        tmpl = query.Template
+        query.Template = None
         with pytest.raises(ImportError) as e:
             db.user.by_name_tmpl.get(cursor, name='User 1')
         assert str(e.value).startswith('To use templates')
-        mapper.Template = tmpl
+        query.Template = tmpl
 
 
 def test_dict_callback(dbdictcb, carrier):

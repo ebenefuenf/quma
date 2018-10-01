@@ -1,6 +1,5 @@
-from .mapper import (  # noqa: F401
+from .database import (  # noqa: F401
     Database,
-    Namespace,
     connect,
 )
 from .exc import (  # noqa: F401
@@ -11,6 +10,7 @@ from .exc import (  # noqa: F401
     OperationalError,
     TimeoutError,
 )
+from .namespace import Namespace
 
 try:
     import psycopg2  # noqa: F401
