@@ -12,6 +12,16 @@ from .exc import (  # noqa: F401
     TimeoutError,
 )
 
+try:
+    import psycopg2  # noqa: F401
+except ImportError:
+    try:
+        from psycopg2cffi import compat  # noqa: F401
+    except ImportError:
+        pass
+    else:
+        compat.register()
+
 
 __all__ = [
     'Database',

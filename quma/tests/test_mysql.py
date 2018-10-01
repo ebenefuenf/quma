@@ -1,7 +1,11 @@
-import MySQLdb
 import pytest
 
 from . import util
+
+try:
+    import MySQLdb
+except ImportError:
+    MySQLdb = None
 
 
 def setup_function(function):

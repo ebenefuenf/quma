@@ -1,11 +1,15 @@
 from unittest.mock import Mock
 
-import psycopg2
 import pytest
 
 from . import util
 from ..exc import FetchError
 from ..provider.postgresql import Connection
+
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None
 
 
 def setup_function(function):

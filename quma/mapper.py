@@ -150,8 +150,8 @@ class Namespace(object):
             self._collect_queries(sqldir)
 
     def _collect_queries(self, sqldir):
-        sqlfiles = chain(sqldir.glob(f'*.{self.db.file_ext}'),
-                         sqldir.glob(f'*.{self.db.tmpl_ext}'))
+        sqlfiles = chain(sqldir.glob('*.{}'.format(self.db.file_ext)),
+                         sqldir.glob('*.{}'.format(self.db.tmpl_ext)))
 
         for sqlfile in sqlfiles:
             filename = Path(sqlfile.name)
@@ -161,13 +161,13 @@ class Namespace(object):
             if hasattr(self, attr):
                 # We have real namespace method which shadows
                 # this file
-                attr = f'_{attr}'
+                attr = '_' + attr
 
-            with open(sqlfile, 'r') as f:
+            with open(str(sqlfile), 'r') as f:
                 self._queries[attr] = self.db.query_factory(
                     f.read(),
                     self.show,
-                    ext.lower() == f'.{self.db.tmpl_ext}',
+                    ext.lower() == '.' + self.db.tmpl_ext,
                     prepare_params=self.db.prepare_params)
 
     def __getattr__(self, attr):
@@ -178,14 +178,14 @@ class Namespace(object):
                 return getattr(self.shadow, attr)
 
         try:
-            sqlfile = self.sqldir / f'{attr}.{self.db.file_ext}'
+            sqlfile = self.sqldir / '.'.join((attr, self.db.file_ext))
             if not sqlfile.is_file():
-                sqlfile = self.sqldir / f'{attr}.{self.db.tmpl_ext}'
-            with open(sqlfile, 'r') as f:
+                sqlfile = self.sqldir / '.'.join((attr, self.db.tmpl_ext))
+            with open(str(sqlfile), 'r') as f:
                 return self.db.query_factory(
                     f.read(),
                     self.show,
-                    Path(sqlfile).suffix == f'.{self.db.tmpl_ext}',
+                    Path(sqlfile).suffix == '.' + self.db.tmpl_ext,
                     prepare_params=self.db.prepare_params)
         except FileNotFoundError:
             return getattr(self.shadow, attr)
@@ -339,7 +339,7 @@ class Cursor(object):
             return CursorNamespace(get_namespace(self, attr), self)
         except AttributeError:
             raise AttributeError('Namespace, Root method, or cursor '
-                                 f'attribute "{attr}" not found.')
+                                 'attribute "{}" not found.'.format(attr))
 
 
 class DatabaseCallWrapper(object):
@@ -385,6 +385,8 @@ class Database(object):
 
         try:
             # A single directory
+            if issubclass(type(self.sqldirs), Path):
+                self.sqldirs = str(self.sqldirs)
             self.register_namespace(self.sqldirs)
         except TypeError:
             # A list/collection of directories
@@ -407,7 +409,7 @@ class Database(object):
         def register(path, ns):
             try:
                 mod_path = str(path / '__init__.py')
-                mod_name = f'quma.mapping.{ns}'
+                mod_name = 'quma.mapping.{}'.format(ns)
                 module = SourceFileLoader(mod_name, mod_path).load_module()
                 if ns == '__root__':
                     class_name = 'Root'
@@ -456,15 +458,15 @@ class Database(object):
         try:
             return get_namespace(self, attr)
         except AttributeError:
-            raise AttributeError(f'Namespace or Root method "{attr}" '
-                                 'not found.')
+            msg = 'Namespace or Root method "{}" not found.'.format(attr)
+            raise AttributeError(msg)
 
 
 def connect(dburi, **kwargs):
     url = urlparse(dburi)
     scheme = url.scheme.split('+')
     module_name = scheme[0]
-    module = import_module(f'quma.provider.{module_name}')
+    module = import_module('quma.provider.{}'.format(module_name))
     conn = getattr(module, 'Connection')(url, **kwargs)
     try:
         if scheme[1].lower() == 'pool':

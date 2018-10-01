@@ -17,7 +17,7 @@ class SQLiteChangelingRow(sqlite3.Row):
         try:
             return self[attr]
         except IndexError as e:
-            msg = f'Row has no field with the name "{attr}"'
+            msg = 'Row has no field with the name "{}"'.format(attr)
             raise AttributeError(msg) from e
 
 

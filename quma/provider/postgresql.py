@@ -1,13 +1,10 @@
 try:
     import psycopg2
 except ImportError:
-    try:
-        from psycopg2cffi import compat
-    except ImportError:
-            raise ImportError('In order to use quma with PostgreSQL you'
-                              'need to install psycopg2 or psycopg2cffi')
-    else:
-        compat.register()
+    raise ImportError('In order to use quma with PostgreSQL you'
+                      'need to install psycopg2 or psycopg2cffi')
+
+
 from psycopg2.extras import (
     DictCursor,
     DictRow,
@@ -42,7 +39,8 @@ class PostgresChangelingRow(DictRow):
         try:
             return list.__getitem__(self, self._index[attr])
         except KeyError:
-            raise AttributeError(f'Row has no field with the name "{attr}"')
+            msg = 'Row has no field with the name "{}"'.format(attr)
+            raise AttributeError(msg)
 
     def __setattr__(self, attr, value):
         index = self.__class__.__dict__['_index']

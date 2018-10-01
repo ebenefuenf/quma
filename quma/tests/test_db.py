@@ -156,6 +156,7 @@ def count(db):
     cursor = db.cursor()
     assert cursor.users.all.count() == 4
     assert db.users.all.count(cursor) == 4
+    cursor.close()
 
 
 def test_count(db):
@@ -189,11 +190,11 @@ def commit(db):
         for i in range(5, 13, 2):
             db.user.add(cursor,
                         id=i,
-                        name=f'Test User {i}',
+                        name='Test User {}'.format(i),
                         email='test.user@example.com',
                         city='Test City')
             cursor.user.add(id=i + 1,
-                            name=f'Test User {i + 1}',
+                            name='Test User {}'.format(i + 1),
                             email='test.user@example.com',
                             city='Test City')
     with db.cursor as cursor:
@@ -206,21 +207,21 @@ def commit(db):
         for i in range(5, 13, 2):
             db.user.add(cursor,
                         id=i,
-                        name=f'Test User {i}',
+                        name='Test User {}'.format(i),
                         email='test.user@example.com',
                         city='Test City')
             cursor.user.add(id=i + 1,
-                            name=f'Test User {i + 1}',
+                            name='Test User {}'.format(i + 1),
                             email='test.user@example.com',
                             city='Test City')
         cursor.commit()
 
     cursor = db.cursor()
     for i in range(5, 13, 2):
-        db.user.by_name.get(cursor, name=f'Test User {i}')
-        cursor.user.by_name.get(name=f'Test User {i + 1}')
-        db.user.remove(cursor, name=f'Test User {i}')
-        cursor.user.remove(name=f'Test User {i + 1}')
+        db.user.by_name.get(cursor, name='Test User {}'.format(i))
+        cursor.user.by_name.get(name='Test User {}'.format(i + 1))
+        db.user.remove(cursor, name='Test User {}'.format(i))
+        cursor.user.remove(name='Test User {}'.format(i + 1))
     cursor.commit()
     with pytest.raises(db.DoesNotExistError):
         db.user.by_name.get(cursor, name='Test User 7')

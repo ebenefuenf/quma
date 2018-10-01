@@ -4,13 +4,14 @@ SQLITE_FILE = '/tmp/quma_test.sqlite'
 DB_NAME = 'quma_test_db'
 DB_USER = 'quma_test_user'
 DB_PASS = 'quma_test_password'
-DSN = f'dbname={DB_NAME} user={DB_USER} password={DB_PASS}'
-SQLITE_URI = f'sqlite:///{SQLITE_FILE}'
+DSN = 'dbname={} user={} password={}'.format(DB_NAME, DB_USER, DB_PASS)
+SQLITE_URI = 'sqlite:///{}'.format(SQLITE_FILE)
 SQLITE_MEMORY = 'sqlite:///:memory:'
-PGSQL_URI = f'postgresql://{DB_USER}:{DB_PASS}@/{DB_NAME}'
-PGSQL_POOL_URI = f'postgresql+pool://{DB_USER}:{DB_PASS}@/{DB_NAME}'
-MYSQL_URI = f'mysql://{DB_USER}:{DB_PASS}@/{DB_NAME}'
-MYSQL_POOL_URI = f'mysql+pool://{DB_USER}:{DB_PASS}@/{DB_NAME}'
+PGSQL_URI = 'postgresql://{}:{}@/{}'.format(DB_USER, DB_PASS, DB_NAME)
+PGSQL_POOL_URI = 'postgresql+pool://{}:{}@/{}'.format(
+    DB_USER, DB_PASS, DB_NAME)
+MYSQL_URI = 'mysql://{}:{}@/{}'.format(DB_USER, DB_PASS, DB_NAME)
+MYSQL_POOL_URI = 'mysql+pool://{}:{}@/{}'.format(DB_USER, DB_PASS, DB_NAME)
 
 DROP_USERS = 'DROP TABLE IF EXISTS users;'
 CREATE_USERS = ("""
