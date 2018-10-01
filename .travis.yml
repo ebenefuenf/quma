@@ -7,7 +7,7 @@ services:
   - postgresql
 before_install:
   - mysql -e 'CREATE DATABASE IF NOT EXISTS quma_test_db;'
-  - mysql -e "CREATE USER quma_test_user WITH PASSWORD 'quma_test_password';"
+  - mysql -e "CREATE USER quma_test_user@localhost IDENTIFIED BY 'quma_test_password';"
   - mysql -e "GRANT ALL PRIVILEGES ON quma_test_db.* TO 'quma_test_user'@'localhost';"
   - psql -c "CREATE USER quma_test_user WITH PASSWORD 'quma_test_password';" -U postgres
   - psql -c 'ALTER USER quma_test_user WITH SUPERUSER;' -U postgres
