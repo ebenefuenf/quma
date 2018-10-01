@@ -39,7 +39,7 @@ object in web applications:
             cur.close()
 
 **Note**: It is always a good idea to close a connection if you're done.
-If you are using a :doc:`connection pool <pool>` it is absolutely necessarry
-and you need to explicitly close the cursor or release the carrier. You can 
+If you are using a carrier and a :doc:`connection pool <pool>` it is absolutely 
+necessarry and you have to explicitly close the cursor or release the carrier. You can 
 do it using ``cur.close()`` or by passing the carrier to ``db.release(carrier)``.
 Otherwise the connection would not be returned to the pool.

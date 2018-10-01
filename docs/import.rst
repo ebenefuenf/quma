@@ -1,28 +1,28 @@
 ===================
-Importable instance
+Importable database
 ===================
 
 Sometimes it isn't enough to create a global ``Database`` instance 
 and import it into other modules. For example if you read the database 
 credentials from a configuration file at runtime and then initialize
-the instance while the uninitialized global was already imported 
+the instance while the uninitialized global is already imported 
 elsewhere. The following code shows a way to keep the quma API in place
 and allows to import the ``db`` wrapper class even if the connection is
 not established yet.
 
 .. code-block:: python
     
-    #####  database.py
+    #####  my_db_module.py
 
     import quma
 
     _db = None
 
-    class DB(type):
+    class MetaDB(type):
         def __getattr__(cls, attr):
             return getattr(_db, attr)
 
-    class db(object, metaclass=DB):
+    class db(object, metaclass=MetaDB):
         def __init__(self, carrier=None, autocommit=None):
             self.carrier = carrier
             self.autocommit = autocommit
@@ -43,18 +43,18 @@ Create the instance in your main module:
     
     #####  main.py
 
-    import database
+    import my_db_module
 
-    database.connect()
+    my_db_module.connect()
 
-Now you can import the class ``database.db`` from everywhere
+Now you can import the class ``my_db_module.db`` from everywhere
 and use it like a usual instance of ``quma.Database``.
 
 .. code-block:: python
     
     #####  e. g. model.py
 
-    from database import db
+    from my_db_module import db
 
     with db.cursor as cur:
         cur.users.all()

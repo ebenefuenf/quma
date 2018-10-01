@@ -13,6 +13,6 @@
    Passing parameters <parameters>
    templates
    shadowing
-   namespaces
+   Custom namespaces and aliasing <namespaces>
    import
    tests

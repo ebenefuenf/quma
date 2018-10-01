@@ -31,6 +31,47 @@ class DatabaseCallWrapper(object):
 
 
 class Database(object):
+    """
+    The database object acts as the central object of the
+    library.
+
+    :param dburi: The connection string. See section "Connection Examples"
+    :param sqldirs: One or more filesystem paths pointing to the sql scripts.
+                    str or pathlib.Path.
+    :param persist: If True quma immediately opens a
+        connection and keeps it open througout the complete application run
+        time. Setting it to True will raise an error if you try to
+        initialize a connection pool. Defaults to false.
+    :param pessimistic: If True quma emits a test statement on
+        a persistent SQL connection every time it is accessed or at the start
+        of each connection pool checkout (see section "Connection Pool"), to
+        test that the database connection is still viable. Defaults to False.
+    :param contextcommit: If True and a context manager is used quma will
+        automatically commit all changes when the context manager exits.
+        Defaults to False.
+    :param prepare_params: A callback function which will be called before
+        every query to prepare the params which will be passed to the query.
+        Defaults to None.
+    :param file_ext: The file extension of sql files. Defaults to 'sql'.
+    :param tmpl_ext: The file extension of template files (see
+        :doc:`Templates <templates>`). Defaults to 'msql'.
+    :param show: Print the executed query to stdout if True. Defaults to False.
+    :param cache: cache the queries in memory if True.
+        Other wise re-read each script when the query is executed.
+        Defaults to False.
+
+    Additional connection pool parameters (see :doc:`Connection pool <pool>`):
+
+    :param size: The size of the pool to be maintained. This is the
+        largest number of connections that will be kept persistently in the
+        pool. The pool begins with no connections. Defaults to 5.
+    :param overflow: The maximum overflow size of the pool. When
+        the number of checked-out connections reaches the size set in `size`,
+        additional connections will be returned up to this limit. Set to -1
+        to indicate no overflow limit. Defaults to 10.
+    :param timeout: The number of seconds to wait before giving
+        up on returning a connection. Defaults to None.
+    """
     DoesNotExistError = exc.DoesNotExistError
     MultipleRecordsError = exc.MultipleRecordsError
 
@@ -101,20 +142,16 @@ class Database(object):
             if path.is_dir():
                 register(path, path.name)
 
-    def close(self):
-        self.conn.close()
-        self.conn = None
+    def execute(self, query, **kwargs):
+        """Execute the statements in ``query`` and commit
+        immediatly.
 
-    def release(self, carrier):
-        if hasattr(carrier, '__quma_conn__'):
-            carrier.__quma_conn__.conn.put(carrier.__quma_conn__.raw_conn)
-            del carrier.__quma_conn__
-
-    def execute(self, sql, **kwargs):
+        :param query: The sql query to execute.
+        """
         result = None
         cur = self.cursor()
         try:
-            cur.execute(sql, **kwargs)
+            cur.execute(query, **kwargs)
             cur.commit()
             if cur.description:
                 result = cur.fetchall()
@@ -123,8 +160,27 @@ class Database(object):
             raise e
         return result
 
+    def close(self):
+        """Close (all) open connections. If you want to reconnect you
+        need to create a new :class:`quma.Database` instance.
+        """
+        self.conn.close()
+        self.conn = None
+
+    def release(self, carrier):
+        """If the ``carrier`` holds a connection close it or return
+        it to the pool.
+
+        :param carrier: An object holding a quma connection. See
+            :doc:`Reusing connections <carrier>`
+        """
+        if hasattr(carrier, '__quma_conn__'):
+            carrier.__quma_conn__.conn.put(carrier.__quma_conn__.raw_conn)
+            del carrier.__quma_conn__
+
     @property
     def cursor(self):
+        """Open a connection and return a cursor."""
         return Cursor(self.conn, self.namespaces, self.contextcommit)
 
     def __getattr__(self, attr):
@@ -136,6 +192,10 @@ class Database(object):
 
 
 def connect(dburi, **kwargs):
+    """
+    Create and return a Connection or Pool object specified
+    via ``dburi`` (a string in the form of an URL)
+    """
     url = urlparse(dburi)
     scheme = url.scheme.split('+')
     module_name = scheme[0]

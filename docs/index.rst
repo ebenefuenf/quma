@@ -22,7 +22,7 @@ Learn more
 * To get started read :doc:`How to use quma <usage>` from start to finish.
 * In :doc:`Connecting <connecting>` you learn how to connect to SQLite, 
   PostgreSQL and MySQL/MariaDB databases.
-* :doc:`Connection pool <pool>` shows how
+* :doc:`Connection pool <pool>`.
 * Learn what a :doc:`Changling cursor <changeling>` is and how it enables
   you to access result data in three different ways.
 * Database management systems have different ways of parameter binding.
@@ -32,7 +32,7 @@ Learn more
 * If you pass more than one directory to the constructor, quma shadows 
   duplicate files. See how this works in :doc:`Shadowing <shadowing>`.
 * You can add custom methods to namespaces. Learn how to do it in 
-  :doc:`Custom namespaces <namespaces>`.
+  :doc:`Custom namespaces <namespaces>`. You will also learn about aliasing.
 * If you like to work on quma itself, :doc:`Testing <tests>` has the
   information on how to run its tests.
 

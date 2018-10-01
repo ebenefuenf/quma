@@ -73,7 +73,7 @@ quma provides two ways to create a cursor object. Either by using a context mana
     with db.cursor as cur:
         ...
 
-Or by calling the ``cursor`` method of the ``Database`` instance:
+Or by calling the ``cursor`` method of the :class:`Database` instance:
 
 .. code-block:: python
 
@@ -86,13 +86,14 @@ Or by calling the ``cursor`` method of the ``Database`` instance:
 Running queries
 ---------------
 
-To run the sql script from the path(s) you passed to the ``Database`` constructor
+To run the sql script from the path(s) you passed to the :class:`Database` constructor
 you call members of the Database instance or the cursor (*db* and *cur* from now on). 
 
-Scripts and directories at the root of the path(s) are available as members of *db* or *cur*. 
-After initialisation of our example dir above, the script ``/get_admin.sql`` is
-is accessible as an instance of ``Query`` (``db.get_admin`` or ``cur.get_admin``) and the 
-directory ``/users`` as instance of ``Namespace`` (``db.users`` or ``cur.users``). 
+Scripts and directories at the root of the path(s) are also available as members of *db*
+or *cur*. After initialisation of our example dir above, the script ``/get_admin.sql`` is
+available as :class:`Query` instance (``db.get_admin`` or ``cur.get_admin``)
+and the directory ``/users`` as instance of :class:`Namespace` (``db.users`` or
+``cur.users``). 
 
 Call members of *cur*:
 
@@ -100,6 +101,8 @@ Call members of *cur*:
 
     with db.cursor as cur:
         all_users = cur.users.all()
+        for user in all_users:
+            print(user['name'])
 
 The same using the *db* API:
 
@@ -244,7 +247,7 @@ context manager ends. So you don't need to call ``cur.commit()``.
 Autocommit
 ~~~~~~~~~~
 
-If you pass ``autocommit=True`` on cursor init each statement (query) 
+If you pass ``autocommit=True`` when you initialize a cursor, each query
 will be executed in its own transaction that is implicitly committed.
 
 .. code-block:: python
@@ -274,3 +277,32 @@ If there is a result it will be returned otherwise it returns ``None``.
     users = db.execute('SELECT * FROM users')
     for user in users:
         print(user.name)
+
+
+Accessing the DBAPI cursor and connection
+-----------------------------------------
+
+The underlying DBAPI connection and cursor objects are available as
+members of the cursor instance. The connection object is ``raw_conn``
+and the cursor ``raw_cursor.cursor``.
+
+.. code-block:: python
+
+    # The connection
+    dbapi_cursor = cur.raw_conn.autocommit = True
+    dbapi_cursor = cur.raw_conn.cursor()
+    
+    # The cursor
+    cur.raw_cursor.cursor.execute('SELECT * FROM users;')
+    users = cur.raw_cursor.cursor.fetchall()
+    # raw_cursor wraps the real cursor. This would work also
+    cur.raw_cursor.execute('SELECT * FROM users;')
+    users = cur.raw_cursor.fetchall()
+
+All members of the ``raw_cursor.cursor`` object are also available as members 
+of *cur* so there should be no need to use it directly:
+
+.. code-block:: python
+
+    cur.execute('SELECT * FROM users;')
+    users = cur.fetchall()

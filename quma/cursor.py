@@ -13,12 +13,12 @@ class CarriedConnection(object):
 class RawCursorWrapper(object):
     def __init__(self, conn, raw_cursor):
         self.conn = conn
-        self.raw_cursor = raw_cursor
+        self.cursor = raw_cursor
         self.has_rowcount = conn.has_rowcount
 
     def __getattr__(self, key):
         try:
-            return self.conn.get_cursor_attr(self.raw_cursor, key)
+            return self.conn.get_cursor_attr(self.cursor, key)
         except AttributeError as e:
             raise e
 
