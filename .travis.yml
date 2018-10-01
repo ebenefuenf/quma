@@ -1,0 +1,29 @@
+language: python
+install:
+  - pip install tox
+services:
+  - mysql
+  - postgresql
+before_install:
+  - mysql -e 'CREATE DATABASE IF NOT EXISTS quma_test_db;'
+  - psql -c 'CREATE DATABASE quma_test_db;' -U postgres
+env:
+  - QUMA_PGSQL_USER=postgres
+  - QUMA_PGSQL_PASS=
+  - QUMA_MYSQL_USER=root
+  - QUMA_MYSQL_USER=
+matrix:
+  include:
+    - python: 3.5
+      env:
+        - TOX_ENV=py35
+    - python: 3.6
+      env:
+        - TOX_ENV=py36
+    - python: 3.7
+      env:
+        - TOX_ENV=py37
+    - python: pypy3.5
+      env:
+        - TOX_ENV=pypy35
+script: tox --recreate -e $TOX_ENV

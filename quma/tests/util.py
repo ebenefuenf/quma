@@ -1,17 +1,32 @@
 import os
 
-SQLITE_FILE = '/tmp/quma_test.sqlite'
-DB_NAME = 'quma_test_db'
 DB_USER = 'quma_test_user'
 DB_PASS = 'quma_test_password'
+
+try:
+    PGSQL_USER = os.environ['QUMA_PGSQL_USER']
+    PGSQL_PASS = os.environ['QUMA_PGSQL_PASS']
+except KeyError:
+    PGSQL_USER = DB_USER
+    PGSQL_PASS = DB_PASS
+try:
+    MYSQL_USER = os.environ['QUMA_MYSQL_USER']
+    MYSQL_PASS = os.environ['QUMA_MYSQL_PASS']
+except KeyError:
+    MYSQL_USER = DB_USER
+    MYSQL_PASS = DB_PASS
+
+SQLITE_FILE = '/tmp/quma_test.sqlite'
+DB_NAME = 'quma_test_db'
 DSN = 'dbname={} user={} password={}'.format(DB_NAME, DB_USER, DB_PASS)
 SQLITE_URI = 'sqlite:///{}'.format(SQLITE_FILE)
 SQLITE_MEMORY = 'sqlite:///:memory:'
-PGSQL_URI = 'postgresql://{}:{}@/{}'.format(DB_USER, DB_PASS, DB_NAME)
+PGSQL_URI = 'postgresql://{}:{}@/{}'.format(PGSQL_USER, PGSQL_PASS, DB_NAME)
 PGSQL_POOL_URI = 'postgresql+pool://{}:{}@/{}'.format(
-    DB_USER, DB_PASS, DB_NAME)
-MYSQL_URI = 'mysql://{}:{}@/{}'.format(DB_USER, DB_PASS, DB_NAME)
-MYSQL_POOL_URI = 'mysql+pool://{}:{}@/{}'.format(DB_USER, DB_PASS, DB_NAME)
+    PGSQL_USER, PGSQL_PASS, DB_NAME)
+MYSQL_URI = 'mysql://{}:{}@/{}'.format(MYSQL_USER, MYSQL_PASS, DB_NAME)
+MYSQL_POOL_URI = 'mysql+pool://{}:{}@/{}'.format(
+    MYSQL_USER, MYSQL_PASS, DB_NAME)
 
 DROP_USERS = 'DROP TABLE IF EXISTS users;'
 CREATE_USERS = ("""
