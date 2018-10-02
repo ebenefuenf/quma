@@ -1,3 +1,5 @@
+import platform
+
 from .database import (  # noqa: F401
     Database,
     connect,
@@ -22,6 +24,7 @@ except ImportError:
     else:
         compat.register()
 
+PLATFORM = platform.python_implementation()
 
 __all__ = [
     'Database',
@@ -34,4 +37,4 @@ __all__ = [
     'OperationalError',
     'TimeoutError',
 ]
-__version__ = '0.1.0a1'
+__version__ = '0.1.0a2'

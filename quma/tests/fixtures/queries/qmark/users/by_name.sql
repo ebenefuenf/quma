@@ -1,1 +1,1 @@
-SELECT email, city FROM users WHERE name = :name;
+SELECT email, city, 'the keys' AS keys FROM users WHERE name = :name;

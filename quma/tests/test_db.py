@@ -1,4 +1,6 @@
+import platform
 import sqlite3
+from unittest import mock
 
 import pytest
 
@@ -344,11 +346,18 @@ def changeling_cursor(db):
         assert user.email == 'test@example.com'
         with pytest.raises(AttributeError):
             user.wrong_attr
-        assert 'email' in user.keys()
+        assert 'email' in user._keys()
 
 
 def test_changeling_cursor(db):
     changeling_cursor(db)
+
+
+def test_changeling_cursor_hidden_members(db):
+    with db.cursor as cursor:
+        user = db.user.by_name.get(cursor, name='User 1')
+        assert user.keys == 'the keys'
+        assert set(user._keys()) == set(['email', 'city', 'keys'])
 
 
 def no_changeling_cursor(pgdb_persist, getter, error):
@@ -368,6 +377,23 @@ def test_no_changeling_cursor(db_no_changeling):
     no_changeling_cursor(db_no_changeling,
                          lambda user: user.email,
                          AttributeError)
+
+
+def test_pypy_changeling_init(qmark_sqldirs):
+    with mock.patch('quma.provider.sqlite.PLATFORM', 'PyPy'):
+        db = Database(util.SQLITE_MEMORY,
+                      sqldirs=qmark_sqldirs,
+                      persist=True,
+                      changeling=True)
+        db.execute(util.CREATE_USERS)
+        db.execute(util.INSERT_USERS)
+        if platform.python_implementation() == 'PyPy':
+            with db.cursor as cursor:
+                cursor.users.all()
+        else:
+            with pytest.raises(TypeError):
+                with db.cursor as cursor:
+                    cursor.users.all()
 
 
 def test_qmark_query(db):

@@ -98,6 +98,14 @@ def test_changeling_cursor(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_changeling_cursor_hidden_members(pgdb):
+    with pgdb.cursor as cursor:
+        user = pgdb.user.by_name.get(cursor, name='User 1')
+        assert user.count == 13
+        assert user._count(13) == 2
+
+
+@pytest.mark.postgres
 def test_no_changeling_cursor(pgdb_persist):
     from .test_db import no_changeling_cursor
     no_changeling_cursor(pgdb_persist,

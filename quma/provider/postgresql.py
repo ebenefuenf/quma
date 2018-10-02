@@ -35,10 +35,33 @@ class PostgresChangelingRow(DictRow):
         self.__class__.__dict__['_index'].__set__(self, cursor.index)
         self[:] = [None] * len(cursor.description)
 
-    def __getattr__(self, attr):
+    def __getattribute__(self, attr):
+        # Lookup fields in the query result
         try:
-            return list.__getitem__(self, self._index[attr])
-        except KeyError:
+            cls = super().__getattribute__('__class__')
+            index = cls.__dict__['_index']
+            return list.__getitem__(self, index.__get__(self)[attr])
+        except (AttributeError, KeyError):
+            pass
+        # Try to return members of DictRow itself. For example .count()
+        try:
+            return super().__getattribute__(attr)
+        except AttributeError:
+            pass
+        # Try to return "hidden" DictRow members.
+        #
+        # Example: if there is a field 'count' in the result
+        # row you can't access the original method 'count' of
+        # the DictRow object. If the original name is prefixed
+        # with _ the underscore is removed tried again.
+        # e. g. row._count(value) will be row.count(value)
+        try:
+            if attr.startswith('_'):
+                attr = attr[1:]
+            else:
+                raise AttributeError
+            return super().__getattribute__(attr)
+        except AttributeError:
             msg = 'Row has no field with the name "{}"'.format(attr)
             raise AttributeError(msg)
 

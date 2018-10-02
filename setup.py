@@ -10,6 +10,7 @@ from setuptools import (
 if sys.version_info < (3, 5):
     raise Exception('quma requires Python 3.5 or higher.')
 
+PLATFORM = platform.python_implementation()
 
 with open('quma/__init__.py', 'rt', encoding='utf8') as f:
     version = re.search(r'__version__ = \'(.*?)\'', f.read()).group(1)
@@ -18,14 +19,13 @@ with open('README.rst', 'rt', encoding='utf8') as f:
     README = f.read()
 
 test = ['pytest', 'pytest-cov']
-impl = platform.python_implementation()
 extras = {
     'test':  test,
     'templates': ['mako'],
     'postgres': ['psycopg2'],
     'mysql': ['mysqlclient'],
 }
-if impl == 'PyPy':
+if PLATFORM == 'PyPy':
     extras['postgres'] = 'psycopg2cffi'
 
 setup(
