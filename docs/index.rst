@@ -20,6 +20,7 @@ Learn more
 * If you want to know how to install quma and its dependencies,
   see :doc:`Installation <install>`.
 * To get started read :doc:`How to use quma <usage>` from start to finish.
+* To see what you can do with query results read :doc:`The Result class <result>`.
 * In :doc:`Connecting <connecting>` you learn how to connect to SQLite, 
   PostgreSQL and MySQL/MariaDB databases.
 * :doc:`Connection pool <pool>`.
