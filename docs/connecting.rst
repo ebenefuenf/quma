@@ -2,7 +2,7 @@
 Connecting
 ==========
 
-You connect to a Server by creating an instance of the class 
+You connect to a server/database by creating an instance of the class 
 :class:`quma.Database`. You have to at least provide a valid
 database URL and the path to your sql scripts. See below for the 
 details.
@@ -14,6 +14,12 @@ Connection Examples
 .. code-block:: python
 
     sqldir = '/path/to/sql/scripts'
+
+    # can also be a list of paths:
+    sqldir = [
+      '/path/to/sql/scripts',
+      '/another/path/to/sql/scripts',
+    ]
 
     # SQLite
     db = Database('sqlite:////path/to/db.sqlite', sqldir)

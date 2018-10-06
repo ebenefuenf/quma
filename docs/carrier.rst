@@ -2,8 +2,9 @@
 Reusing connections
 ===================
 
-To reuse connections you can pass a carrier object to ``db``. quma then
-creates the attribute `__quma_conn__` on the carrier holding the 
+To reuse connections you can pass a carrier object to *db* when you
+create a cursor. quma then
+creates the attribute ``__quma_conn__`` on the carrier holding the 
 connection object. You should only use this feature if that fact doesn't
 lead to problems in your application. Only objects which allow adding 
 attributes at runtime are supported. A good example is the request
@@ -27,8 +28,8 @@ object in web applications:
     @view_config(route_name='user')
     def user_view(request):
         with db(request).cursor as cur:
-            user = cur.user.by_name(name='Username')
-            do_more(request, user.id)
+            user = cur.user.by_name(name='Username').one()
+            do_more(request, user['id'])
 
         with db(request).cursor as cur:
             # reuses the connection

@@ -2,9 +2,9 @@
 Passing Parameters to SQL Queries
 =================================
 
-SQLite supports two kinds of placeholders: question marks (*qmark* style)
+SQLite supports two kinds of placeholders: question marks (`qmark` style)
 and named placeholders (named style). PostgreSQL/MySQL/MariaDB support 
-simple (`%s`) and named (`%(name)s`) *pyformat* placeholders:
+simple (`%s`) and named (`%(name)s`) `pyformat` placeholders:
 
 .. code-block:: sql
 
@@ -21,8 +21,9 @@ simple (`%s`) and named (`%(name)s`) *pyformat* placeholders:
 .. code-block:: python
 
     # simple style (? or %s)
-    cur.users.by_id.get(1)
-    db.users.by_id.get(c, 1)
+    cur.users.by_id(1)
+    db.users.by_id(cur, 1)
+
     # named style (:name or %(name)s)
-    cur.users.by_id.get(id=1)
-    db.users.by_id.get(c, id=1)
+    cur.users.by_id(id=1)
+    db.users.by_id(cur, id=1)

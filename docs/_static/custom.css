@@ -6,3 +6,35 @@ div.admonition p.admonition-title {
 div.admonition p.last {
     margin-top: 5px;
 }
+
+.py-meth {
+    color: #0b3e80;
+}
+
+em {
+    color: #980000;
+}
+
+dl.class em {
+    color: #3e4349;
+}
+
+.highlight .k, .highlight .kn {
+    color: #0088c2;
+}
+.highlight .ne {
+    font-weight: normal;
+    color: #0068a2;
+}
+.highlight .c1 {
+    color: #a4a4a4;
+}
+.highlight .bp {
+    color: #c67000;
+}
+.highlight .p {
+    font-weight: normal;
+}
+.highlight .mi {
+    color: #cc0000;
+}

@@ -34,6 +34,13 @@ def test_cursor_call(mydb, mypooldb):
 
 
 @pytest.mark.mysql
+def test_count(mydb, mypooldb):
+    from .test_db import count
+    for db in (mydb, mypooldb):
+        count(db)
+
+
+@pytest.mark.mysql
 def test_first(mydb, mypooldbdict):
     from .test_db import first
     for db in (mydb, mypooldbdict):

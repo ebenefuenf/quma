@@ -3,15 +3,15 @@ Changling Cursor
 ================
 
 If you are using **SQLite** or **PostgreSQL** you can access result 
-object attributes by three different methods if you pass 
-``changling=True`` on db initialization. (MySQL does not support it. See below)
+object attributes using three different methods if you pass 
+``changling=True`` on *db* initialization. (**MySQL** does not support it. See below)
 
 .. code-block:: python
 
     db = Database('sqlite:///:memory:', sqldir, changeling=True)
 
     with db.cursor as c:
-        user = db.users.by_id.get(c, 13)
+        user = db.users.by_id(c, 13).one()
         name = user[0]       # by index
         name = user['name']  # by key
         name = user.name     # by attribute
@@ -36,7 +36,7 @@ the method is shadowed:
 
 .. code-block:: python
 
-    row = cur.users.by_id(13)
+    row = cur.users.by_id(13).one()
     assert row.keys == 'the keys'
     
     # If you want to call the keys method of row prefix it with _

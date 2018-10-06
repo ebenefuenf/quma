@@ -4,7 +4,7 @@ Custom namespaces
 
 quma automatically creates namespace objects when it reads in your sql scripts.
 Each subfolder in the script directory will result in a namespace object
-as a member of *db* or *cur*. 
+as a direct member of *db* or *cur*. 
 
 You can add custom methods to these objects by putting a :file:`__init__.py`
 file to the subfolder which is your namespace and add a subclass of
@@ -41,7 +41,7 @@ Root members
 ------------
 
 If you want to add root level methods you need to add :file:`__init__.py`
-to the root of your script directory and name the subclass *Root*.
+to the root of your script directory and name the subclass `Root`.
 
 ::
 

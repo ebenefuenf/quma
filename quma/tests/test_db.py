@@ -461,6 +461,19 @@ def test_multiple_records_error(dbfile):
     multiple_records_error(dbfile)
 
 
+def count(db):
+    cursor = db.cursor()
+    assert cursor.users.all().count() == 7
+    assert db.users.all(cursor).count() == 7
+    assert len(cursor.users.all()) == 7
+    assert len(db.users.all(cursor)) == 7
+    cursor.close()
+
+
+def test_count(db):
+    count(db)
+
+
 def many(db):
     with db.cursor as cursor:
         users = db.users.all(cursor)

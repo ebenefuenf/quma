@@ -2,13 +2,13 @@
 Shadowing
 =========
 
-If you pass a list of two or more directories to the ``Database``
+If you pass a list of two or more directories to the :class:`Database`
 constructor the order is important. Files from subsequent directories
-in the list with the same relative path shadow (or overwrite) files
+in the list with the same relative path will shadow (or overwrite) files
 from preceding directories.
 
 Let's say you have two different directories with SQL scripts you
-like to use with quma. For example directory *one*:
+like to use with quma. For example directory `one`:
 
 ::
 
@@ -23,7 +23,7 @@ like to use with quma. For example directory *one*:
     └── remove_admin.sql
 
 
-and directory *two*:
+and directory `two`:
 
 ::
 
