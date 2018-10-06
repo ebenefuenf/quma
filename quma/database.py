@@ -73,7 +73,7 @@ class Database(object):
         up on returning a connection. Defaults to None.
     """
     DoesNotExistError = exc.DoesNotExistError
-    MultipleRecordsError = exc.MultipleRecordsError
+    MultipleRowsError = exc.MultipleRowsError
 
     def __init__(self, dburi, *args, **kwargs):
         # if the second arg is present it must be sqldirs

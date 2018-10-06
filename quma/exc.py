@@ -3,7 +3,7 @@ class APIError(Exception):
     pass
 
 
-class MultipleRecordsError(Exception):
+class MultipleRowsError(Exception):
     pass
 
 

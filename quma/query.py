@@ -57,7 +57,7 @@ class Result(object):
             if rowcount == 0:
                 raise exc.DoesNotExistError()
             if rowcount > 1:
-                raise exc.MultipleRecordsError()
+                raise exc.MultipleRowsError()
 
         # SQLite does not support rowcount
         if self.cursor.has_rowcount:

@@ -453,7 +453,7 @@ def test_multiple_records(dbfile):
 
 def multiple_records_error(db):
     with db.cursor as cursor:
-        with pytest.raises(db.MultipleRecordsError):
+        with pytest.raises(db.MultipleRowsError):
             db.user.by_city(cursor, city='City A').one()
 
 

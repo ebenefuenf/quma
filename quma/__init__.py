@@ -8,7 +8,7 @@ from .exc import (  # noqa: F401
     APIError,
     DoesNotExistError,
     FetchError,
-    MultipleRecordsError,
+    MultipleRowsError,
     OperationalError,
     TimeoutError,
 )
@@ -33,7 +33,7 @@ __all__ = [
     'APIError',
     'DoesNotExistError',
     'FetchError',
-    'MultipleRecordsError',
+    'MultipleRowsError',
     'OperationalError',
     'TimeoutError',
 ]

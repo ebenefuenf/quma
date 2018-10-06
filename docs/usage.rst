@@ -193,14 +193,14 @@ Getting a single row
 If you now there will be only one row in the result of a query
 you can use the :meth:`one()` method to get it. quma will raise a 
 :exc:`DoesNotExistError` error if there is no row in the result 
-and a :exc:`MultipleRecordsError` if there are returned more than one
+and a :exc:`MultipleRowsError` if there are returned more than one
 row. 
 
 .. code-block:: python
 
     from quma import (
         DoesNotExistError, 
-        MultipleRecordsError,
+        MultipleRowsError,
     )
     ...
 
@@ -209,10 +209,10 @@ row.
             user = cur.users.by_id(id=13).one()
         except DoesNotExistError:
             print('The user does not exist')
-        except MultipleRecordsError:
+        except MultipleRowsError:
             print('There are multiple users with the same id')
 
-:exc:`DoesNotExistError` and :exc:`MultipleRecordsError` are also attached
+:exc:`DoesNotExistError` and :exc:`MultipleRowsError` are also attached
 to the :class:`Database` class so you can access it from the *db* instance.
 For example:
 
@@ -223,7 +223,7 @@ For example:
             user = cur.users.by_id(id=13).one()
         except db.DoesNotExistError:
             print('The user does not exist')
-        except db.MultipleRecordsError:
+        except db.MultipleRowsError:
             print('There are multiple users with the same id')
 
 It is also possible to get a single row by accessing its index
