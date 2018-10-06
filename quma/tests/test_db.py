@@ -65,10 +65,10 @@ def test_namespace(db):
 def test_root_attr(db):
     assert isinstance(db.get_users, query.Query)
     with db().cursor as cursor:
-        assert len(db.get_users(cursor)) == 4
-        assert len(cursor.get_users()) == 4
-        assert len(db.root.get_users(cursor)) == 4
-        assert len(cursor.root.get_users()) == 4
+        assert len(db.get_users(cursor)) == 7
+        assert len(cursor.get_users()) == 7
+        assert len(db.root.get_users(cursor)) == 7
+        assert len(cursor.root.get_users()) == 7
         assert db.get_test(cursor) == 'Test'
         assert cursor.get_test(cursor) == 'Test'
         assert db.root.get_test(cursor) == 'Test'
@@ -88,8 +88,8 @@ def test_query(db):
 def cursor(db):
     with db().cursor as cursor:
         assert type(cursor) is cursor_.Cursor
-        assert len(db.users.all(cursor)) == 4
-        assert len(cursor.users.all()) == 4
+        assert len(db.users.all(cursor)) == 7
+        assert len(cursor.users.all()) == 7
         with pytest.raises(AttributeError):
             cursor.raw_cursor.non_existent_attr
 
@@ -101,8 +101,8 @@ def test_cursor(db):
 def test_carrier(dbfile):
     carrier = type('Carrier', (), {})
     with dbfile(carrier).cursor as cursor:
-        assert len(dbfile.users.all(cursor)) == 4
-        assert len(cursor.users.all()) == 4
+        assert len(dbfile.users.all(cursor)) == 7
+        assert len(cursor.users.all()) == 7
         rc = cursor.raw_conn
     assert hasattr(carrier, '__quma_conn__')
     with dbfile(carrier).cursor as cursor:
@@ -134,11 +134,11 @@ def cursor_call(db):
     cursor = db.cursor()
     try:
         db.user.add(cursor,
-                    id=5,
+                    id=8,
                     name='Test User 1',
                     email='test.user@example.com',
                     city='Test City')
-        cursor.user.add(id=6,
+        cursor.user.add(id=9,
                         name='Test User 2',
                         email='test.user@example.com',
                         city='Test City')
@@ -154,21 +154,10 @@ def test_cursor_call(db):
     cursor_call(db)
 
 
-def count(db):
-    cursor = db.cursor()
-    assert cursor.users.all.count() == 4
-    assert db.users.all.count(cursor) == 4
-    cursor.close()
-
-
-def test_count(db):
-    count(db)
-
-
 def first(db):
     cursor = db.cursor()
-    assert cursor.users.all.first()['name'] == 'User 1'
-    assert db.users.all.first(cursor)['name'] == 'User 1'
+    assert cursor.users.all().first['name'] == 'User 1'
+    assert db.users.all(cursor).first['name'] == 'User 1'
     cursor.close()
 
 
@@ -178,8 +167,8 @@ def test_first(db):
 
 def value(db):
     cursor = db.cursor()
-    assert cursor.users.all.value() == 1
-    assert db.users.all.value(cursor) == 1
+    assert cursor.users.all().value == 1
+    assert db.users.all(cursor).value == 1
     cursor.close()
 
 
@@ -189,7 +178,7 @@ def test_value(db):
 
 def commit(db):
     with db.cursor as cursor:
-        for i in range(5, 13, 2):
+        for i in range(8, 16, 2):
             db.user.add(cursor,
                         id=i,
                         name='Test User {}'.format(i),
@@ -201,12 +190,12 @@ def commit(db):
                             city='Test City')
     with db.cursor as cursor:
         with pytest.raises(db.DoesNotExistError):
-            db.user.by_name.get(cursor, name='Test Use 5')
+            db.user.by_name(cursor, name='Test User 8').one
         with pytest.raises(db.DoesNotExistError):
-            db.user.by_name.get(cursor, name='Test Use 11')
+            db.user.by_name(cursor, name='Test User 11').one
 
     with db.cursor as cursor:
-        for i in range(5, 13, 2):
+        for i in range(8, 16, 2):
             db.user.add(cursor,
                         id=i,
                         name='Test User {}'.format(i),
@@ -219,16 +208,16 @@ def commit(db):
         cursor.commit()
 
     cursor = db.cursor()
-    for i in range(5, 13, 2):
-        db.user.by_name.get(cursor, name='Test User {}'.format(i))
-        cursor.user.by_name.get(name='Test User {}'.format(i + 1))
+    for i in range(8, 16, 2):
+        db.user.by_name(cursor, name='Test User {}'.format(i)).one
+        cursor.user.by_name(name='Test User {}'.format(i + 1)).one
         db.user.remove(cursor, name='Test User {}'.format(i))
         cursor.user.remove(name='Test User {}'.format(i + 1))
     cursor.commit()
     with pytest.raises(db.DoesNotExistError):
-        db.user.by_name.get(cursor, name='Test User 7')
+        db.user.by_name(cursor, name='Test User 7').get()
     with pytest.raises(db.DoesNotExistError):
-        db.user.by_name.get(cursor, name='Test User 8')
+        db.user.by_name(cursor, name='Test User 8').get()
     cursor.close()
 
 
@@ -239,12 +228,12 @@ def test_commit(dbfile):
 def test_contextcommit(dbcommit):
     with dbcommit.cursor as cursor:
         dbcommit.user.add(cursor,
-                          id=5,
+                          id=8,
                           name='Test User',
                           email='test.user@example.com',
                           city='Test City')
     with dbcommit.cursor as cursor:
-        user = dbcommit.user.by_name.get(cursor, name='Test User')
+        user = dbcommit.user.by_name(cursor, name='Test User').get()
         assert user.email == 'test.user@example.com'
 
 
@@ -313,14 +302,14 @@ def test_autocommit(qmark_sqldirs):
 def rollback(db):
     cursor = db.cursor()
     db.user.add(cursor,
-                id=5,
+                id=8,
                 name='Test User',
                 email='test.user@example.com',
                 city='Test City')
-    db.user.by_name.get(cursor, name='Test User')
+    db.user.by_name(cursor, name='Test User').get()
     cursor.rollback()
     with pytest.raises(db.DoesNotExistError):
-        db.user.by_name.get(cursor, name='Test User')
+        db.user.by_name(cursor, name='Test User').get()
     cursor.close()
 
 
@@ -338,7 +327,7 @@ def test_overwrite_query_class(pyformat_sqldirs):
 
 def changeling_cursor(db):
     with db.cursor as cursor:
-        user = db.user.by_name.get(cursor, name='User 3')
+        user = db.user.by_name(cursor, name='User 3').one
         assert user[0] == 'user.3@example.com'
         assert user['email'] == 'user.3@example.com'
         assert user.email == 'user.3@example.com'
@@ -355,7 +344,7 @@ def test_changeling_cursor(db):
 
 def test_changeling_cursor_hidden_members(db):
     with db.cursor as cursor:
-        user = db.user.by_name.get(cursor, name='User 1')
+        user = db.user.by_name(cursor, name='User 1').one
         assert user.keys == 'the keys'
         assert set(user._keys()) == set(['email', 'city', 'keys'])
 
@@ -363,7 +352,7 @@ def test_changeling_cursor_hidden_members(db):
 def no_changeling_cursor(pgdb_persist, getter, error):
     # pgdb_persist does not use the changeling factory
     with pgdb_persist.cursor as cursor:
-        user = pgdb_persist.user.by_name.get(cursor, name='User 3')
+        user = pgdb_persist.user.by_name(cursor, name='User 3').one
         assert user[0] == 'user.3@example.com'
         with pytest.raises(error):
             getter(user)
@@ -389,16 +378,16 @@ def test_pypy_changeling_init(qmark_sqldirs):
         db.execute(util.INSERT_USERS)
         if platform.python_implementation() == 'PyPy':
             with db.cursor as cursor:
-                cursor.users.all()
+                cursor.users.all().first
         else:
             with pytest.raises(TypeError):
                 with db.cursor as cursor:
-                    cursor.users.all()
+                    cursor.users.all().first
 
 
 def test_qmark_query(db):
     with db.cursor as cursor:
-        user = db.user.by_email.get(cursor, 'user.3@example.com', 1)
+        user = db.user.by_email(cursor, 'user.3@example.com', 1).one
         assert user[0] == 'User 3'
         assert user['name'] == 'User 3'
         assert user.name == 'User 3'
@@ -409,15 +398,15 @@ def test_qmark_query(db):
 
 def test_template_query(db):
     with db.cursor as cursor:
-        user = db.user.by_name_tmpl.get(cursor, name='User 1')
+        user = db.user.by_name_tmpl(cursor, name='User 1').one
         assert user.intro == "I'm User 1"
-        user = db.user.by_name_tmpl.get(cursor, name='User 2')
+        user = db.user.by_name_tmpl(cursor, name='User 2').one
         assert user.intro == "I'm not User 1"
 
         tmpl = query.Template
         query.Template = None
         with pytest.raises(ImportError) as e:
-            db.user.by_name_tmpl.get(cursor, name='User 1')
+            db.user.by_name_tmpl(cursor, name='User 1').get()
         assert str(e.value).startswith('To use templates')
         query.Template = tmpl
 
@@ -429,9 +418,9 @@ def test_dict_callback(dbdictcb, carrier):
         return {'name': 'User 3'}
 
     with db(carrier).cursor as c:
-        user = db.user.by_name.get(c)
+        user = db.user.by_name(c).get()
         assert user['city'] == 'City A'
-        user = db.user.by_name.get(c, prepare_params=dict_callback)
+        user = db.user.by_name(c, prepare_params=dict_callback).get()
         assert user['city'] == 'City B'
 
 
@@ -442,9 +431,9 @@ def test_seq_callback(dbseqcb, carrier):
         return ['user.3@example.com']
 
     with db(carrier).cursor as c:
-        user = db.user.by_email.get(c, 1)
+        user = db.user.by_email(c, 1).get()
         assert user['city'] == 'City A'
-        user = db.user.by_email.get(c, 1, prepare_params=seq_callback)
+        user = db.user.by_email(c, 1, prepare_params=seq_callback).get()
         assert user['city'] == 'City B'
 
 
@@ -463,7 +452,7 @@ def test_multiple_records(dbfile):
 def multiple_records_error(db):
     with db.cursor as cursor:
         with pytest.raises(db.MultipleRecordsError):
-            db.user.by_city.get(cursor, city='City A')
+            db.user.by_city(cursor, city='City A').one
 
 
 def test_multiple_records_error(dbfile):
@@ -472,39 +461,58 @@ def test_multiple_records_error(dbfile):
 
 def many(db):
     with db.cursor as cursor:
-        users = db.users.all.many(cursor, 2)
-        assert len(users) == 2
-        users = db.users.all.next(cursor, 1)
-        assert len(users) == 1
-        users = db.users.all.next(cursor, 1)
-        assert len(users) == 1
-        users = db.users.all.next(cursor, 1)
-        assert len(users) == 0
+        users = db.users.all(cursor)
+        assert len(users.many(2)) == 2
+        assert len(users.many(size=3)) == 3
+        assert len(users.many(size=1)) == 1
+        assert len(users.many()) == 1
+        assert len(users.many(size=4)) == 0
 
-        users = cursor.users.all.many(2)
-        assert len(users) == 2
-        users = cursor.users.all.next(1)
-        assert len(users) == 1
-        users = cursor.users.all.next(1)
-        assert len(users) == 1
-        users = cursor.users.all.next(1)
-        assert len(users) == 0
+        users = cursor.users.all()
+        assert len(users.many(2)) == 2
+        assert len(users.many(size=3)) == 3
+        assert len(users.many(size=1)) == 1
+        assert len(users.many()) == 1
+        assert len(users.many(size=4)) == 0
+
+
+def test_many(dbfile):
+    many(dbfile)
+
+
+def many_default(db):
+    with db.cursor as cursor:
+        users = db.users.all(cursor)
+        i = 0
+        while len(users.many()) == 1:
+            i += 1
+        assert i == 7
+
+        users = cursor.users.all()
+        i = 0
+        while len(users.many()) == 1:
+            i += 1
+        assert i == 7
+
+
+def test_many_default(dbfile):
+    many_default(dbfile)
 
 
 def test_shadowing(db, dbshadow):
     with db.cursor as cursor:
-        assert len(dbshadow.get_users(cursor)) == 4
+        assert len(dbshadow.get_users(cursor)) == 7
         assert db.get_test(cursor) == 'Test'
-        assert db.get_city.get(cursor).name == 'Shadowed City'
-        assert db.addresses.by_zip.get(cursor).address == 'Shadowed Address'
+        assert db.get_city(cursor).one.name == 'Shadowed City'
+        assert db.addresses.by_zip(cursor).one.address == 'Shadowed Address'
 
     with dbshadow.cursor as cursor:
         # root script from shadowed dir
-        assert len(dbshadow.get_users(cursor)) == 4
-        assert len(cursor.get_users()) == 4
+        assert len(dbshadow.get_users(cursor)) == 7
+        assert len(cursor.get_users()) == 7
         # masking root script
-        assert dbshadow.get_city.get(cursor).name == 'Masking City'
-        assert cursor.get_city.get().name == 'Masking City'
+        assert dbshadow.get_city(cursor).one.name == 'Masking City'
+        assert cursor.get_city().get().name == 'Masking City'
         # root script from masking dir
         assert len(dbshadow.get_trees(cursor)) == 2
         assert len(cursor.get_trees()) == 2
@@ -515,17 +523,17 @@ def test_shadowing(db, dbshadow):
         assert dbshadow.get_test(cursor) == 'Masking Test'
         assert cursor.get_test(cursor) == 'Masking Test'
         # namespace script from shadowed dir
-        user = dbshadow.addresses.by_user.get(cursor)
+        user = dbshadow.addresses.by_user(cursor).get()
         assert user.address == 'Shadowed Address'
-        user = cursor.addresses.by_user.get()
+        user = cursor.addresses.by_user().get()
         assert user.address == 'Shadowed Address'
         # namespace script from masking dir
-        assert dbshadow.addresses.get_tree.get(cursor).name == 'Masking Oak'
-        assert cursor.addresses.get_tree.get().name == 'Masking Oak'
+        assert dbshadow.addresses.get_tree(cursor).get().name == 'Masking Oak'
+        assert cursor.addresses.get_tree().get().name == 'Masking Oak'
         # masking namespace script
-        address = dbshadow.addresses.by_zip.get(cursor).address
+        address = dbshadow.addresses.by_zip(cursor).get().address
         assert address == 'Masking Address'
-        address = cursor.addresses.by_zip.get().address
+        address = cursor.addresses.by_zip().get().address
         assert address == 'Masking Address'
 
 
@@ -552,12 +560,12 @@ def test_caching(db, dbcache):
     with db.cursor as cursor:
         assert len(db.user._queries) == 0
     with dbcache.cursor as cursor:
-        user = dbcache.user.by_name.get(cursor, name='User 1')
+        user = dbcache.user.by_name(cursor, name='User 1').get()
         assert user.city == 'City A'
         assert dbcache.user.get_test(cursor) == 'Test'
         assert len(dbcache.user._queries) >= 0
 
-        user = cursor.user.by_name.get(name='User 1')
+        user = cursor.user.by_name(name='User 1').get()
         assert user.city == 'City A'
         assert cursor.user.get_test(cursor) == 'Test'
         assert len(cursor.user._queries) >= 0

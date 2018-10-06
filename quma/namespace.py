@@ -79,8 +79,6 @@ class CursorNamespace(object):
         self.cursor = cursor
 
     def __getattr__(self, attr):
-        if type(self.namespace) is Query:
-            return getattr(CursorQuery(self.namespace, self.cursor), attr)
         attr_obj = getattr(self.namespace, attr)
         if type(attr_obj) is Query:
             return CursorQuery(attr_obj, self.cursor)

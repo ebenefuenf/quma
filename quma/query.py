@@ -9,6 +9,72 @@ except ImportError:
     Template = None
 
 
+class Result(object):
+    def __init__(self, query, cursor, args, kwargs, prepare_params):
+        self.query = query
+        self.cursor = cursor
+        self.args = args
+        self.kwargs = kwargs
+        self.prepare_params = prepare_params
+        self._execute()
+
+    def __iter__(self):
+        for row in self._fetch(self.cursor.fetchall):
+            yield row
+
+    def __len__(self):
+        if self.cursor.has_rowcount:
+            return self.cursor.rowcount
+        else:
+            result = self._fetch(self.cursor.fetchall)
+            return len(result)
+
+    def _execute(self):
+        self.query.execute(self.cursor,
+                           list(self.args),
+                           self.kwargs,
+                           self.prepare_params)
+
+    def _fetch(self, func):
+        try:
+            return func()
+        except exc.FetchError as e:
+            raise e.error
+
+    def get(self):
+        def check_rowcount(rowcount):
+            if rowcount == 0:
+                raise exc.DoesNotExistError()
+            if rowcount > 1:
+                raise exc.MultipleRecordsError()
+
+        # SQLite does not support rowcount
+        if self.cursor.has_rowcount:
+            check_rowcount(self.cursor.rowcount)
+            return self._fetch(self.cursor.fetchone)
+        else:
+            result = self._fetch(self.cursor.fetchall)
+            check_rowcount(len(result))
+            return result[0]
+
+    @property
+    def one(self):
+        return self.get()
+
+    @property
+    def first(self):
+        return self._fetch(self.cursor.fetchall)[0]
+
+    @property
+    def value(self):
+        return self.first[0]
+
+    def many(self, size=None):
+        if size is None:
+            size = self.cursor.arraysize
+        return self._fetch(partial(self.cursor.fetchmany, size))
+
+
 class Query(object):
     def __init__(self, query, show, is_template, prepare_params=None):
         self.show = show
@@ -17,20 +83,13 @@ class Query(object):
         self.is_template = is_template
         self.params = None
 
-    def _fetch(self, func):
-        try:
-            return func()
-        except exc.FetchError as e:
-            raise e.error
-
     def __call__(self, cursor, *args, prepare_params=None, **kwargs):
-        self._execute(cursor, list(args), kwargs, prepare_params)
-        return self._fetch(cursor.fetchall)
+        return Result(self, cursor, args, kwargs, prepare_params)
 
     def __str__(self):
         return self.query
 
-    def _print_sql(self):
+    def print_sql(self):
         if self.query:
             sys.stdout.write('-' * 50)
             sys.stdout.write('\n')
@@ -58,7 +117,7 @@ class Query(object):
                     'To use templates you need to install Mako')
         return self.query, params
 
-    def _execute(self, cursor, args, kwargs, prepare_params=None):
+    def execute(self, cursor, args, kwargs, prepare_params=None):
         if args:
             query, params = self._prepare(cursor, args, prepare_params)
         else:
@@ -66,55 +125,7 @@ class Query(object):
         try:
             cursor.execute(query, params)
         finally:
-            self.show and self._print_sql()
-
-    def get(self, cursor, *args, prepare_params=None, **kwargs):
-        try:
-            self._execute(cursor, list(args), kwargs, prepare_params)
-        finally:
-            self.show and self._print_sql()
-
-        def check_rowcount(rowcount):
-            if rowcount == 0:
-                raise exc.DoesNotExistError()
-            if rowcount > 1:
-                raise exc.MultipleRecordsError()
-
-        # SQLite does not support rowcount
-        if cursor.has_rowcount:
-            check_rowcount(cursor.rowcount)
-            return cursor.fetchone()
-        else:
-            result = cursor.fetchall()
-            check_rowcount(len(result))
-            return result[0]
-
-    def first(self, cursor, *args, prepare_params=None, **kwargs):
-        self._execute(cursor, list(args), kwargs, prepare_params)
-        return self._fetch(cursor.fetchall)[0]
-
-    def value(self, cursor, *args, prepare_params=None, **kwargs):
-        return self.first(cursor, *args, prepare_params=None, **kwargs)[0]
-
-    def many(self, cursor, size=None, *args, **kwargs):
-        if size is None:
-            size = cursor.arraysize
-        self._execute(cursor, list(args), kwargs)
-        return self._fetch(partial(cursor.fetchmany, size))
-
-    def next(self, cursor, size=None):
-        if size is None:
-            size = cursor.arraysize
-        return self._fetch(partial(cursor.fetchmany, size))
-
-    def count(self, cursor, *args, prepare_params=None, **kwargs):
-        self._execute(cursor, list(args), kwargs, prepare_params)
-
-        if cursor.has_rowcount:
-            return cursor.rowcount
-        else:
-            result = cursor.fetchall()
-            return len(result)
+            self.show and self.print_sql()
 
 
 class CursorQuery(object):
@@ -127,22 +138,3 @@ class CursorQuery(object):
 
     def __str__(self):
         return self.query.query
-
-    def get(self, *args, prepare_params=None, **kwargs):
-        return self.query.get(self.cursor, *args,
-                              prepare_params=prepare_params, **kwargs)
-
-    def first(self, *args, **kwargs):
-        return self.query.first(self.cursor, *args, **kwargs)
-
-    def value(self, *args, **kwargs):
-        return self.query.first(self.cursor, *args, **kwargs)[0]
-
-    def many(self, *args, **kwargs):
-        return self.query.many(self.cursor, *args, **kwargs)
-
-    def next(self, size=None):
-        return self.query.next(self.cursor, size=size)
-
-    def count(self, *args, **kwargs):
-        return self.query.count(self.cursor, *args, **kwargs)

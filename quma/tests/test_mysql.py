@@ -34,13 +34,6 @@ def test_cursor_call(mydb, mypooldb):
 
 
 @pytest.mark.mysql
-def test_count(mydb, mypooldb):
-    from .test_db import count
-    for db in (mydb, mypooldb):
-        count(db)
-
-
-@pytest.mark.mysql
 def test_first(mydb, mypooldbdict):
     from .test_db import first
     for db in (mydb, mypooldbdict):
@@ -104,7 +97,7 @@ def test_multiple_records_error(mydb, mypooldb):
 def test_tuple_cursor(mydbpersist, mypooldb):
     for db in (mydbpersist, mypooldb):
         with db.cursor as cursor:
-            user = db.user.by_name.get(cursor, name='User 4')
+            user = db.user.by_name(cursor, name='User 4').get()
             assert user[0] == 'user.4@example.com'
             with pytest.raises(TypeError):
                 user['email']
@@ -115,7 +108,7 @@ def test_tuple_cursor(mydbpersist, mypooldb):
 def test_dict_cursor(mydb, mypooldbdict):
     for db in (mydb, mypooldbdict):
         with db.cursor as cursor:
-            user = db.user.by_name.get(cursor, name='User 3')
+            user = db.user.by_name(cursor, name='User 3').get()
             assert user['email'] == 'user.3@example.com'
             with pytest.raises(KeyError):
                 user[0]
@@ -132,35 +125,17 @@ def test_many(mydb, mypooldb):
 @pytest.mark.mysql
 def test_many_default(mydb):
     with mydb.cursor as cursor:
-        users = mydb.users.all.many(cursor)
-        assert len(users) == 1
-        users = mydb.users.all.next(cursor)
-        assert len(users) == 1
+        users = mydb.users.all(cursor)
+        i = 0
+        while len(users.many()) == 1:
+            i += 1
+        assert i == 7
 
-        users = mydb.users.all.many(cursor, 2, test='test')
-        assert len(users) == 2
-        users = mydb.users.all.next(cursor, 2)
-        assert len(users) == 2
-
-        users = mydb.users.all.many(cursor, test='test', size=2)
-        assert len(users) == 2
-        users = mydb.users.all.next(cursor, size=2)
-        assert len(users) == 2
-
-        users = cursor.users.all.many()
-        assert len(users) == 1
-        users = cursor.users.all.next()
-        assert len(users) == 1
-
-        users = cursor.users.all.many(2, test='test')
-        assert len(users) == 2
-        users = cursor.users.all.next(2)
-        assert len(users) == 2
-
-        users = cursor.users.all.many(test='test', size=2)
-        assert len(users) == 2
-        users = cursor.users.all.next(size=2)
-        assert len(users) == 2
+        users = cursor.users.all()
+        i = 0
+        while len(users.many()) == 1:
+            i += 1
+        assert i == 7
 
 
 @pytest.mark.mysql

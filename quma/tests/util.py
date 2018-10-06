@@ -43,7 +43,10 @@ VALUES
     (1, 'User 1', 'user.1@example.com', 'City A'),
     (2, 'User 2', 'user.2@example.com', 'City A'),
     (3, 'User 3', 'user.3@example.com', 'City B'),
-    (4, 'User 4', 'user.4@example.com', 'City B');
+    (4, 'User 4', 'user.4@example.com', 'City B'),
+    (5, 'User 5', 'user.5@example.com', 'City C'),
+    (6, 'User 6', 'user.6@example.com', 'City C'),
+    (7, 'User 7', 'user.7@example.com', 'City C');
 """)
 
 
