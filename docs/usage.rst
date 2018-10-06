@@ -86,7 +86,7 @@ Or by calling the ``cursor`` method of the :class:`Database` instance:
 Running queries
 ---------------
 
-To run the sql script from the path(s) you passed to the :class:`Database` constructor
+To run the query in a sql script from the path(s) you passed to the :class:`Database` constructor
 you call members of the Database instance or the cursor (*db* and *cur* from now on). 
 
 Scripts and directories at the root of the path(s) are also available as members of *db*
@@ -121,7 +121,7 @@ Getting a single record
 -----------------------
 
 If you now there will be only one record in the result of a query
-you can use the ``get`` method to get it. quma will raise a 
+you can use the :func:`one` method to get it. quma will raise a 
 ``DoesNotExistError`` error if there is no record in the result 
 and a ``MultipleRecordsError`` if there are returned more than one
 record. 
@@ -136,7 +136,7 @@ record.
 
     with db.cursor as cur:
         try:
-            user = cur.users.by_id.get(id=13)
+            user = cur.users.by_id(id=13).one()
         except DoesNotExistError:
             print('The user does not exist')
         except MultipleRecordsError:
@@ -150,7 +150,7 @@ For example:
 
     with db.cursor as cur:
         try:
-            user = cur.users.by_id.get(id=13)
+            user = cur.users.by_id(id=13).one()
         except db.DoesNotExistError:
             print('The user does not exist')
         except db.MultipleRecordsError:
@@ -202,13 +202,15 @@ providing the ``many`` and ``next`` methods of ``Query``.
 Getting the number of records
 -----------------------------
 
-If you are only interested in the number of records in a result
-set  you can call the ``count`` method:
+If are only interested in the number of records in a result you can pass a 
+:class:`Result` object to the :func:`len` function. quma also includes a
+convinience method called :func:`count`:
 
 .. code-block:: python
 
-    number_of_users = cur.users.all.count()
-    number_of_users = db.users.all.count(cur)
+    number_of_users = len(cur.users.all())
+    number_of_users = cur.users.all().count()
+    number_of_users = db.users.all(cur).count()
 
 
 Committing changes and rollback

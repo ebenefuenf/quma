@@ -156,8 +156,10 @@ def test_cursor_call(db):
 
 def first(db):
     cursor = db.cursor()
-    assert cursor.users.all().first['name'] == 'User 1'
-    assert db.users.all(cursor).first['name'] == 'User 1'
+    assert cursor.users.all().first()['name'] == 'User 1'
+    assert db.users.all(cursor).first()['name'] == 'User 1'
+    assert cursor.users.none().first() is None
+    assert db.users.none(cursor).first() is None
     cursor.close()
 
 
@@ -167,8 +169,8 @@ def test_first(db):
 
 def value(db):
     cursor = db.cursor()
-    assert cursor.users.all().value == 1
-    assert db.users.all(cursor).value == 1
+    assert cursor.users.all().value() == 1
+    assert db.users.all(cursor).value() == 1
     cursor.close()
 
 
@@ -190,9 +192,9 @@ def commit(db):
                             city='Test City')
     with db.cursor as cursor:
         with pytest.raises(db.DoesNotExistError):
-            db.user.by_name(cursor, name='Test User 8').one
+            db.user.by_name(cursor, name='Test User 8').one()
         with pytest.raises(db.DoesNotExistError):
-            db.user.by_name(cursor, name='Test User 11').one
+            db.user.by_name(cursor, name='Test User 11').one()
 
     with db.cursor as cursor:
         for i in range(8, 16, 2):
@@ -215,9 +217,9 @@ def commit(db):
         cursor.user.remove(name='Test User {}'.format(i + 1))
     cursor.commit()
     with pytest.raises(db.DoesNotExistError):
-        db.user.by_name(cursor, name='Test User 7').get()
+        db.user.by_name(cursor, name='Test User 7').one()
     with pytest.raises(db.DoesNotExistError):
-        db.user.by_name(cursor, name='Test User 8').get()
+        db.user.by_name(cursor, name='Test User 8').one()
     cursor.close()
 
 
@@ -233,7 +235,7 @@ def test_contextcommit(dbcommit):
                           email='test.user@example.com',
                           city='Test City')
     with dbcommit.cursor as cursor:
-        user = dbcommit.user.by_name(cursor, name='Test User').get()
+        user = dbcommit.user.by_name(cursor, name='Test User').one()
         assert user.email == 'test.user@example.com'
 
 
@@ -306,10 +308,10 @@ def rollback(db):
                 name='Test User',
                 email='test.user@example.com',
                 city='Test City')
-    db.user.by_name(cursor, name='Test User').get()
+    db.user.by_name(cursor, name='Test User').one()
     cursor.rollback()
     with pytest.raises(db.DoesNotExistError):
-        db.user.by_name(cursor, name='Test User').get()
+        db.user.by_name(cursor, name='Test User').one()
     cursor.close()
 
 
@@ -327,7 +329,7 @@ def test_overwrite_query_class(pyformat_sqldirs):
 
 def changeling_cursor(db):
     with db.cursor as cursor:
-        user = db.user.by_name(cursor, name='User 3').one
+        user = db.user.by_name(cursor, name='User 3').one()
         assert user[0] == 'user.3@example.com'
         assert user['email'] == 'user.3@example.com'
         assert user.email == 'user.3@example.com'
@@ -344,7 +346,7 @@ def test_changeling_cursor(db):
 
 def test_changeling_cursor_hidden_members(db):
     with db.cursor as cursor:
-        user = db.user.by_name(cursor, name='User 1').one
+        user = db.user.by_name(cursor, name='User 1').one()
         assert user.keys == 'the keys'
         assert set(user._keys()) == set(['email', 'city', 'keys'])
 
@@ -352,7 +354,7 @@ def test_changeling_cursor_hidden_members(db):
 def no_changeling_cursor(pgdb_persist, getter, error):
     # pgdb_persist does not use the changeling factory
     with pgdb_persist.cursor as cursor:
-        user = pgdb_persist.user.by_name(cursor, name='User 3').one
+        user = pgdb_persist.user.by_name(cursor, name='User 3').one()
         assert user[0] == 'user.3@example.com'
         with pytest.raises(error):
             getter(user)
@@ -378,16 +380,16 @@ def test_pypy_changeling_init(qmark_sqldirs):
         db.execute(util.INSERT_USERS)
         if platform.python_implementation() == 'PyPy':
             with db.cursor as cursor:
-                cursor.users.all().first
+                cursor.users.all().first()
         else:
             with pytest.raises(TypeError):
                 with db.cursor as cursor:
-                    cursor.users.all().first
+                    cursor.users.all().first()
 
 
 def test_qmark_query(db):
     with db.cursor as cursor:
-        user = db.user.by_email(cursor, 'user.3@example.com', 1).one
+        user = db.user.by_email(cursor, 'user.3@example.com', 1).one()
         assert user[0] == 'User 3'
         assert user['name'] == 'User 3'
         assert user.name == 'User 3'
@@ -398,15 +400,15 @@ def test_qmark_query(db):
 
 def test_template_query(db):
     with db.cursor as cursor:
-        user = db.user.by_name_tmpl(cursor, name='User 1').one
+        user = db.user.by_name_tmpl(cursor, name='User 1').one()
         assert user.intro == "I'm User 1"
-        user = db.user.by_name_tmpl(cursor, name='User 2').one
+        user = db.user.by_name_tmpl(cursor, name='User 2').one()
         assert user.intro == "I'm not User 1"
 
         tmpl = query.Template
         query.Template = None
         with pytest.raises(ImportError) as e:
-            db.user.by_name_tmpl(cursor, name='User 1').get()
+            db.user.by_name_tmpl(cursor, name='User 1').one()
         assert str(e.value).startswith('To use templates')
         query.Template = tmpl
 
@@ -418,9 +420,9 @@ def test_dict_callback(dbdictcb, carrier):
         return {'name': 'User 3'}
 
     with db(carrier).cursor as c:
-        user = db.user.by_name(c).get()
+        user = db.user.by_name(c).one()
         assert user['city'] == 'City A'
-        user = db.user.by_name(c, prepare_params=dict_callback).get()
+        user = db.user.by_name(c, prepare_params=dict_callback).one()
         assert user['city'] == 'City B'
 
 
@@ -431,9 +433,9 @@ def test_seq_callback(dbseqcb, carrier):
         return ['user.3@example.com']
 
     with db(carrier).cursor as c:
-        user = db.user.by_email(c, 1).get()
+        user = db.user.by_email(c, 1).one()
         assert user['city'] == 'City A'
-        user = db.user.by_email(c, 1, prepare_params=seq_callback).get()
+        user = db.user.by_email(c, 1, prepare_params=seq_callback).one()
         assert user['city'] == 'City B'
 
 
@@ -452,7 +454,7 @@ def test_multiple_records(dbfile):
 def multiple_records_error(db):
     with db.cursor as cursor:
         with pytest.raises(db.MultipleRecordsError):
-            db.user.by_city(cursor, city='City A').one
+            db.user.by_city(cursor, city='City A').one()
 
 
 def test_multiple_records_error(dbfile):
@@ -503,16 +505,16 @@ def test_shadowing(db, dbshadow):
     with db.cursor as cursor:
         assert len(dbshadow.get_users(cursor)) == 7
         assert db.get_test(cursor) == 'Test'
-        assert db.get_city(cursor).one.name == 'Shadowed City'
-        assert db.addresses.by_zip(cursor).one.address == 'Shadowed Address'
+        assert db.get_city(cursor).one().name == 'Shadowed City'
+        assert db.addresses.by_zip(cursor).one().address == 'Shadowed Address'
 
     with dbshadow.cursor as cursor:
         # root script from shadowed dir
         assert len(dbshadow.get_users(cursor)) == 7
         assert len(cursor.get_users()) == 7
         # masking root script
-        assert dbshadow.get_city(cursor).one.name == 'Masking City'
-        assert cursor.get_city().get().name == 'Masking City'
+        assert dbshadow.get_city(cursor).one().name == 'Masking City'
+        assert cursor.get_city().one().name == 'Masking City'
         # root script from masking dir
         assert len(dbshadow.get_trees(cursor)) == 2
         assert len(cursor.get_trees()) == 2
@@ -523,17 +525,17 @@ def test_shadowing(db, dbshadow):
         assert dbshadow.get_test(cursor) == 'Masking Test'
         assert cursor.get_test(cursor) == 'Masking Test'
         # namespace script from shadowed dir
-        user = dbshadow.addresses.by_user(cursor).get()
+        user = dbshadow.addresses.by_user(cursor).one()
         assert user.address == 'Shadowed Address'
-        user = cursor.addresses.by_user().get()
+        user = cursor.addresses.by_user().one()
         assert user.address == 'Shadowed Address'
         # namespace script from masking dir
-        assert dbshadow.addresses.get_tree(cursor).get().name == 'Masking Oak'
-        assert cursor.addresses.get_tree().get().name == 'Masking Oak'
+        assert dbshadow.addresses.get_tree(cursor).one().name == 'Masking Oak'
+        assert cursor.addresses.get_tree().one().name == 'Masking Oak'
         # masking namespace script
-        address = dbshadow.addresses.by_zip(cursor).get().address
+        address = dbshadow.addresses.by_zip(cursor).one().address
         assert address == 'Masking Address'
-        address = cursor.addresses.by_zip().get().address
+        address = cursor.addresses.by_zip().one().address
         assert address == 'Masking Address'
 
 
@@ -560,12 +562,12 @@ def test_caching(db, dbcache):
     with db.cursor as cursor:
         assert len(db.user._queries) == 0
     with dbcache.cursor as cursor:
-        user = dbcache.user.by_name(cursor, name='User 1').get()
+        user = dbcache.user.by_name(cursor, name='User 1').one()
         assert user.city == 'City A'
         assert dbcache.user.get_test(cursor) == 'Test'
         assert len(dbcache.user._queries) >= 0
 
-        user = cursor.user.by_name(name='User 1').get()
+        user = cursor.user.by_name(name='User 1').one()
         assert user.city == 'City A'
         assert cursor.user.get_test(cursor) == 'Test'
         assert len(cursor.user._queries) >= 0

@@ -31,8 +31,8 @@ def db_namespaces():
                         email='test.user@example.com',
                         city='Test City')
             cursor.commit()
-            db.user.by_name(cursor, name='User 1').get()
-            db.user.by_name(cursor, name='Test User').one
+            db.user.by_name(cursor, name='User 1').one()
+            db.user.by_name(cursor, name='Test User').one()
             db.user.remove(cursor, name='Test User')
             cursor.commit()
 
@@ -50,8 +50,8 @@ def cursor_namespaces():
                             email='test.user@example.com',
                             city='Test City')
             cursor.commit()
-            cursor.user.by_name(name='User 1').get()
-            cursor.user.by_name(name='Test User').one
+            cursor.user.by_name(name='User 1').one()
+            cursor.user.by_name(name='Test User').one()
             cursor.user.remove(name='Test User')
             cursor.commit()
 

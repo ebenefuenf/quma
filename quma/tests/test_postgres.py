@@ -93,7 +93,7 @@ def test_changeling_cursor(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_changeling_cursor_hidden_members(pgdb):
     with pgdb.cursor as cursor:
-        user = pgdb.user.by_name(cursor, name='User 1').get()
+        user = pgdb.user.by_name(cursor, name='User 1').one()
         assert user.count == 13
         assert user._count(13) == 2
 
@@ -156,7 +156,7 @@ def test_get_cursor_attr(pgdb):
         cursor.raw_cursor.fetchall.side_effect = FetchError(
                 psycopg2.ProgrammingError('pg-exc-test'))
         with pytest.raises(psycopg2.ProgrammingError) as e:
-            pgdb.users.all(cursor).first
+            pgdb.users.all(cursor).first()
         assert str(e.value) == 'pg-exc-test'
 
 

@@ -97,7 +97,7 @@ def test_multiple_records_error(mydb, mypooldb):
 def test_tuple_cursor(mydbpersist, mypooldb):
     for db in (mydbpersist, mypooldb):
         with db.cursor as cursor:
-            user = db.user.by_name(cursor, name='User 4').get()
+            user = db.user.by_name(cursor, name='User 4').one()
             assert user[0] == 'user.4@example.com'
             with pytest.raises(TypeError):
                 user['email']
@@ -108,7 +108,7 @@ def test_tuple_cursor(mydbpersist, mypooldb):
 def test_dict_cursor(mydb, mypooldbdict):
     for db in (mydb, mypooldbdict):
         with db.cursor as cursor:
-            user = db.user.by_name(cursor, name='User 3').get()
+            user = db.user.by_name(cursor, name='User 3').one()
             assert user['email'] == 'user.3@example.com'
             with pytest.raises(KeyError):
                 user[0]

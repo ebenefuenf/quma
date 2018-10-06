@@ -41,7 +41,7 @@ class Result(object):
         except exc.FetchError as e:
             raise e.error
 
-    def get(self):
+    def one(self):
         def check_rowcount(rowcount):
             if rowcount == 0:
                 raise exc.DoesNotExistError()
@@ -57,17 +57,14 @@ class Result(object):
             check_rowcount(len(result))
             return result[0]
 
-    @property
-    def one(self):
-        return self.get()
-
-    @property
     def first(self):
-        return self._fetch(self.cursor.fetchall)[0]
+        try:
+            return self._fetch(self.cursor.fetchall)[0]
+        except IndexError:
+            return None
 
-    @property
     def value(self):
-        return self.first[0]
+        return self.first()[0]
 
     def many(self, size=None):
         if size is None:
