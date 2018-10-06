@@ -13,6 +13,7 @@ from .. import cursor as cursor_
 from .. import (
     database,
     query,
+    result,
 )
 
 
@@ -442,9 +443,22 @@ def test_seq_callback(dbseqcb, carrier):
 def multiple_records(db, getter):
     with db.cursor as cursor:
         users = db.users.by_city(cursor, city='City A')
-        assert len(users) == 2
+        assert type(users) is result.Result
+        i = 0
         for user in users:
             assert getter(user) in ('User 1', 'User 2')
+            i += 1
+        assert i == 2
+
+        # the .all() method
+        users = db.users.by_city(cursor, city='City A').all()
+        assert type(users) is list or type(users) is tuple
+        for user in users:
+            assert getter(user) in ('User 1', 'User 2')
+        assert len(users) == 2
+
+        # cast the iterator to a list
+        assert len(list(db.users.by_city(cursor, city='City A'))) == 2
 
 
 def test_multiple_records(dbfile):

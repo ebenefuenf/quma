@@ -8,6 +8,28 @@ rows in the result, retrieve single rows or simply count
 whats in the result.
 
 
+Getting the rows in a result
+----------------------------
+
+You can either iterate directly over the result object or call its
+:meth:`all()` method to get a list of the all the rows.
+
+.. code-block:: python
+
+    with db.cursor as cur:
+        result = cur.users.by_city(city='City 1')
+        for row in result:
+            print(row.name)
+
+        # calling the .all() method to get a materialized list/tuple
+        user_list = cur.users.by_city(city='City 1').all()
+        # is a bit faster than
+        user_list = list(cur.users.by_city(city='City 1'))
+
+When calling :meth:`all()` **MySQL** and **MariaDB** will return a tuple, **PostgreSQL**
+and **SQLite** will return a list.
+
+
 Getting a single row
 --------------------
 

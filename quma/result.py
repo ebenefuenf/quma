@@ -19,8 +19,7 @@ class Result(object):
         self._execute()
 
     def __iter__(self):
-        for row in self._fetch(self.cursor.fetchall):
-            yield row
+        return (row for row in self._fetch(self.cursor.fetchall))
 
     def __len__(self):
         if self.cursor.has_rowcount:
@@ -41,9 +40,13 @@ class Result(object):
         except exc.FetchError as e:
             raise e.error
 
+    def all(self):
+        """Return a list of all results"""
+        return self._fetch(self.cursor.fetchall)
+
     def count(self):
         """Return the length of the result."""
-        return len(self)
+        return len(self.all())
 
     def one(self):
         """Get exactly one row and check if only one exists."""
