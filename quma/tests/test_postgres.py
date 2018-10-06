@@ -45,6 +45,13 @@ def test_count(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_exists(pgdb, pgpooldb):
+    from .test_db import exists
+    for db in (pgdb, pgpooldb):
+        exists(db)
+
+
+@pytest.mark.postgres
 def test_first(pgdb, pgpooldb):
     from .test_db import first
     for db in (pgdb, pgpooldb):

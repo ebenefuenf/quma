@@ -41,6 +41,13 @@ def test_count(mydb, mypooldb):
 
 
 @pytest.mark.mysql
+def test_exists(mydb, mypooldb):
+    from .test_db import exists
+    for db in (mydb, mypooldb):
+        exists(db)
+
+
+@pytest.mark.mysql
 def test_first(mydb, mypooldbdict):
     from .test_db import first
     for db in (mydb, mypooldbdict):

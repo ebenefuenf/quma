@@ -442,6 +442,7 @@ def test_seq_callback(dbseqcb, carrier):
 
 def multiple_records(db, getter):
     with db.cursor as cursor:
+        # normal iteration
         users = db.users.by_city(cursor, city='City A')
         assert type(users) is result.Result
         i = 0
@@ -458,7 +459,16 @@ def multiple_records(db, getter):
         assert len(users) == 2
 
         # cast the iterator to a list
-        assert len(list(db.users.by_city(cursor, city='City A'))) == 2
+        if platform.python_implementation() == 'CPython' or \
+           db.conn.__class__.__module__ != 'quma.provider.sqlite':
+            # TODO: the cast to list does only work in CPython for all
+            # dricers. In PyPy using the sqlite3 driver the fetch call
+            # in Result.__iter__ returns an empty list.
+            #
+            # The same behavior was present in CPython when we didn't
+            # return a generator but iterated over the fetch result
+            # and yielded the rows. It is only with the SQLite driver.
+            assert len(list(db.users.by_city(cursor, city='City A'))) == 2
 
 
 def test_multiple_records(dbfile):
@@ -486,6 +496,16 @@ def count(db):
 
 def test_count(db):
     count(db)
+
+
+def exists(db):
+    with db.cursor as cursor:
+        assert cursor.users.all().exists()
+        assert not cursor.users.none().exists()
+
+
+def test_exists(dbfile):
+    exists(dbfile)
 
 
 def many(db):

@@ -49,7 +49,9 @@ class Result(object):
         return len(self.all())
 
     def one(self):
-        """Get exactly one row and check if only one exists."""
+        """Get exactly one row and check if only one exists.
+        Otherwise raise an error.
+        """
         def check_rowcount(rowcount):
             if rowcount == 0:
                 raise exc.DoesNotExistError()
@@ -72,6 +74,10 @@ class Result(object):
             return self._fetch(self.cursor.fetchall)[0]
         except IndexError:
             return None
+
+    def exists(self):
+        """Return if the query has rows in its result"""
+        return len(self._fetch(self.cursor.fetchall)) > 0
 
     def value(self):
         """Call :func:`one` and return the first column."""

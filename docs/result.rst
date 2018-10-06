@@ -29,6 +29,12 @@ You can either iterate directly over the result object or call its
 When calling :meth:`all()` **MySQL** and **MariaDB** will return a tuple, **PostgreSQL**
 and **SQLite** will return a list.
 
+.. Note::
+
+    If you are using **PyPy** with the `sqlite3` driver the cast
+    using the :func:`list()` function does currently not work and will always
+    result in an empty list.
+
 
 Getting a single row
 --------------------
@@ -115,7 +121,7 @@ providing the :meth:`many()` method of :class:`Result`.
 Getting the number of rows
 --------------------------
 
-If are only interested in the number of row in a result you can pass a 
+If you are only interested in the number of row in a result you can pass a 
 :class:`Result` object to the :func:`len()` function. quma also includes a
 convinience method called :meth:`count()`. Some drivers (like pycopg2) support the
 ``rowcount`` property of PEP249 which specifies the number of rows that the last
@@ -129,6 +135,18 @@ get the number.
     number_of_users = cur.users.all().count()
     number_of_users = db.users.all(cur).count()
 
+
+Checking if a result exists
+---------------------------
+
+To check if a query has a result or not call the :meth:`exists()` method.
+
+.. code-block:: python
+
+    has_users = cur.users.all().exists()
+
+Overview
+--------
 
 .. autoclass:: quma.result.Result
     :members:
