@@ -81,7 +81,7 @@ class Result(object):
 
     def value(self):
         """Call :func:`one` and return the first column."""
-        return self.first()[0]
+        return self.one()[0]
 
     def many(self, size=None):
         """Call the :func:`fetchmany` method of the raw cursor.

@@ -170,8 +170,10 @@ def test_first(db):
 
 def value(db):
     cursor = db.cursor()
-    assert cursor.users.all().value() == 1
-    assert db.users.all(cursor).value() == 1
+    assert cursor.users.by_email('user.1@example.com', 1).value() == 'User 1'
+    assert db.users.by_email(cursor,
+                             'user.2@example.com',
+                             1).value() == 'User 2'
     cursor.close()
 
 
