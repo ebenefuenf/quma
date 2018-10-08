@@ -8,8 +8,8 @@ rows in the result, retrieve single rows or simply count
 whats in the result.
 
 
-Getting the rows in a result
-----------------------------
+Getting all rows from a result
+------------------------------
 
 You can either iterate directly over the result object or call its
 :meth:`all()` method to get a list of the all the rows.
@@ -32,7 +32,7 @@ and **SQLite** will return a list.
 .. Note::
 
     If you are using **PyPy** with the `sqlite3` driver the cast
-    using the :func:`list()` function does currently not work and will always
+    using the :func:`list()` function does not currently work and will always
     result in an empty list.
 
 
@@ -94,7 +94,7 @@ than one row or none at all you can use the :meth:`first()` method:
     user = cur.users.all().first()
 
 The method :meth:`value()` invokes the :meth:`one()` method, and
-upon success returns the first column of the row (i. e. 
+upon success returns the value of the first column of the row (i. e. 
 ``fetchall()[0][0]``). This comes in handy if you are using a
 ``RETURNING`` clause, for example, or return the last inserted
 id after an insert.

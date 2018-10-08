@@ -97,8 +97,7 @@ and the directory ``/users`` as instance of :class:`Namespace`, i. e. ``db.users
 namespace: ``/users/all`` will be ``db.users.all`` or ``cur.users.all``.
 
 When you call a :class:`Query` object, as in ``cur.user.all()`` where ``all`` is the mentioned object,
-you get back a :class:`Result` instance. The simplest use is to iterate over it (see below for 
-more information about the :class:`Result` class):
+you get back a :class:`Result` instance. Its simplest use is to iterate over it:
 
 .. code-block:: python
 
@@ -114,14 +113,18 @@ The same using the *db* API:
     with db.cursor as cur:
         all_users = db.users.all(cur)
 
-To learn what you can do with :class:`Result` objects see :doc:`The Result class <result>`.
+For mor information about the :class:`Result` class see :doc:`The Result class <result>`.
 
 .. Note::
 
     As you can see *cur* provides a nicer API where you don't have to pass the cursor when
     you call a query or a method. Then again the *db* API has the advantage of being 
-    around 30% faster. But this should only be noticable if you run hundreds or thousands
+    around 20-30% faster. But this should only be noticable if you run hundreds or thousands
     of queries in a row for example in a loop.
+
+    If you have cloned the `quma repository <https://github.com/ebenefuenf/quma>`_
+    from github you can see the difference when you run the script 
+    ``bin/cursor_vs_db.py``.
 
 
 Committing changes and rollback
@@ -191,6 +194,15 @@ If there is a result it will be returned otherwise it returns ``None``.
     users = db.execute('SELECT * FROM users')
     for user in users:
         print(user.name)
+
+If you want to execute statements in the context of a transaction
+use the :meth:`execute` method of the cursor:
+
+.. code-block:: python
+
+    with db.cursor as cur:
+        cur.execute('DELETE FROM users WHERE id = 13');
+        cur.commit()
 
 
 Accessing the DBAPI cursor and connection

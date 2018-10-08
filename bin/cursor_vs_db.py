@@ -31,8 +31,11 @@ def db_namespaces():
                         email='test.user@example.com',
                         city='Test City')
             cursor.commit()
+
             db.user.by_name(cursor, name='User 1').one()
             db.user.by_name(cursor, name='Test User').one()
+            db.users.all(cursor, name='Test User').first()
+            db.users.all(cursor, name='Test User').all()
             db.user.remove(cursor, name='Test User')
             cursor.commit()
 
@@ -44,19 +47,23 @@ def cursor_namespaces():
             cursor.get_users()
             cursor.root.get_users()
             cursor.get_test(cursor)
-            cursor.root.get_users()
             cursor.root.get_test(cursor)
             cursor.user.add(name='Test User',
                             email='test.user@example.com',
                             city='Test City')
             cursor.commit()
+
             cursor.user.by_name(name='User 1').one()
             cursor.user.by_name(name='Test User').one()
+            cursor.users.all(name='Test User').first()
+            cursor.users.all(name='Test User').all()
             cursor.user.remove(name='Test User')
             cursor.commit()
 
 
+print('\n{}'.format(loops), 'loops each executing 10 queries and 2 commits:')
+print('-' * 52)
 t = Timer(lambda: db_namespaces())
-print(t.timeit(number=1))
+print('db api:  ', t.timeit(number=1), 'seconds')
 t = Timer(lambda: cursor_namespaces())
-print(t.timeit(number=1))
+print('cur api: ', t.timeit(number=1), 'seconds')
