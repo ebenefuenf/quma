@@ -28,6 +28,9 @@ class Result(object):
             result = self._fetch(self.cursor.fetchall)
             return len(result)
 
+    def __getitem__(self, index):
+        return self._fetch(self.cursor.fetchall)[index]
+
     def _execute(self):
         self.query.execute(self.cursor,
                            list(self.args),
