@@ -12,8 +12,8 @@ from .. import (
 from .. import cursor as cursor_
 from .. import (
     database,
-    script,
     query,
+    script,
 )
 
 
@@ -236,7 +236,7 @@ def test_contextcommit(dbcommit):
                           id=8,
                           name='Test User',
                           email='test.user@example.com',
-                          city='Test City')
+                          city='Test City').run()
     with dbcommit.cursor as cursor:
         user = dbcommit.user.by_name(cursor, name='Test User').one()
         assert user.email == 'test.user@example.com'
@@ -310,7 +310,7 @@ def rollback(db):
                 id=8,
                 name='Test User',
                 email='test.user@example.com',
-                city='Test City')
+                city='Test City').run()
     db.user.by_name(cursor, name='Test User').one()
     cursor.rollback()
     with pytest.raises(db.DoesNotExistError):
@@ -326,7 +326,9 @@ def test_overwrite_script_class(pyformat_sqldirs):
     class MyScript(script.Script):
         def the_test(self):
             return 'Test'
-    db = Database(util.SQLITE_MEMORY, pyformat_sqldirs, script_factory=MyScript)
+    db = Database(util.SQLITE_MEMORY,
+                  pyformat_sqldirs,
+                  script_factory=MyScript)
     assert db.user.all.the_test() == 'Test'
 
 
@@ -512,19 +514,19 @@ def test_exists(dbfile):
 
 def many(db):
     with db.cursor as cursor:
-        users = db.users.all(cursor)
-        assert len(users.many(2)) == 2
-        assert len(users.many(size=3)) == 3
-        assert len(users.many(size=1)) == 1
-        assert len(users.many()) == 1
-        assert len(users.many(size=4)) == 0
+        users = db.users.all(cursor).many(2)
+        assert len(list(users)) == 2
+        assert len(users.next(size=3)) == 3
+        assert len(users.next(size=1)) == 1
+        assert len(users.next()) == 1
+        assert len(users.next(size=4)) == 0
 
-        users = cursor.users.all()
-        assert len(users.many(2)) == 2
-        assert len(users.many(size=3)) == 3
-        assert len(users.many(size=1)) == 1
-        assert len(users.many()) == 1
-        assert len(users.many(size=4)) == 0
+        users = cursor.users.all().many(2)
+        assert len(list(users)) == 2
+        assert len(users.next(size=3)) == 3
+        assert len(users.next(size=1)) == 1
+        assert len(users.next()) == 1
+        assert len(users.next(size=4)) == 0
 
 
 def test_many(dbfile):
@@ -533,17 +535,31 @@ def test_many(dbfile):
 
 def many_default(db):
     with db.cursor as cursor:
-        users = db.users.all(cursor)
-        i = 0
-        while len(users.many()) == 1:
+        users = db.users.all(cursor).many()
+        assert len(users) == 1
+        i = 1
+        while len(users.next()) == 1:
             i += 1
         assert i == 7
 
-        users = cursor.users.all()
-        i = 0
-        while len(users.many()) == 1:
+        users = cursor.users.all().many()
+        assert len(users) == 1
+        i = 1
+        while len(users.next()) == 1:
             i += 1
         assert i == 7
+
+
+def test_generator(db):
+    def users_generator():
+        with db.cursor as cur:
+            manyusers = cur.users.all().many(2)
+            while len(manyusers):
+                for result in manyusers:
+                    yield result
+                manyusers = manyusers.next(3)
+
+    assert len(list(users_generator())) == 7
 
 
 def test_many_default(dbfile):
@@ -599,9 +615,9 @@ def test_show_parameter(dbshow):
 
     sys.stdout.write = write
     with dbshow.cursor as cursor:
-        dbshow.user.by_name(cursor, name='User 1')
+        dbshow.user.by_name(cursor, name='User 1').one()
         assert 'SELECT email, city' in sql['sql']
-        cursor.user.by_city(city='City 1')
+        cursor.user.by_city(city='City 1').first()
         assert 'SELECT name, email' in sql['sql']
 
     sys.stdout = tmp

@@ -154,8 +154,9 @@ def test_faulty_fetch(dburl):
 @pytest.mark.postgres
 def test_get_cursor_attr(pgdb):
     conn = pgdb.conn
-    cursor = Mock
+    cursor = Mock()
     cursor.fetchall = Mock()
+    cursor.fetchall.__name__ = 'fetchall'
     cursor.fetchall.side_effect = psycopg2.ProgrammingError(
         'no results to fetch')
     assert conn.get_cursor_attr(cursor, 'fetchall')() == ()
@@ -167,6 +168,7 @@ def test_get_cursor_attr(pgdb):
     # Test Script._fetch except
     with pgdb.cursor as cursor:
         cursor.raw_cursor.fetchall = Mock()
+        cursor.raw_cursor.fetchall.__name__ = 'fetchall'
         cursor.raw_cursor.fetchall.side_effect = FetchError(
                 psycopg2.ProgrammingError('pg-exc-test'))
         with pytest.raises(psycopg2.ProgrammingError) as e:

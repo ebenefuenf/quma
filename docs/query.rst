@@ -3,13 +3,15 @@ The Query class
 ==================
 
 When you call a script object it returns an instance of the 
-:class:`Query` class. You can use it to iterate over the
-rows in the result, retrieve single rows or simply count
-whats in the result.
+:class:`Query` class which holds the code from the script
+file and the parameters passed to the script call.
 
+Queries are executed lazily. This means you have to either call
+a method of the query object or iterate over it.
+    
 
-Getting all rows from a result
-------------------------------
+Getting multiple rows from a query
+----------------------------------
 
 You can either iterate directly over the query object or call its
 :meth:`all()` method to get a list of the all the rows.
@@ -104,18 +106,59 @@ id after an insert.
     last_inserted_id = cur.users.insert().value()
 
 
+Execute only
+------------
+
+To simply execute a query without needing its result you call
+the :meth:`run()` method:
+
+.. code-block:: python
+
+    with db.cursor as cur:
+        cur.user.add(name='User', 
+                     email='user@example.com',
+                     city='City').run()
+
+        # or 
+        query = cur.user.add(name='User', 
+                             email='user@example.com',
+                             city='City')
+        query.run()
+
+This is handy if you only want to execute the query, e. g.
+DML statements like ``INSERT``, ``UPDATE`` or ``DELETE``
+where you don't need a fetch call.
+
+
 Getting data in chunks
 ----------------------
 
 quma supports the ``fetchmany`` method of Python's DBAPI by
 providing the :meth:`many()` method of :class:`Query`.
+:meth:`many()` returns an instance of :class:`ManyResult`
+which implements the :meth:`next()` method which also
+returns a :class:`ManyResult` object. 
 
 .. code-block:: python
 
-    users = cur.users.by_city(city='City')
-    first_two = users.many(2)
-    next_three = users.many(3)
-    next_tow users.many(2)
+    frist_two = cur.users.by_city(city='City').many(2)
+    assert len(first_two) == 2
+    next_three = first_two.next(3)
+    assert len(next_three) == 2
+    next_two = next_three.next(2)
+
+
+Another example:
+
+.. code-block:: python
+
+    def users_generator()
+        with db.cursor as cur:
+            manyusers = cur.users.all().many(3)
+            while len(manyusers):
+                for result in manyusers:
+                    yield result
+                manyusers = manyusers.next(3)
 
 
 Getting the number of rows

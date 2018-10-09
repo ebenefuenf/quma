@@ -138,8 +138,8 @@ the :meth:`commit()` and :meth:`rollback()` methods of the cursor.
 .. code-block:: python
 
     try:
-        cur.users.remove(id=13)
-        cur.users.rename(id=14, name='New Name')
+        cur.users.remove(id=13).run()
+        cur.users.rename(id=14, name='New Name').run()
         cur.commit()
     except Exception:
         cur.rollback()
@@ -153,8 +153,8 @@ context manager ends. So you don't need to call ``cur.commit()``.
     db = Database('sqlite:///:memory:', contextcommit=True)
 
     with db.cursor as cur:
-        cur.users.remove(id=13)
-        cur.users.rename(id=14, name='New Name')
+        cur.users.remove(id=13).run()
+        cur.users.rename(id=14, name='New Name').run()
         # no need to call cur.commit()
 
 **Note**: If you are using MySQL or SQLite some statements will automatically
@@ -171,13 +171,13 @@ will be executed in its own transaction that is implicitly committed.
 .. code-block:: python
 
     with db(autocommit=True).cursor as cur:
-        cur.users.remove(id=13) 
+        cur.users.remove(id=13).run()
 
 .. code-block:: python
 
     try:
         cur = db.cursor(autocommit=True)
-        cur.users.remove(id=13) 
+        cur.users.remove(id=13).run()
     finally:
         cur.close()
 

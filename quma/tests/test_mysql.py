@@ -137,19 +137,10 @@ def test_many(mydb, mypooldb):
 
 
 @pytest.mark.mysql
-def test_many_default(mydb):
-    with mydb.cursor as cursor:
-        users = mydb.users.all(cursor)
-        i = 0
-        while len(users.many()) == 1:
-            i += 1
-        assert i == 7
-
-        users = cursor.users.all()
-        i = 0
-        while len(users.many()) == 1:
-            i += 1
-        assert i == 7
+def test_many_default(mydb, mypooldb):
+    from .test_db import many_default
+    for db in (mydb, mypooldb):
+        many_default(db)
 
 
 @pytest.mark.mysql

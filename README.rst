@@ -53,7 +53,7 @@ You can access these scripts after connecting to the database:
         for user in all_users:
             print(user['name'])
 
-        cur.users.remove(id=user['id'])
+        cur.users.remove(id=user['id']).run()
         cur.commit()
 
         admin = cur.get_admin()
