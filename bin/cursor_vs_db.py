@@ -7,7 +7,7 @@ from quma.tests import util
 loops = 20000
 
 here = os.path.dirname(__file__)
-sql_path = os.path.join(here, '../quma/tests/fixtures/queries/qmark')
+sql_path = os.path.join(here, '../quma/tests/fixtures/scripts/qmark')
 
 
 def get_db():

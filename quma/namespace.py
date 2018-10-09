@@ -1,9 +1,9 @@
 from itertools import chain
 from pathlib import Path
 
-from .query import (
-    CursorQuery,
-    Query,
+from .script import (
+    CursorScript,
+    Script,
 )
 
 
@@ -27,11 +27,11 @@ class Namespace(object):
         self.cache = db.cache
         self.show = db.show
         self.shadow = shadow
-        self._queries = {}
+        self._scripts = {}
         if db.cache:
-            self._collect_queries(sqldir)
+            self._collect_scripts(sqldir)
 
-    def _collect_queries(self, sqldir):
+    def _collect_scripts(self, sqldir):
         sqlfiles = chain(sqldir.glob('*.{}'.format(self.db.file_ext)),
                          sqldir.glob('*.{}'.format(self.db.tmpl_ext)))
 
@@ -46,7 +46,7 @@ class Namespace(object):
                 attr = '_' + attr
 
             with open(str(sqlfile), 'r') as f:
-                self._queries[attr] = self.db.query_factory(
+                self._scripts[attr] = self.db.script_factory(
                     f.read(),
                     self.show,
                     ext.lower() == '.' + self.db.tmpl_ext,
@@ -55,7 +55,7 @@ class Namespace(object):
     def __getattr__(self, attr):
         if self.cache:
             try:
-                return self._queries[attr]
+                return self._scripts[attr]
             except KeyError:
                 return getattr(self.shadow, attr)
 
@@ -64,7 +64,7 @@ class Namespace(object):
             if not sqlfile.is_file():
                 sqlfile = self.sqldir / '.'.join((attr, self.db.tmpl_ext))
             with open(str(sqlfile), 'r') as f:
-                return self.db.query_factory(
+                return self.db.script_factory(
                     f.read(),
                     self.show,
                     Path(sqlfile).suffix == '.' + self.db.tmpl_ext,
@@ -80,12 +80,12 @@ class CursorNamespace(object):
 
     def __getattr__(self, attr):
         attr_obj = getattr(self.namespace, attr)
-        if type(attr_obj) is Query:
-            return CursorQuery(attr_obj, self.cursor)
+        if type(attr_obj) is Script:
+            return CursorScript(attr_obj, self.cursor)
         return attr_obj
 
     def __call__(self, *args, **kwargs):
-        if type(self.namespace) is Query:
+        if type(self.namespace) is Script:
             return self.namespace(self.cursor, *args, **kwargs)
         # Should be a custom namespace method
         return self.namespace(*args, **kwargs)

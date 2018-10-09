@@ -12,7 +12,7 @@ from .namespace import (
     Namespace,
     get_namespace,
 )
-from .query import Query
+from .script import Script
 
 
 class DatabaseCallWrapper(object):
@@ -56,8 +56,8 @@ class Database(object):
     :param tmpl_ext: The file extension of template files (see
         :doc:`Templates <templates>`). Defaults to 'msql'.
     :param show: Print the executed query to stdout if True. Defaults to False.
-    :param cache: cache the queries in memory if True.
-        Other wise re-read each script when the query is executed.
+    :param cache: cache the scripts in memory if True.
+        Otherwise re-read each script when the query is executed.
         Defaults to False.
 
     Additional connection pool parameters (see :doc:`Connection pool <pool>`):
@@ -86,7 +86,7 @@ class Database(object):
 
         self.file_ext = kwargs.pop('file_ext', 'sql')
         self.tmpl_ext = kwargs.pop('tmpl_ext', 'msql')
-        self.query_factory = kwargs.pop('query_factory', Query)
+        self.script_factory = kwargs.pop('script_factory', Script)
         self.prepare_params = kwargs.pop('prepare_params', None)
         self.contextcommit = kwargs.pop('contextcommit', False)
         self.show = kwargs.pop('show', False)

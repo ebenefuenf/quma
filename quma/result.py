@@ -6,12 +6,12 @@ from . import exc
 class Result(object):
     """
     The result object is the value you get when you run a query,
-    i. e. call a :class:`Query` object.
+    i. e. call a :class:`Script` object.
 
     """
 
-    def __init__(self, query, cursor, args, kwargs, prepare_params):
-        self.query = query
+    def __init__(self, script, cursor, args, kwargs, prepare_params):
+        self.script = script
         self.cursor = cursor
         self.args = args
         self.kwargs = kwargs
@@ -32,7 +32,7 @@ class Result(object):
         return self._fetch(self.cursor.fetchall)[index]
 
     def _execute(self):
-        self.query.execute(self.cursor,
+        self.script.execute(self.cursor,
                            list(self.args),
                            self.kwargs,
                            self.prepare_params)
@@ -79,7 +79,7 @@ class Result(object):
             return None
 
     def exists(self):
-        """Return if the query has rows in its result"""
+        """Return if the query's result has rows"""
         return len(self._fetch(self.cursor.fetchall)) > 0
 
     def value(self):

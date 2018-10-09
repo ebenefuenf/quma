@@ -2,7 +2,7 @@
 The Result class
 ==================
 
-When you call a query object it returns an instance of the 
+When you call a script object it returns an instance of the 
 :class:`Result` class. You can use it to iterate over the
 rows in the result, retrieve single rows or simply count
 whats in the result.

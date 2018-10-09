@@ -3,7 +3,7 @@ How to use quma
 ===============
 
 quma reads sql files from the file system and makes them accessible as 
-query objects. It passes the content of the files to a connected database
+script objects. It passes the content of the files to a connected database
 management system (DBMS) when these objects are called.
 
 Throughout this document we assume a directory with the following structure:
@@ -64,7 +64,7 @@ Creating a cursor
 
 DBAPI libs like psycopg2 or sqlite3 have the notion of a cursor,  which is used to
 manage the context of a fetch operation. quma is similar in that way. 
-To run queries you need to create a cursor instance.
+To execute queries you need to create a cursor instance.
 
 quma provides two ways to create a cursor object. Either by using a context manager:
 
@@ -91,13 +91,14 @@ you call members of the Database instance or the cursor (*db* and *cur* from now
 
 Scripts and directories at the root of the path are translated to direct members of *db*
 or *cur*. After initialisation of our example dir above, the script ``/get_admin.sql`` is
-available as :class:`Query` instance ``db.get_admin`` or ``cur.get_admin``
+available as :class:`Script` instance ``db.get_admin`` or ``cur.get_admin``
 and the directory ``/users`` as instance of :class:`Namespace`, i. e. ``db.users`` or
-``cur.users``. Scripts in subfolders will create query objects as members of the corresponding
+``cur.users``. Scripts in subfolders will create script objects as members of the corresponding
 namespace: ``/users/all`` will be ``db.users.all`` or ``cur.users.all``.
 
-When you call a :class:`Query` object, as in ``cur.user.all()`` where ``all`` is the mentioned object,
-you get back a :class:`Result` instance. Its simplest use is to iterate over it:
+When you call a :class:`Script` object, as in ``cur.user.all()`` where ``all`` is the mentioned object,
+you get back a :class:`Result` instance. The simplest use is to iterate over it (see below for 
+more information about the :class:`Result` class):
 
 .. code-block:: python
 
@@ -118,8 +119,8 @@ For mor information about the :class:`Result` class see :doc:`The Result class <
 .. Note::
 
     As you can see *cur* provides a nicer API where you don't have to pass the cursor when
-    you call a query or a method. Then again the *db* API has the advantage of being 
-    around 20-30% faster. But this should only be noticable if you run hundreds or thousands
+    you call a script or a method. Then again the *db* API has the advantage of being 
+    around 30% faster. But this should only be noticable if you run hundreds or thousands
     of queries in a row for example in a loop.
 
     If you have cloned the `quma repository <https://github.com/ebenefuenf/quma>`_

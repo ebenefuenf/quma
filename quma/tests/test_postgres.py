@@ -164,7 +164,7 @@ def test_get_cursor_attr(pgdb):
         conn.get_cursor_attr(cursor, 'fetchall')()
     assert str(e.value.error) == 'test'
 
-    # Test Query._fetch except
+    # Test Script._fetch except
     with pgdb.cursor as cursor:
         cursor.raw_cursor.fetchall = Mock()
         cursor.raw_cursor.fetchall.side_effect = FetchError(

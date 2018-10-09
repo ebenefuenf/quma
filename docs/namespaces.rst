@@ -31,7 +31,7 @@ with the first letter uppercase.
             return 'Test'
 
 
-Now you can call the method the same way as you would run queries:
+Now you can call the method the same way as you would call scripts:
 
 .. code-block:: python
 

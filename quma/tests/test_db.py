@@ -12,7 +12,7 @@ from .. import (
 from .. import cursor as cursor_
 from .. import (
     database,
-    query,
+    script,
     result,
 )
 
@@ -64,7 +64,7 @@ def test_namespace(db):
 
 
 def test_root_attr(db):
-    assert isinstance(db.get_users, query.Query)
+    assert isinstance(db.get_users, script.Script)
     with db().cursor as cursor:
         assert len(db.get_users(cursor)) == 7
         assert len(cursor.get_users()) == 7
@@ -80,7 +80,7 @@ def test_root_attr(db):
             db.root.get_faulty_test(cursor)
 
 
-def test_query(db):
+def test_script(db):
     assert str(db.users.all).startswith('SELECT id, name, email')
     with db.cursor as cursor:
         assert str(cursor.users.all).startswith('SELECT id, name, email')
@@ -322,11 +322,11 @@ def test_rollback(dbfile):
     rollback(dbfile)
 
 
-def test_overwrite_query_class(pyformat_sqldirs):
-    class MyQuery(query.Query):
+def test_overwrite_script_class(pyformat_sqldirs):
+    class MyScript(script.Script):
         def the_test(self):
             return 'Test'
-    db = Database(util.SQLITE_MEMORY, pyformat_sqldirs, query_factory=MyQuery)
+    db = Database(util.SQLITE_MEMORY, pyformat_sqldirs, script_factory=MyScript)
     assert db.user.all.the_test() == 'Test'
 
 
@@ -390,7 +390,7 @@ def test_pypy_changeling_init(qmark_sqldirs):
                     cursor.users.all().first()
 
 
-def test_qmark_query(db):
+def test_qmark_script(db):
     with db.cursor as cursor:
         user = db.user.by_email(cursor, 'user.3@example.com', 1).one()
         assert user[0] == 'User 3'
@@ -401,19 +401,19 @@ def test_qmark_query(db):
         assert 'name' in user.keys()
 
 
-def test_template_query(db):
+def test_template_script(db):
     with db.cursor as cursor:
         user = db.user.by_name_tmpl(cursor, name='User 1').one()
         assert user.intro == "I'm User 1"
         user = db.user.by_name_tmpl(cursor, name='User 2').one()
         assert user.intro == "I'm not User 1"
 
-        tmpl = query.Template
-        query.Template = None
+        tmpl = script.Template
+        script.Template = None
         with pytest.raises(ImportError) as e:
             db.user.by_name_tmpl(cursor, name='User 1').one()
         assert str(e.value).startswith('To use templates')
-        query.Template = tmpl
+        script.Template = tmpl
 
 
 def test_dict_callback(dbdictcb, carrier):
@@ -609,17 +609,17 @@ def test_show_parameter(dbshow):
 
 def test_caching(db, dbcache):
     with db.cursor as cursor:
-        assert len(db.user._queries) == 0
+        assert len(db.user._scripts) == 0
     with dbcache.cursor as cursor:
         user = dbcache.user.by_name(cursor, name='User 1').one()
         assert user.city == 'City A'
         assert dbcache.user.get_test(cursor) == 'Test'
-        assert len(dbcache.user._queries) >= 0
+        assert len(dbcache.user._scripts) >= 0
 
         user = cursor.user.by_name(name='User 1').one()
         assert user.city == 'City A'
         assert cursor.user.get_test(cursor) == 'Test'
-        assert len(cursor.user._queries) >= 0
+        assert len(cursor.user._scripts) >= 0
 
 
 def test_close(db):
