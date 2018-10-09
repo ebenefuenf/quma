@@ -48,6 +48,13 @@ def test_exists(mydb, mypooldb):
 
 
 @pytest.mark.mysql
+def test_query_cache(mydb, mypooldb):
+    from .test_db import query_cache
+    for db in (mydb, mypooldb):
+        query_cache(db)
+
+
+@pytest.mark.mysql
 def test_first(mydb, mypooldbdict):
     from .test_db import first
     for db in (mydb, mypooldbdict):

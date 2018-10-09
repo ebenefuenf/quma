@@ -1,10 +1,11 @@
 import os
+import sys
 from timeit import Timer
 
 import quma
 from quma.tests import util
 
-loops = 20000
+loops = int(sys.argv[1]) if len(sys.argv) > 1 else 20000
 
 here = os.path.dirname(__file__)
 sql_path = os.path.join(here, '../quma/tests/fixtures/scripts/qmark')
@@ -29,14 +30,14 @@ def db_namespaces():
             db.user.add(cursor,
                         name='Test User',
                         email='test.user@example.com',
-                        city='Test City')
+                        city='Test City').run()
             cursor.commit()
 
             db.user.by_name(cursor, name='User 1').one()
             db.user.by_name(cursor, name='Test User').one()
             db.users.all(cursor, name='Test User').first()
             db.users.all(cursor, name='Test User').all()
-            db.user.remove(cursor, name='Test User')
+            db.user.remove(cursor, name='Test User').run()
             cursor.commit()
 
 
@@ -50,19 +51,20 @@ def cursor_namespaces():
             cursor.root.get_test(cursor)
             cursor.user.add(name='Test User',
                             email='test.user@example.com',
-                            city='Test City')
+                            city='Test City').run()
             cursor.commit()
 
             cursor.user.by_name(name='User 1').one()
             cursor.user.by_name(name='Test User').one()
             cursor.users.all(name='Test User').first()
             cursor.users.all(name='Test User').all()
-            cursor.user.remove(name='Test User')
+            cursor.user.remove(name='Test User').run()
             cursor.commit()
 
 
-print('\n{}'.format(loops), 'loops each executing 10 queries and 2 commits:')
-print('-' * 52)
+header = '\n{} loops:'.format(loops)
+print(header)
+print('-' * (len(header) - 1))
 t = Timer(lambda: db_namespaces())
 print('db api:  ', t.timeit(number=1), 'seconds')
 t = Timer(lambda: cursor_namespaces())

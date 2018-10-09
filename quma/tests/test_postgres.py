@@ -52,6 +52,13 @@ def test_exists(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_query_cache(pgdb, pgpooldb):
+    from .test_db import query_cache
+    for db in (pgdb, pgpooldb):
+        query_cache(db)
+
+
+@pytest.mark.postgres
 def test_first(pgdb, pgpooldb):
     from .test_db import first
     for db in (pgdb, pgpooldb):

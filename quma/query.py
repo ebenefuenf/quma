@@ -22,7 +22,6 @@ class Query(object):
     """
     The query object is the value you get when you run a query,
     i. e. call a :class:`Script` object.
-
     """
 
     def __init__(self, script, cursor, args, kwargs, prepare_params):
@@ -31,36 +30,42 @@ class Query(object):
         self.args = args
         self.kwargs = kwargs
         self.prepare_params = prepare_params
-
-    def __iter__(self):
-        self.run()
-        return (row for row in self._fetch(self.cursor.fetchall))
-
-    def __len__(self):
-        self.run()
-        if self.cursor.has_rowcount:
-            return self.cursor.rowcount
-        else:
-            result = self._fetch(self.cursor.fetchall)
-            return len(result)
+        self._has_been_executed = False
+        self._result_cache = None
 
     def run(self):
-        """Execute the query and ignore the result"""
+        """Execute the query using the DBAPI driver."""
         self.script.execute(self.cursor,
                             list(self.args),
                             self.kwargs,
                             self.prepare_params)
+        self._has_been_executed = True
+        self._result_cache = None
 
-    def _fetch(self, func):
-        try:
-            return func()
-        except exc.FetchError as e:
-            raise e.error
+    def _fetch(self):
+        if not self._has_been_executed:
+            self.run()
+        if self._result_cache is None:
+            try:
+                self._result_cache = self.cursor.fetchall()
+            except exc.FetchError as e:
+                raise e.error
+        return self._result_cache
+
+    def __iter__(self):
+        for row in self._fetch():
+            yield row
+
+    def __len__(self):
+        result = self._fetch()
+        if self.cursor.has_rowcount:
+            return self.cursor.rowcount
+        else:
+            return len(result)
 
     def all(self):
         """Return a list of all results"""
-        self.run()
-        return self._fetch(self.cursor.fetchall)
+        return self._fetch()
 
     def count(self):
         """Return the length of the result."""
@@ -76,16 +81,14 @@ class Query(object):
             if rowcount > 1:
                 raise exc.MultipleRowsError()
 
-        self.run()
+        result = self._fetch()
 
         # SQLite does not support rowcount
         if self.cursor.has_rowcount:
             check_rowcount(self.cursor.rowcount)
-            return self._fetch(self.cursor.fetchone)
         else:
-            result = self._fetch(self.cursor.fetchall)
             check_rowcount(len(result))
-            return result[0]
+        return result[0]
 
     def value(self):
         """Call :func:`one` and return the first column."""
@@ -94,16 +97,14 @@ class Query(object):
     def first(self):
         """Get exactly one row and return None if there is no
         row present in the result."""
-        self.run()
         try:
-            return self._fetch(self.cursor.fetchall)[0]
+            return self._fetch()[0]
         except IndexError:
             return None
 
     def exists(self):
         """Return if the query's result has rows"""
-        self.run()
-        return len(self._fetch(self.cursor.fetchall)) > 0
+        return len(self._fetch()) > 0
 
     def many(self, size=None):
         """Call the :func:`fetchmany` method of the raw cursor.

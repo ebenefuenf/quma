@@ -512,6 +512,24 @@ def test_exists(dbfile):
     exists(dbfile)
 
 
+def query_cache(db):
+    with db.cursor as cursor:
+        users = cursor.users.all()
+        i = 0
+        for user in users:
+            i += 1
+        assert i == 7
+        assert len(users.all()) == 7
+        assert users.first() is not None
+        assert users.exists()
+        with pytest.raises(db.MultipleRowsError):
+            users.one()
+
+
+def test_query_cache(db):
+    query_cache(db)
+
+
 def many(db):
     with db.cursor as cursor:
         users = db.users.all(cursor).many(2)
@@ -550,6 +568,10 @@ def many_default(db):
         assert i == 7
 
 
+def test_many_default(dbfile):
+    many_default(dbfile)
+
+
 def test_generator(db):
     def users_generator():
         with db.cursor as cur:
@@ -560,10 +582,6 @@ def test_generator(db):
                 manyusers = manyusers.next(3)
 
     assert len(list(users_generator())) == 7
-
-
-def test_many_default(dbfile):
-    many_default(dbfile)
 
 
 def test_shadowing(db, dbshadow):
