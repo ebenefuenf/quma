@@ -1,6 +1,6 @@
 import sys
 
-from .result import Result
+from .query import Query
 
 try:
     from mako.template import Template
@@ -17,7 +17,7 @@ class Script(object):
         self.params = None
 
     def __call__(self, cursor, *args, prepare_params=None, **kwargs):
-        return Result(self, cursor, args, kwargs, prepare_params)
+        return Query(self, cursor, args, kwargs, prepare_params)
 
     def __str__(self):
         return self.content

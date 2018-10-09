@@ -6,7 +6,7 @@
    Home <index>
    install
    usage
-   result
+   query
    connecting
    pool
    carrier

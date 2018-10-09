@@ -1,9 +1,9 @@
 ==================
-The Result class
+The Query class
 ==================
 
 When you call a script object it returns an instance of the 
-:class:`Result` class. You can use it to iterate over the
+:class:`Query` class. You can use it to iterate over the
 rows in the result, retrieve single rows or simply count
 whats in the result.
 
@@ -11,7 +11,7 @@ whats in the result.
 Getting all rows from a result
 ------------------------------
 
-You can either iterate directly over the result object or call its
+You can either iterate directly over the query object or call its
 :meth:`all()` method to get a list of the all the rows.
 
 .. code-block:: python
@@ -108,7 +108,7 @@ Getting data in chunks
 ----------------------
 
 quma supports the ``fetchmany`` method of Python's DBAPI by
-providing the :meth:`many()` method of :class:`Result`.
+providing the :meth:`many()` method of :class:`Query`.
 
 .. code-block:: python
 
@@ -122,7 +122,7 @@ Getting the number of rows
 --------------------------
 
 If you are only interested in the number of row in a result you can pass a 
-:class:`Result` object to the :func:`len()` function. quma also includes a
+:class:`Query` object to the :func:`len()` function. quma also includes a
 convinience method called :meth:`count()`. Some drivers (like pycopg2) support the
 ``rowcount`` property of PEP249 which specifies the number of rows that the last
 execute produced. If it is available it will be used to to determine the
@@ -148,5 +148,5 @@ To check if a query has a result or not call the :meth:`exists()` method.
 Overview
 --------
 
-.. autoclass:: quma.result.Result
+.. autoclass:: quma.query.Query
     :members:

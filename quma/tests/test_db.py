@@ -13,7 +13,7 @@ from .. import cursor as cursor_
 from .. import (
     database,
     script,
-    result,
+    query,
 )
 
 
@@ -446,7 +446,7 @@ def multiple_records(db, getter):
     with db.cursor as cursor:
         # normal iteration
         users = db.users.by_city(cursor, city='City A')
-        assert type(users) is result.Result
+        assert type(users) is query.Query
         i = 0
         for user in users:
             assert getter(user) in ('User 1', 'User 2')
@@ -465,7 +465,7 @@ def multiple_records(db, getter):
            db.conn.__class__.__module__ != 'quma.provider.sqlite':
             # TODO: the cast to list does only work in CPython for all
             # dricers. In PyPy using the sqlite3 driver the fetch call
-            # in Result.__iter__ returns an empty list.
+            # in Query.__iter__ returns an empty list.
             #
             # The same behavior was present in CPython when we didn't
             # return a generator but iterated over the fetch result

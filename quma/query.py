@@ -3,9 +3,9 @@ from functools import partial
 from . import exc
 
 
-class Result(object):
+class Query(object):
     """
-    The result object is the value you get when you run a query,
+    The query object is the value you get when you run a query,
     i. e. call a :class:`Script` object.
 
     """

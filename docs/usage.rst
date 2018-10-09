@@ -97,8 +97,8 @@ and the directory ``/users`` as instance of :class:`Namespace`, i. e. ``db.users
 namespace: ``/users/all`` will be ``db.users.all`` or ``cur.users.all``.
 
 When you call a :class:`Script` object, as in ``cur.user.all()`` where ``all`` is the mentioned object,
-you get back a :class:`Result` instance. The simplest use is to iterate over it (see below for 
-more information about the :class:`Result` class):
+you get back a :class:`Query` instance. The simplest use is to iterate over it (see below for 
+more information about the :class:`Query` class):
 
 .. code-block:: python
 
@@ -114,7 +114,7 @@ The same using the *db* API:
     with db.cursor as cur:
         all_users = db.users.all(cur)
 
-For mor information about the :class:`Result` class see :doc:`The Result class <result>`.
+To learn what you can do with :class:`Query` objects see :doc:`The Query class <query>`.
 
 .. Note::
 
