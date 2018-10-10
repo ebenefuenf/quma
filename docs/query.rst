@@ -7,7 +7,8 @@ When you call a script object it returns an instance of the
 file and the parameters passed to the script call.
 
 Queries are executed lazily. This means you have to either call
-a method of the query object or iterate over it.
+a method of the query object or to iterate over it to cause the
+execution of the query against the DBMS.
     
 
 Getting multiple rows from a query
@@ -136,16 +137,15 @@ Getting data in chunks
 quma supports the ``fetchmany`` method of Python's DBAPI by
 providing the :meth:`many()` method of :class:`Query`.
 :meth:`many()` returns an instance of :class:`ManyResult`
-which implements the :meth:`next()` method which also
-returns a :class:`ManyResult` object. 
+which implements the :meth:`get()` method which internally
+calls the ``fetchmany`` method of the underlying cursor. 
 
 .. code-block:: python
 
-    frist_two = cur.users.by_city(city='City').many(2)
-    assert len(first_two) == 2
-    next_three = first_two.next(3)
-    assert len(next_three) == 2
-    next_two = next_three.next(2)
+    many_users = cur.users.by_city(city='City').many()
+    first_two = manyusers.get(2) # the first call of get executes the query
+    next_three = manyusers.get(3)
+    next_two = manyusers.get(2)
 
 
 Another example:
@@ -154,11 +154,32 @@ Another example:
 
     def users_generator()
         with db.cursor as cur:
-            manyusers = cur.users.all().many(3)
-            while len(manyusers):
-                for result in manyusers:
+            many_users = cur.users.all().many()
+            batch = many_users.get(3) # the first call of get executes the query
+            while batch:
+                for result in batch:
                     yield result
-                manyusers = manyusers.next(3)
+                batch = many_users.get(3)
+
+**Note**: In contrast to all other methods of the query object, like
+:meth:`all()`, :meth:`first()`, or :meth:`one()`, a call of :meth:`many()`
+will not execute the query. Instead, the first call of the :meth:`get()`
+method of an `many` result object will cause the execution. Also, results
+of `many` calls are not cached and if a query was already executed 
+the `many` mechanism will execute it again anyway. So keep in mind that
+already executed queries will be re-executed when :meth:`many()` is 
+called after the first execution, as in:
+
+.. code-block:: python
+
+    all_users = cur.users.all()
+    first_user = allusers.first() # query executed the first time
+    many_users = allusers.many()
+    first_two = manyusers.get(2) # query executed a second time
+    
+Additionally, the cache of ``all_users`` from the last example will be
+be invalidated after the first call of :meth:`get()`. So you should
+avoid to mix `many` queries with "normal" queries.
 
 
 Getting the number of rows
@@ -192,8 +213,8 @@ You can also use the query object itself for truth value testing:
 
 .. code-block:: python
 
-    allusers = cur.users.all()
-    if allusers:
+    all_users = cur.users.all()
+    if all_users:
         user1 = allusers.first()
 
 
@@ -210,22 +231,22 @@ to call :meth:`run()` manually.
 .. code-block:: python
 
     with db.cursor as cur:
-        allusers = cur.users.all()
+        all_users = cur.users.all()
 
-        for user in allusers:
+        for user in all_users:
             # the result is fetched and cached on the first iteration
             print(user.name)
 
         # get a list of all users from the cache
-        allusers.all()
+        all_users.all()
         # get the first user from the cache
-        allusers.first()
+        all_users.first()
 
         # re-execute the query
-        allusers.run()
+        all_users.run()
 
         # fetch and cache the new result of the re-executed query
-        allusers.all()
+        all_users.all()
 
 
 Access the underlying cursor
@@ -246,5 +267,14 @@ query directly on the query object.
 Overview
 --------
 
+Class Query
+~~~~~~~~~~~
+
 .. autoclass:: quma.query.Query
+    :members:
+
+Class ManyResult
+~~~~~~~~~~~~~~~~
+
+.. autoclass:: quma.query.ManyResult
     :members:

@@ -2,20 +2,25 @@ from . import exc
 
 
 class ManyResult(object):
-    def __init__(self, cursor, size):
-        self.cursor = cursor
-        self.size = self.cursor.arraysize if size is None else size
-        self.result = self.cursor.fetchmany(self.size)
+    def __init__(self, query):
+        self.query = query
+        self.cursor = query.cursor
+        self._has_been_executed = False
 
-    def __iter__(self):
-        for row in self.result:
-            yield row
+    def _run(self):
+        self.query.run()
+        self._has_been_executed = True
 
-    def __len__(self):
-        return len(self.result)
+    def get(self, size=None):
+        """Call the :func:`fetchmany` method of the raw cursor.
 
-    def next(self, size=None):
-        return ManyResult(self.cursor, size)
+        :param size: The number of rows to be returned. If not
+            given use the default value of the driver.
+        """
+        size = self.cursor.arraysize if size is None else size
+        if not self._has_been_executed:
+            self._run()
+        return self.cursor.fetchmany(size)
 
 
 class Query(object):
@@ -122,11 +127,8 @@ class Query(object):
         """Return if the query's result has rows"""
         return len(self._fetch()) > 0
 
-    def many(self, size=None):
-        """Call the :func:`fetchmany` method of the raw cursor.
-
-        :param size: The number of columns to be returned. If not
-            given use the default value of the driver.
+    def many(self):
+        """Return a ManyResult object initialized with
+        this query object.
         """
-        self.run()
-        return ManyResult(self.cursor, size)
+        return ManyResult(self)

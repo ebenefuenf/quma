@@ -593,19 +593,19 @@ def test_query_cache(db):
 
 def many(db):
     with db.cursor as cursor:
-        users = db.users.all(cursor).many(2)
-        assert len(list(users)) == 2
-        assert len(users.next(size=3)) == 3
-        assert len(users.next(size=1)) == 1
-        assert len(users.next()) == 1
-        assert len(users.next(size=4)) == 0
+        users = db.users.all(cursor).many()
+        assert len(users.get(2)) == 2
+        assert len(users.get(size=3)) == 3
+        assert len(users.get(size=1)) == 1
+        assert len(users.get()) == 1
+        assert len(users.get(size=4)) == 0
 
-        users = cursor.users.all().many(2)
-        assert len(list(users)) == 2
-        assert len(users.next(size=3)) == 3
-        assert len(users.next(size=1)) == 1
-        assert len(users.next()) == 1
-        assert len(users.next(size=4)) == 0
+        users = cursor.users.all().many()
+        assert len(users.get(2)) == 2
+        assert len(users.get(size=3)) == 3
+        assert len(users.get(size=1)) == 1
+        assert len(users.get()) == 1
+        assert len(users.get(size=4)) == 0
 
 
 def test_many(dbfile):
@@ -615,16 +615,14 @@ def test_many(dbfile):
 def many_default(db):
     with db.cursor as cursor:
         users = db.users.all(cursor).many()
-        assert len(users) == 1
-        i = 1
-        while len(users.next()) == 1:
+        i = 0
+        while len(users.get()) == 1:
             i += 1
         assert i == 7
 
         users = cursor.users.all().many()
-        assert len(users) == 1
-        i = 1
-        while len(users.next()) == 1:
+        i = 0
+        while len(users.get()) == 1:
             i += 1
         assert i == 7
 
@@ -636,11 +634,12 @@ def test_many_default(dbfile):
 def test_generator(db):
     def users_generator():
         with db.cursor as cur:
-            manyusers = cur.users.all().many(2)
-            while len(manyusers):
-                for result in manyusers:
+            manyusers = cur.users.all().many()
+            batch = manyusers.get(3)
+            while len(batch):
+                for result in batch:
                     yield result
-                manyusers = manyusers.next(3)
+                batch = manyusers.get(2)
 
     assert len(list(users_generator())) == 7
 
