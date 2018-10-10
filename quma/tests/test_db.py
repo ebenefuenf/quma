@@ -196,6 +196,20 @@ def test_value_str(db):
     value_str(db)
 
 
+def query_attr(db):
+    cursor = db.cursor()
+    q = cursor.user.add(id=8,
+                        name='Test User',
+                        email='test.user@example.com',
+                        city='Test City').run()
+    assert q.lastrowid is not None
+    cursor.close()
+
+
+def test_query_attr(db):
+    query_attr(db)
+
+
 def getitem(db):
     cursor = db.cursor()
     assert cursor.users.all()[1]['name'] == 'User 2'
@@ -226,11 +240,11 @@ def commit(db):
                         id=i,
                         name='Test User {}'.format(i),
                         email='test.user@example.com',
-                        city='Test City')
+                        city='Test City').run()
             cursor.user.add(id=i + 1,
                             name='Test User {}'.format(i + 1),
                             email='test.user@example.com',
-                            city='Test City')
+                            city='Test City').run()
     with db.cursor as cursor:
         with pytest.raises(db.DoesNotExistError):
             db.user.by_name(cursor, name='Test User 8').one()
@@ -243,19 +257,19 @@ def commit(db):
                         id=i,
                         name='Test User {}'.format(i),
                         email='test.user@example.com',
-                        city='Test City')
+                        city='Test City').run()
             cursor.user.add(id=i + 1,
                             name='Test User {}'.format(i + 1),
                             email='test.user@example.com',
-                            city='Test City')
+                            city='Test City').run()
         cursor.commit()
 
     cursor = db.cursor()
     for i in range(8, 16, 2):
-        db.user.by_name(cursor, name='Test User {}'.format(i)).one
-        cursor.user.by_name(name='Test User {}'.format(i + 1)).one
-        db.user.remove(cursor, name='Test User {}'.format(i))
-        cursor.user.remove(name='Test User {}'.format(i + 1))
+        db.user.by_name(cursor, name='Test User {}'.format(i)).one()
+        cursor.user.by_name(name='Test User {}'.format(i + 1)).one()
+        db.user.remove(cursor, name='Test User {}'.format(i)).run()
+        cursor.user.remove(name='Test User {}'.format(i + 1)).run()
     cursor.commit()
     with pytest.raises(db.DoesNotExistError):
         db.user.by_name(cursor, name='Test User 7').one()

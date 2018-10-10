@@ -80,6 +80,13 @@ def test_value_str(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_query_attr(pgdb, pgpooldb):
+    from .test_db import query_attr
+    for db in (pgdb, pgpooldb):
+        query_attr(db)
+
+
+@pytest.mark.postgres
 def test_getitem(pgdb, pgpooldb):
     from .test_db import getitem
     for db in (pgdb, pgpooldb):

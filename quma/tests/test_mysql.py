@@ -76,6 +76,13 @@ def test_value_str(mydb, mypooldbdict):
 
 
 @pytest.mark.mysql
+def test_query_attr(mydb, mypooldbdict):
+    from .test_db import query_attr
+    for db in (mydb, mypooldbdict):
+        query_attr(db)
+
+
+@pytest.mark.mysql
 def test_getitem(mydb, mypooldbdict):
     from .test_db import getitem
     for db in (mydb, mypooldbdict):

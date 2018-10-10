@@ -196,6 +196,7 @@ You can also use the query object itself for truth value testing:
     if allusers:
         user1 = allusers.first()
 
+
 Results are cached
 ------------------
 
@@ -225,6 +226,22 @@ to call :meth:`run()` manually.
 
         # fetch and cache the new result of the re-executed query
         allusers.all()
+
+
+Access the underlying cursor
+----------------------------
+
+You can access the attributes of the cursor which is used to execute the
+query directly on the query object.
+
+.. code-block:: python
+
+    with db.cursor as cur:
+        added = cur.users.add(name='User', email='user.1@example.com').run()
+        if added.lastrowid:
+            user = cur.user.by_id(id=added.lastrowid).run()
+            user.fetchone()
+
 
 Overview
 --------

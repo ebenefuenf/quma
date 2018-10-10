@@ -41,6 +41,7 @@ class Query(object):
                             self.prepare_params)
         self._has_been_executed = True
         self._result_cache = None
+        return self
 
     def _fetch(self):
         if not self._has_been_executed:
@@ -51,6 +52,9 @@ class Query(object):
             except exc.FetchError as e:
                 raise e.error
         return self._result_cache
+
+    def __getattr__(self, key):
+        return getattr(self.cursor, key)
 
     def __getitem__(self, index):
         return self._fetch()[index]
