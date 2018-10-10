@@ -179,6 +179,13 @@ def test_many_default(mydb, mypooldb):
 
 
 @pytest.mark.mysql
+def test_unbunch(mydb, mypooldb):
+    from .test_db import unbunch
+    for db in (mydb, mypooldb):
+        unbunch(db)
+
+
+@pytest.mark.mysql
 def test_execute(mydb, mypooldbdict):
     from .test_db import execute
     for db in (mydb, mypooldbdict):

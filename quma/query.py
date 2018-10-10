@@ -124,7 +124,7 @@ class Query(object):
             return None
 
     def exists(self):
-        """Return if the query's result has rows"""
+        """Return if the query's result has rows."""
         return len(self._fetch()) > 0
 
     def many(self):
@@ -132,3 +132,19 @@ class Query(object):
         this query object.
         """
         return ManyResult(self)
+
+    def unbunch(self, size=None):
+        """Return a generator that simplifies the use of fetchmany.
+
+        :param size: The number of rows to be fetched per
+            fetchmany call. If not given use the default value
+            of the driver.
+        """
+        size = self.cursor.arraysize if size is None else size
+        self.run()
+        while True:
+            results = self.cursor.fetchmany(size)
+            if not results:
+                break
+            for result in results:
+                yield result

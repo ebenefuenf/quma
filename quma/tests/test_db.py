@@ -644,6 +644,18 @@ def test_generator(db):
     assert len(list(users_generator())) == 7
 
 
+def unbunch(db):
+    with db.cursor as cur:
+        i = 0
+        for user in cur.users.all().unbunch(3):
+            i += 1
+        assert i == 7
+
+
+def test_unbunch(db):
+    unbunch(db)
+
+
 def test_shadowing(db, dbshadow):
     with db.cursor as cursor:
         assert len(dbshadow.get_users(cursor)) == 7

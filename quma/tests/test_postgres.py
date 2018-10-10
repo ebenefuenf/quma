@@ -226,6 +226,13 @@ def test_many_default(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_unbunch(pgdb, pgpooldb):
+    from .test_db import unbunch
+    for db in (pgdb, pgpooldb):
+        unbunch(db)
+
+
+@pytest.mark.postgres
 def test_execute(pgdb, pgpooldb):
     from .test_db import execute
     for db in (pgdb, pgpooldb):

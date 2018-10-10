@@ -161,6 +161,10 @@ Another example:
                     yield result
                 batch = many_users.get(3)
 
+    for user in users_generator():
+        print(user.name)
+
+
 **Note**: In contrast to all other methods of the query object, like
 :meth:`all()`, :meth:`first()`, or :meth:`one()`, a call of :meth:`many()`
 will not execute the query. Instead, the first call of the :meth:`get()`
@@ -180,6 +184,27 @@ called after the first execution, as in:
 Additionally, the cache of ``all_users`` from the last example will be
 be invalidated after the first call of :meth:`get()`. So you should
 avoid to mix `many` queries with "normal" queries.
+
+A simpler version of :meth:`many()`
+------------------------------------
+
+If your expected result set is too large for simply iterating over
+the query object or calling :meth:`all()` (as they call ``fetchall`` internally)
+but you like to work with the result in a single simple loop instead of using 
+:meth:`many()`, you can use the method :meth:`unbunch()`. It is a convenience
+method which internally calls ``fetchmany`` with the given size. Using
+:meth:`unbunch()` we can simplify the :meth:`many()` example with the
+``users_generator`` from the last section:
+
+.. code-block:: python
+
+    with db.cursor as cur:
+        for user in cur.users.all().unbunch(3)
+            print(user.name)
+
+:meth:`unbunch()` re-excutes the query and invalidates the cache on each call,
+just like :meth:`many()`.
+
 
 
 Getting the number of rows
