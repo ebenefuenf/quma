@@ -76,6 +76,13 @@ def test_getitem(mydb, mypooldbdict):
 
 
 @pytest.mark.mysql
+def test_bool(mydb, mypooldbdict):
+    from .test_db import tbool
+    for db in (mydb, mypooldbdict):
+        tbool(db)
+
+
+@pytest.mark.mysql
 def test_commit(mydb, mypooldb):
     from .test_db import commit
     for db in (mydb, mypooldb):

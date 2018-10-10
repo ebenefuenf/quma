@@ -188,6 +188,14 @@ To check if a query has a result or not call the :meth:`exists()` method.
 
     has_users = cur.users.all().exists()
 
+You can also use the query object itself for truth value testing:
+
+.. code-block:: python
+
+    allusers = cur.users.all()
+    if allusers:
+        user1 = allusers.first()
+
 Overview
 --------
 

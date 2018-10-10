@@ -59,6 +59,9 @@ class Query(object):
         for row in self._fetch():
             yield row
 
+    def __bool__(self):
+        return len(self._fetch()) > 0
+
     def __len__(self):
         result = self._fetch()
         if self.cursor.has_rowcount:

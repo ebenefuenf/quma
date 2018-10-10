@@ -193,6 +193,17 @@ def test_getitem(db):
     getitem(db)
 
 
+def tbool(db):
+    cursor = db.cursor()
+    assert cursor.users.all()
+    assert not cursor.users.none()
+    cursor.close()
+
+
+def test_bool(db):
+    tbool(db)
+
+
 def commit(db):
     with db.cursor as cursor:
         for i in range(8, 16, 2):

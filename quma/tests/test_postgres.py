@@ -80,6 +80,13 @@ def test_getitem(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_bool(pgdb, pgpooldb):
+    from .test_db import tbool
+    for db in (pgdb, pgpooldb):
+        tbool(db)
+
+
+@pytest.mark.postgres
 def test_commit(pgdb, pgpooldb):
     from .test_db import commit
     for db in (pgdb, pgpooldb):
