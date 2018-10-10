@@ -52,6 +52,9 @@ class Query(object):
                 raise e.error
         return self._result_cache
 
+    def __getitem__(self, index):
+        return self._fetch()[index]
+
     def __iter__(self):
         for row in self._fetch():
             yield row

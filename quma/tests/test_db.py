@@ -181,6 +181,18 @@ def test_value(db):
     value(db)
 
 
+def getitem(db):
+    cursor = db.cursor()
+    assert cursor.users.all()[1]['name'] == 'User 2'
+    result = db.users.all(cursor)
+    assert result[3]['email'] == 'user.4@example.com'
+    cursor.close()
+
+
+def test_getitem(db):
+    getitem(db)
+
+
 def commit(db):
     with db.cursor as cursor:
         for i in range(8, 16, 2):

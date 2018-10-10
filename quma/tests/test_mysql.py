@@ -69,6 +69,13 @@ def test_value(mydbpersist, mypooldb):
 
 
 @pytest.mark.mysql
+def test_getitem(mydb, mypooldbdict):
+    from .test_db import getitem
+    for db in (mydb, mypooldbdict):
+        getitem(db)
+
+
+@pytest.mark.mysql
 def test_commit(mydb, mypooldb):
     from .test_db import commit
     for db in (mydb, mypooldb):
