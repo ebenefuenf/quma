@@ -3,7 +3,7 @@ Importable database
 ===================
 
 Sometimes it isn't enough to create a global ``Database`` instance 
-and import it into other modules. For example if you read the database 
+and import it into other modules. For example, if you read the database 
 credentials from a configuration file at runtime and then initialize
 the instance while the uninitialized global is already imported 
 elsewhere. The following code shows a way to keep the quma API in place
@@ -48,7 +48,7 @@ Create the instance in your main module:
     my_db_module.connect()
 
 Now you can import the class ``my_db_module.db`` from everywhere
-and use it like a usual instance of ``quma.Database``.
+and use it the same way as a usual instance of ``quma.Database``.
 
 .. code-block:: python
     

@@ -41,7 +41,7 @@ and **SQLite** will return a list.
 Getting a single row
 --------------------
 
-If you now there will be only one row in the result of a query
+If you know there will be only one row in the result of a query
 you can use the :meth:`one()` method to get it. quma will raise a 
 :exc:`DoesNotExistError` error if there is no row in the result 
 and a :exc:`MultipleRowsError` if there are returned more than one
@@ -166,10 +166,10 @@ Getting the number of rows
 
 If you are only interested in the number of row in a result you can pass a 
 :class:`Query` object to the :func:`len()` function. quma also includes a
-convinience method called :meth:`count()`. Some drivers (like pycopg2) support the
+convenience method called :meth:`count()`. Some drivers (like pycopg2) support the
 ``rowcount`` property of PEP249 which specifies the number of rows that the last
-execute produced. If it is available it will be used to to determine the
-number of rows. Otherwise a fetchall will be executed and passed to :func:`len` to
+execute produced. If it is available it will be used to determine the
+number of rows, otherwise a fetchall will be executed and passed to :func:`len` to
 get the number.
 
 .. code-block:: python

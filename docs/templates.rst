@@ -3,8 +3,8 @@ Templates
 =========
 
 quma supports rendering templates using the
-`Mako template library <http://www.makotemplates.org>`_. By default
-template files must have the file extension ``*.msql`` which 
+`Mako template library <http://www.makotemplates.org>`_. By default,
+template files must have the file extension ``*.msql``, which 
 can be overwritten. 
 
 Using this feature you are able to write dynamic

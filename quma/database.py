@@ -39,8 +39,8 @@ class Database(object):
     :param sqldirs: One or more filesystem paths pointing to the sql scripts.
                     str or pathlib.Path.
     :param persist: If True quma immediately opens a
-        connection and keeps it open througout the complete application run
-        time. Setting it to True will raise an error if you try to
+        connection and keeps it open throughout the complete application
+        runtime. Setting it to True will raise an error if you try to
         initialize a connection pool. Defaults to false.
     :param pessimistic: If True quma emits a test statement on
         a persistent SQL connection every time it is accessed or at the start
@@ -56,8 +56,8 @@ class Database(object):
     :param tmpl_ext: The file extension of template files (see
         :doc:`Templates <templates>`). Defaults to 'msql'.
     :param show: Print the executed query to stdout if True. Defaults to False.
-    :param cache: cache the scripts in memory if True.
-        Otherwise re-read each script when the query is executed.
+    :param cache: cache the scripts in memory if True,
+        otherwise re-read each script when the query is executed.
         Defaults to False.
 
     Additional connection pool parameters (see :doc:`Connection pool <pool>`):
@@ -144,7 +144,7 @@ class Database(object):
 
     def execute(self, query, **kwargs):
         """Execute the statements in ``query`` and commit
-        immediatly.
+        immediately.
 
         :param query: The sql query to execute.
         """

@@ -25,7 +25,7 @@ of the changeling (sqlite: :class:`sqlite3.Row`, psycopg2:
 the original member isn't accessible. You can access it anyway if you 
 prefix it with an underscore '_'. 
 
-The :class:`sqlite3.Row` for example has a method :func:`keys` which
+The :class:`sqlite3.Row`, for example, has a method :func:`keys` which
 lists all field names. If a query returns a field with the name 'keys'
 the method is shadowed:
 
@@ -45,7 +45,7 @@ the method is shadowed:
 Performance
 -----------
 
-By default changling is *False* which is slightly faster. Then SQLite 
+By default, changling is *False* which is slightly faster. Then SQLite 
 supports access by index only. PostgreSQL by key and index (we use 
 :class:`psycopg.extras.DictCursor` internally).
 

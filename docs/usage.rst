@@ -120,7 +120,7 @@ To learn what you can do with :class:`Query` objects see :doc:`The Query class <
 
     As you can see *cur* provides a nicer API where you don't have to pass the cursor when
     you call a script or a method. Then again the *db* API has the advantage of being 
-    around 30% faster. But this should only be noticable if you run hundreds or thousands
+    around 30% faster. But this should only be noticeable if you run hundreds or thousands
     of queries in a row for example in a loop.
 
     If you have cloned the `quma repository <https://github.com/ebenefuenf/quma>`_
@@ -132,7 +132,7 @@ Committing changes and rollback
 -------------------------------
 
 quma does not automatically commit by default. You have to manually
-commit all changes as well as rolling back if a error occurs using
+commit all changes as well as rolling back if an error occurs using
 the :meth:`commit()` and :meth:`rollback()` methods of the cursor.
 
 .. code-block:: python

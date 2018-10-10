@@ -7,7 +7,7 @@ Each subfolder in the script directory will result in a namespace object
 as a direct member of *db* or *cur*. 
 
 You can add custom methods to these objects by putting a :file:`__init__.py`
-file to the subfolder which is your namespace and add a subclass of
+file to the subfolder which is your namespace and adds a subclass of
 :class:`quma.Namespace` to it. The class must have the name of the folder
 with the first letter uppercase.
 

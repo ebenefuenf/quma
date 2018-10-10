@@ -10,7 +10,7 @@ quma is a small SQL database library for **Python**  and **PyPy** version 3.5 an
 It maps object methods to SQL script files and supports **SQLite**, **PostgreSQL**,
 **MySQL** and **MariaDB**.
 
-Unlike ORMs it allows to write SQL as it was intented and to use all featuers
+Unlike ORMs it allows to write SQL as it was intended and to use all features
 the DBMS provides. As it uses plain SQL files you can fully utilize your database GUI tool.
 
 It also provides a simple connection pool.

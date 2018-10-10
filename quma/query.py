@@ -78,8 +78,8 @@ class Query(object):
         return len(self.all())
 
     def one(self):
-        """Get exactly one row and check if only one exists.
-        Otherwise raise an error.
+        """Get exactly one row and check if only one exists,
+        otherwise raise an error.
         """
         if not self._has_been_executed:
             self.run()
