@@ -81,18 +81,21 @@ class Query(object):
         """Get exactly one row and check if only one exists.
         Otherwise raise an error.
         """
+        if not self._has_been_executed:
+            self.run()
+
         def check_rowcount(rowcount):
             if rowcount == 0:
                 raise exc.DoesNotExistError()
             if rowcount > 1:
                 raise exc.MultipleRowsError()
 
-        result = self._fetch()
-
         # SQLite does not support rowcount
         if self.cursor.has_rowcount:
             check_rowcount(self.cursor.rowcount)
+            result = self._fetch()
         else:
+            result = self._fetch()
             check_rowcount(len(result))
         return result[0]
 
