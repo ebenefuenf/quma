@@ -99,9 +99,12 @@ class Query(object):
             check_rowcount(len(result))
         return result[0]
 
-    def value(self):
-        """Call :func:`one` and return the first column."""
-        return self.first()[0]
+    def value(self, key=0):
+        """Call :func:`one` and return the first column by default.
+
+        :param key: Return the value at ``key``'s position instead
+            of the first column."""
+        return self.one()[key]
 
     def first(self):
         """Get exactly one row and return None if there is no

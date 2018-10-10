@@ -171,14 +171,29 @@ def test_first(db):
 def value(db):
     cursor = db.cursor()
     assert cursor.users.by_email('user.1@example.com', 1).value() == 'User 1'
+    assert cursor.users.by_email('user.1@example.com', 1).value(1) == 'City A'
     assert db.users.by_email(cursor,
                              'user.2@example.com',
                              1).value() == 'User 2'
+    assert db.users.by_email(cursor,
+                             'user.2@example.com',
+                             1).value(1) == 'City A'
     cursor.close()
 
 
 def test_value(db):
     value(db)
+
+
+def value_str(db):
+    cursor = db.cursor()
+    assert cursor.users.by_name(name='User 1').value('city') == 'City A'
+    assert db.users.by_name(cursor, name='User 1').value('city') == 'City A'
+    cursor.close()
+
+
+def test_value_str(db):
+    value_str(db)
 
 
 def getitem(db):

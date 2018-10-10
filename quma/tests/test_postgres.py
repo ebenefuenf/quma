@@ -73,6 +73,13 @@ def test_value(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_value_str(pgdb, pgpooldb):
+    from .test_db import value_str
+    for db in (pgdb, pgpooldb):
+        value_str(db)
+
+
+@pytest.mark.postgres
 def test_getitem(pgdb, pgpooldb):
     from .test_db import getitem
     for db in (pgdb, pgpooldb):
