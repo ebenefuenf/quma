@@ -196,6 +196,36 @@ You can also use the query object itself for truth value testing:
     if allusers:
         user1 = allusers.first()
 
+Results are cached
+------------------
+
+As described above, quma executes queries lazily. Only after the first call
+of a method or when an iteration over the query object is started,
+the data will be fetched. The fetched result will be cached in the query
+object. This means you can perform more than one operation on the object while 
+the query will not be re-executed. If you want to re-execute it, you need
+to call :meth:`run()` manually.
+
+.. code-block:: python
+
+    with db.cursor as cur:
+        allusers = cur.users.all()
+
+        for user in allusers:
+            # the result is fetched and cached on the first iteration
+            print(user.name)
+
+        # get a list of all users from the cache
+        allusers.all()
+        # get the first user from the cache
+        allusers.first()
+
+        # re-execute the query
+        allusers.run()
+
+        # fetch and cache the new result of the re-executed query
+        allusers.all()
+
 Overview
 --------
 

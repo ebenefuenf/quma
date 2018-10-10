@@ -553,15 +553,24 @@ def test_exists(dbfile):
 def query_cache(db):
     with db.cursor as cursor:
         users = cursor.users.all()
+        assert users._has_been_executed is False
+        assert users._result_cache is None
         i = 0
         for user in users:
+            assert users._has_been_executed is True
             i += 1
+        assert users._result_cache is not None
         assert i == 7
         assert len(users.all()) == 7
         assert users.first() is not None
         assert users.exists()
         with pytest.raises(db.MultipleRowsError):
             users.one()
+        users.run()
+        assert users._has_been_executed is True
+        assert users._result_cache is None
+        assert users.first() is not None
+        assert users._result_cache is not None
 
 
 def test_query_cache(db):
