@@ -1,6 +1,19 @@
 quma Changelog
 ===============
 
+Version 0.1.0a4
+---------------
+
+Released on October 19th 2018
+
+- Make the cursor as first parameter of public custom namespace methods
+  mandatory. Automatically pass it when the method is called via the
+  *cur* api.
+- Fix ``query.count()``/``len(query)``: Return DBAPI's ``rowcount`` if 
+  available. Don't fetch the result when these methods are called anymore. 
+  Calls of count have overwritten the value of ``rowcount`` and set it 
+  to ``-1``.
+
 Version 0.1.0a3
 ---------------
 
