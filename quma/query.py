@@ -71,20 +71,23 @@ class Query(object):
     def __bool__(self):
         return len(self._fetch()) > 0
 
-    def __len__(self):
-        result = self._fetch()
+    def _len(self):
+        self.run()
         if self.cursor.has_rowcount:
             return self.cursor.rowcount
         else:
-            return len(result)
+            return len(self._fetch())
+
+    def __len__(self):
+        return self._len()
+
+    def count(self):
+        """Return the length of the result."""
+        return self._len()
 
     def all(self):
         """Return a list of all results"""
         return self._fetch()
-
-    def count(self):
-        """Return the length of the result."""
-        return len(self.all())
 
     def one(self):
         """Get exactly one row and check if only one exists,

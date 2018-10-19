@@ -165,14 +165,16 @@ Another example:
         print(user.name)
 
 
-**Note**: In contrast to all other methods of the query object, like
-:meth:`all()`, :meth:`first()`, or :meth:`one()`, a call of :meth:`many()`
-will not execute the query. Instead, the first call of the :meth:`get()`
-method of an `many` result object will cause the execution. Also, results
-of `many` calls are not cached and if a query was already executed 
-the `many` mechanism will execute it again anyway. So keep in mind that
-already executed queries will be re-executed when :meth:`many()` is 
-called after the first execution, as in:
+.. Note::
+
+    In contrast to all other fetching methods of the query object, like
+    :meth:`all()`, :meth:`first()`, or :meth:`one()`, a call of :meth:`many()`
+    will not execute the query. Instead, the first call of the :meth:`get()`
+    method of an `many` result object will cause the execution. Also, results
+    of `many` calls are not cached and if a query was already executed 
+    the `many` mechanism will execute it again anyway. So keep in mind that
+    already executed queries will be re-executed when :meth:`many()` is 
+    called after the first execution, as in:
 
 .. code-block:: python
 
@@ -223,6 +225,13 @@ get the number.
     number_of_users = len(cur.users.all())
     number_of_users = cur.users.all().count()
     number_of_users = db.users.all(cur).count()
+
+.. Note::
+
+    :func:`len()` or :meth:`count()` calls must occure before fetch calls like
+    :meth:`one()` or :meth:`all()`. This has to do with the internals of the DBAPI drivers.
+    A fetch would overwrite the value of ``rowcount`` which would return
+    ``-1`` afterwards.
 
 
 Checking if a result exists

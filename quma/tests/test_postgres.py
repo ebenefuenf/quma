@@ -39,9 +39,13 @@ def test_cursor_call(pgdb, pgpooldb):
 
 @pytest.mark.postgres
 def test_count(pgdb, pgpooldb):
-    from .test_db import count
+    from .test_db import (
+        count,
+        rowcount,
+    )
     for db in (pgdb, pgpooldb):
         count(db)
+        rowcount(db)
 
 
 @pytest.mark.postgres

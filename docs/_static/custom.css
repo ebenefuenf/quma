@@ -7,6 +7,11 @@ div.admonition p.last {
     margin-top: 5px;
 }
 
+div.admonition.note code.xref {
+    background: #eee;
+    border: 0;
+}
+
 .py-meth {
     color: #0b3e80;
 }

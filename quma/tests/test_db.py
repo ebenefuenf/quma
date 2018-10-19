@@ -554,6 +554,48 @@ def test_count(db):
     count(db)
 
 
+def rowcount(db):
+    cur = db.cursor()
+    assert db.user.add(
+                    cur,
+                    id=8,
+                    name='Test User 1',
+                    email='test.user@example.com',
+                    city='Test City').count() == 1
+    assert cur.user.add(
+                    id=9,
+                    name='Test User 2',
+                    email='test.user@example.com',
+                    city='Test City').count() == 1
+    assert len(db.user.add(
+                    cur,
+                    id=10,
+                    name='Test User 3',
+                    email='test.user@example.com',
+                    city='Test City')) == 1
+    assert len(cur.user.add(
+                    id=11,
+                    name='Test User 4',
+                    email='test.user@example.com',
+                    city='Test City')) == 1
+    assert db.users.update(cur,
+                           email='test1@example.com',
+                           city='Test City').count() == 4
+    assert cur.users.update(email='test2@example.com',
+                            city='Test City').count() == 4
+    assert len(db.users.update(cur,
+                               email='test3@example.com',
+                               city='Test City')) == 4
+    assert len(cur.users.update(email='test4@example.com',
+                                city='Test City')) == 4
+    assert db.user.remove(cur, name='Test User 1').count() == 1
+    assert cur.user.remove(name='Test User 2').count() == 1
+    assert len(db.user.remove(cur, name='Test User 3')) == 1
+    assert len(cur.user.remove(name='Test User 4')) == 1
+    cur.commit()
+    cur.close()
+
+
 def exists(db):
     with db.cursor as cursor:
         assert cursor.users.all().exists()
