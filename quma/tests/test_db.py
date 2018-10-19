@@ -71,9 +71,9 @@ def test_root_attr(db):
         assert len(db.root.get_users(cursor)) == 7
         assert len(cursor.root.get_users()) == 7
         assert db.get_test(cursor) == 'Test'
-        assert cursor.get_test(cursor) == 'Test'
+        assert cursor.get_test() == 'Test'
         assert db.root.get_test(cursor) == 'Test'
-        assert cursor.root.get_test(cursor) == 'Test'
+        assert cursor.root.get_test() == 'Test'
         with pytest.raises(AttributeError):
             db.get_faulty_test(cursor)
         with pytest.raises(AttributeError):
@@ -717,10 +717,10 @@ def test_shadowing(db, dbshadow):
         assert len(cursor.get_trees()) == 2
         # root method from shadowed dir
         assert dbshadow.get_shadowed_test(cursor) == 'Shadowed Test'
-        assert cursor.get_shadowed_test(cursor) == 'Shadowed Test'
+        assert cursor.get_shadowed_test() == 'Shadowed Test'
         # masking root method
         assert dbshadow.get_test(cursor) == 'Masking Test'
-        assert cursor.get_test(cursor) == 'Masking Test'
+        assert cursor.get_test() == 'Masking Test'
         # namespace script from shadowed dir
         user = dbshadow.addresses.by_user(cursor).one()
         assert user.address == 'Shadowed Address'
@@ -766,7 +766,7 @@ def test_caching(db, dbcache):
 
         user = cursor.user.by_name(name='User 1').one()
         assert user.city == 'City A'
-        assert cursor.user.get_test(cursor) == 'Test'
+        assert cursor.user.get_test() == 'Test'
         assert len(cursor.user._scripts) >= 0
 
 

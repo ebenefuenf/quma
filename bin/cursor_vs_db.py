@@ -47,8 +47,8 @@ def cursor_namespaces():
         with db.cursor as cursor:
             cursor.get_users()
             cursor.root.get_users()
-            cursor.get_test(cursor)
-            cursor.root.get_test(cursor)
+            cursor.get_test()
+            cursor.root.get_test()
             cursor.user.add(name='Test User',
                             email='test.user@example.com',
                             city='Test City').run()

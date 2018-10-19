@@ -1,3 +1,5 @@
+import types
+from functools import partial
 from itertools import chain
 from pathlib import Path
 
@@ -80,12 +82,12 @@ class CursorNamespace(object):
 
     def __getattr__(self, attr):
         attr_obj = getattr(self.namespace, attr)
-        if type(attr_obj) is Script:
+        if isinstance(attr_obj, Script):
             return CursorScript(attr_obj, self.cursor)
+        if isinstance(attr_obj, types.MethodType):
+            return partial(attr_obj, self.cursor)
         return attr_obj
 
     def __call__(self, *args, **kwargs):
-        if type(self.namespace) is Script:
-            return self.namespace(self.cursor, *args, **kwargs)
-        # Should be a custom namespace method
-        return self.namespace(*args, **kwargs)
+        # This should be a custom root method or a root level script.
+        return self.namespace(self.cursor, *args, **kwargs)

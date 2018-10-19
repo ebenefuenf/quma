@@ -7,8 +7,8 @@ Each subfolder in the script directory will result in a namespace object
 as a direct member of *db* or *cur*. 
 
 You can add custom methods to these objects by putting a :file:`__init__.py`
-file to the subfolder which is your namespace and adds a subclass of
-:class:`quma.Namespace` to it. The class must have the name of the folder
+file into the subfolder which is your namespace and by adding a subclass of
+:class:`quma.Namespace` to it. The class must have the same name as the folder
 with the first letter uppercase.
 
 ::
@@ -27,15 +27,28 @@ with the first letter uppercase.
     # If the subfolder's name is 'users' the 
     # class must be named 'Users'.
     class Users(Namespace):
-        def get_test(self):
+        # the method must accept the cursor as its first parameter
+        def get_test(self, cur):
             return 'Test'
 
+        def get_address(self, cur, username):
+            user = cur.user.by_username(username=username)
+            return cur.address.by_user(user.id)
+            
+
+
+Public methods of the namespace **must** be definied with the cursor
+as second parameter. It will automatically be passed when you use
+the *cur* api.
 
 Now you can call the method the same way as you would call scripts:
 
 .. code-block:: python
 
-    cur.users.get_test()
+    db.users.get_test(cur)
+    cur.users.get_test() # no need to pass cur
+    address = cur.users.get_address('testuser')
+
 
 Root members
 ------------
