@@ -1,6 +1,13 @@
 quma Changelog
 ===============
 
+Version 0.1.0a5
+---------------
+
+Released on November 16th 2018
+
+- Fix ``query.exists()``: Return DBAPI's ``rowcount`` if available.
+
 Version 0.1.0a4
 ---------------
 
