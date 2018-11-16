@@ -128,7 +128,7 @@ class Query(object):
 
     def exists(self):
         """Return if the query's result has rows."""
-        return len(self._fetch()) > 0
+        return self._len() > 0
 
     def many(self):
         """Return a ManyResult object initialized with
