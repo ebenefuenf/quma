@@ -210,19 +210,19 @@ Accessing the DBAPI cursor and connection
 -----------------------------------------
 
 The underlying DBAPI connection and cursor objects are available as
-members of the cursor instance. The connection object is ``raw_conn``
-and the cursor ``raw_cursor.cursor``.
+members of the cursor instance. The connection object as ``raw_conn``
+and the cursor as ``raw_cursor.cursor``.
 
 .. code-block:: python
 
     # The connection
-    dbapi_cursor = cur.raw_conn.autocommit = True
+    cur.raw_conn.autocommit = True
     dbapi_cursor = cur.raw_conn.cursor()
     
     # The cursor
     cur.raw_cursor.cursor.execute('SELECT * FROM users;')
     users = cur.raw_cursor.cursor.fetchall()
-    # raw_cursor wraps the real cursor. This would work also
+    # raw_cursor wraps the real cursor. This would work as well
     cur.raw_cursor.execute('SELECT * FROM users;')
     users = cur.raw_cursor.fetchall()
 
