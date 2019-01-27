@@ -736,25 +736,6 @@ def test_shadowing(db, dbshadow):
         assert address == 'Masking Address'
 
 
-def test_show_parameter(dbshow):
-    import sys
-    tmp = sys.stdout
-    sys.stdout = type('S', (), {})
-    sql = {}
-
-    def write(s):
-        sql['sql'] = s
-
-    sys.stdout.write = write
-    with dbshow.cursor as cursor:
-        dbshow.user.by_name(cursor, name='User 1').one()
-        assert 'SELECT email, city' in sql['sql']
-        cursor.user.by_city(city='City 1').first()
-        assert 'SELECT name, email' in sql['sql']
-
-    sys.stdout = tmp
-
-
 def test_caching(db, dbcache):
     with db.cursor as cursor:
         assert len(db.user._scripts) == 0
@@ -793,3 +774,22 @@ def execute(db, error):
 
 def test_execute(db):
     execute(db, sqlite3.OperationalError)
+
+
+def test_show_parameter(dbshow):
+    import sys
+    tmp = sys.stdout
+    sys.stdout = type('S', (), {})
+    sql = {}
+
+    def write(s):
+        sql['sql'] = s
+
+    sys.stdout.write = write
+    with dbshow.cursor as cursor:
+        dbshow.user.by_name(cursor, name='User 1').one()
+        assert 'SELECT email, city' in sql['sql']
+        cursor.user.by_city(city='City 1').first()
+        assert 'SELECT name, email' in sql['sql']
+
+    sys.stdout = tmp

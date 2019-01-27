@@ -235,6 +235,14 @@ def test_unbunch(pgdb, pgpooldb):
     for db in (pgdb, pgpooldb):
         unbunch(db)
 
+
+@pytest.mark.postgres
+def test_execute(pgdb, pgpooldb):
+    from .test_db import execute
+    for db in (pgdb, pgpooldb):
+        execute(db, psycopg2.ProgrammingError)
+
+
 @pytest.mark.postgres
 def test_show_parameter(pgdb_show, pgpooldb_show):
     import sys
@@ -254,10 +262,3 @@ def test_show_parameter(pgdb_show, pgpooldb_show):
                 ("SELECT name, city FROM users WHERE email = "
                 "'user.1@example.com' AND 1 = 1;\n") == sql['sql'])
     sys.stdout = tmp
-
-
-@pytest.mark.postgres
-def test_execute(pgdb, pgpooldb):
-    from .test_db import execute
-    for db in (pgdb, pgpooldb):
-        execute(db, psycopg2.ProgrammingError)

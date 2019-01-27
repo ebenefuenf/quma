@@ -47,6 +47,9 @@ class Connection(conn.Connection):
         conn.autocommit(False)
         return conn
 
+    def mogrify(self, cursor, content, params):
+        return cursor._executed.decode('utf-8')
+
     def _check(self, conn):
         try:
             cur = conn.cursor()

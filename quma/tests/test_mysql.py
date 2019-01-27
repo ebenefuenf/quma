@@ -194,3 +194,24 @@ def test_execute(mydb, mypooldbdict):
     from .test_db import execute
     for db in (mydb, mypooldbdict):
         execute(db, MySQLdb.ProgrammingError)
+
+
+@pytest.mark.mysql
+def test_show_parameter(mydb_show, mypooldb_show):
+    import sys
+    tmp = sys.stdout
+    sys.stdout = type('S', (), {})
+    sql = {}
+
+    def write(s):
+        sql['sql'] = s
+
+    sys.stdout.write = write
+
+    for db in (mydb_show, mypooldb_show):
+        with db.cursor as cursor:
+            db.user.by_email(cursor, 'user.1@example.com', 1).one()
+            assert (
+                ("SELECT name, city FROM users WHERE email = "
+                "'user.1@example.com' AND 1 = 1;\n") == sql['sql'])
+    sys.stdout = tmp
