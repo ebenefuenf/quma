@@ -213,5 +213,5 @@ def test_echo_parameter(mydb_echo, mypooldb_echo):
             db.user.by_email(cursor, 'user.1@example.com', 1).one()
             assert (
                 ("SELECT name, city FROM users WHERE email = "
-                "'user.1@example.com' AND 1 = 1;\n") == sql['sql'])
+                 "'user.1@example.com' AND 1 = 1;\n") == sql['sql'])
     sys.stdout = tmp

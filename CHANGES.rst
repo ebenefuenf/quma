@@ -1,6 +1,16 @@
 quma Changelog
 ===============
 
+
+Version 0.1.0b1
+---------------
+
+Released on January 27th 2019
+
+- Rename ``Database`` parameter ``show`` to ``echo``.
+- When ``echo`` is set to ``True`` *PostgreSQL* and *MySQL/MariaDB* 
+  connections now print the query after argument binding which means
+  placholders are replaced with parameter values.
 Version 0.1.0a5
 ---------------
 

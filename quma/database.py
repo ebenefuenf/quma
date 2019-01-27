@@ -45,7 +45,8 @@ class Database(object):
     :param pessimistic: If ``True`` quma emits a test statement on
         a persistent SQL connection every time it is accessed or at the start
         of each connection pool checkout (see section "Connection Pool"), to
-        test that the database connection is still viable. Defaults to ``False``.
+        test that the database connection is still viable. Defaults to
+        ``False``.
     :param contextcommit: If ``True`` and a context manager is used quma will
         automatically commit all changes when the context manager exits.
         Defaults to ``False``.
@@ -55,11 +56,11 @@ class Database(object):
     :param file_ext: The file extension of sql files. Defaults to '``sql'``.
     :param tmpl_ext: The file extension of template files (see
         :doc:`Templates <templates>`). Defaults to ``'msql'``.
-    :param echo: Print the executed query to stdout if ``True``. Defaults to ``False``.
-        *PostgreSQL* and *MySQL/MariaDB* connections will print the query after
-        argument binding. This means placeholders will be substituted with the
-        real parameter values. *SQLite* will always print the query without
-        substitutions.
+    :param echo: Print the executed query to stdout if ``True``. Defaults to
+        ``False``. *PostgreSQL* and *MySQL/MariaDB* connections will print the
+        query after argument binding. This means placeholders will be
+        substituted with the parameter values. *SQLite* will always print the
+        query without substitutions.
     :param cache: cache the scripts in memory if ``True``,
         otherwise re-read each script when the query is executed.
         Defaults to ``False``.

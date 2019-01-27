@@ -38,4 +38,4 @@ __all__ = [
     'TimeoutError',
 ]
 
-__version__ = '0.1.0a5'
+__version__ = '0.1.0b1'

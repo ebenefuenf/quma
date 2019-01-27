@@ -37,7 +37,7 @@ setup(
     long_description_content_type='text/x-rst',
     keywords='sql database',
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
