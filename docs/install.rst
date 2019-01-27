@@ -41,4 +41,4 @@ Development
 
     git clone https://github.com/ebenefuenf/quma
     cd quma
-    pip install -e '.[test,templates,postgres,mysql]'
+    pip install -e '.[test,docs,templates,postgres,mysql]'

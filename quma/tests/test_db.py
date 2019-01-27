@@ -776,7 +776,7 @@ def test_execute(db):
     execute(db, sqlite3.OperationalError)
 
 
-def test_show_parameter(dbshow):
+def test_echo_parameter(dbecho):
     import sys
     tmp = sys.stdout
     sys.stdout = type('S', (), {})
@@ -786,8 +786,8 @@ def test_show_parameter(dbshow):
         sql['sql'] = s
 
     sys.stdout.write = write
-    with dbshow.cursor as cursor:
-        dbshow.user.by_name(cursor, name='User 1').one()
+    with dbecho.cursor as cursor:
+        dbecho.user.by_name(cursor, name='User 1').one()
         assert 'SELECT email, city' in sql['sql']
         cursor.user.by_city(city='City 1').first()
         assert 'SELECT name, email' in sql['sql']

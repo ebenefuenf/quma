@@ -21,6 +21,7 @@ with open('README.rst', 'rt', encoding='utf8') as f:
 test = ['pytest', 'pytest-cov']
 extras = {
     'test':  test,
+    'docs': ['sphinx', 'sphinx-autobuild'],
     'templates': ['mako'],
     'postgres': ['psycopg2'],
     'mysql': ['mysqlclient'],

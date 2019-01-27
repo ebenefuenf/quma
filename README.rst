@@ -75,3 +75,4 @@ Copyright © 2018 ebene fünf GmbH. All rights reserved.
 .. |docs| image:: https://readthedocs.org/projects/quma/badge/?version=latest
     :target: https://quma.readthedocs.io/en/latest/?badge=latest
     :alt: Documentation Status
+

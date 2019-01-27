@@ -244,7 +244,7 @@ def test_execute(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
-def test_show_parameter(pgdb_show, pgpooldb_show):
+def test_echo_parameter(pgdb_echo, pgpooldb_echo):
     import sys
     tmp = sys.stdout
     sys.stdout = type('S', (), {})
@@ -255,7 +255,7 @@ def test_show_parameter(pgdb_show, pgpooldb_show):
 
     sys.stdout.write = write
 
-    for db in (pgdb_show, pgpooldb_show):
+    for db in (pgdb_echo, pgpooldb_echo):
         with db.cursor as cursor:
             db.user.by_email(cursor, 'user.1@example.com', 1).one()
             assert (

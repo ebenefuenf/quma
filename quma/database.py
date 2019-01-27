@@ -37,28 +37,32 @@ class Database(object):
 
     :param dburi: The connection string. See section "Connection Examples"
     :param sqldirs: One or more filesystem paths pointing to the sql scripts.
-                    str or pathlib.Path.
-    :param persist: If True quma immediately opens a
+                    ``str`` or ``pathlib.Path``.
+    :param persist: If ``True`` quma immediately opens a
         connection and keeps it open throughout the complete application
-        runtime. Setting it to True will raise an error if you try to
-        initialize a connection pool. Defaults to false.
-    :param pessimistic: If True quma emits a test statement on
+        runtime. Setting it to ``True`` will raise an error if you try to
+        initialize a connection pool. Defaults to ``False``.
+    :param pessimistic: If ``True`` quma emits a test statement on
         a persistent SQL connection every time it is accessed or at the start
         of each connection pool checkout (see section "Connection Pool"), to
-        test that the database connection is still viable. Defaults to False.
-    :param contextcommit: If True and a context manager is used quma will
+        test that the database connection is still viable. Defaults to ``False``.
+    :param contextcommit: If ``True`` and a context manager is used quma will
         automatically commit all changes when the context manager exits.
-        Defaults to False.
+        Defaults to ``False``.
     :param prepare_params: A callback function which will be called before
         every query to prepare the params which will be passed to the query.
         Defaults to None.
-    :param file_ext: The file extension of sql files. Defaults to 'sql'.
+    :param file_ext: The file extension of sql files. Defaults to '``sql'``.
     :param tmpl_ext: The file extension of template files (see
-        :doc:`Templates <templates>`). Defaults to 'msql'.
-    :param show: Print the executed query to stdout if True. Defaults to False.
-    :param cache: cache the scripts in memory if True,
+        :doc:`Templates <templates>`). Defaults to ``'msql'``.
+    :param echo: Print the executed query to stdout if ``True``. Defaults to ``False``.
+        *PostgreSQL* and *MySQL/MariaDB* connections will print the query after
+        argument binding. This means placeholders will be substituted with the
+        real parameter values. *SQLite* will always print the query without
+        substitutions.
+    :param cache: cache the scripts in memory if ``True``,
         otherwise re-read each script when the query is executed.
-        Defaults to False.
+        Defaults to ``False``.
 
     Additional connection pool parameters (see :doc:`Connection pool <pool>`):
 
@@ -89,7 +93,7 @@ class Database(object):
         self.script_factory = kwargs.pop('script_factory', Script)
         self.prepare_params = kwargs.pop('prepare_params', None)
         self.contextcommit = kwargs.pop('contextcommit', False)
-        self.show = kwargs.pop('show', False)
+        self.echo = kwargs.pop('echo', False)
         self.cache = kwargs.pop('cache', False)
 
         # The remaining kwargs are passed to the DBAPI connect call

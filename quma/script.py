@@ -9,8 +9,8 @@ except ImportError:
 
 
 class Script(object):
-    def __init__(self, content, show, is_template, prepare_params=None):
-        self.show = show
+    def __init__(self, content, echo, is_template, prepare_params=None):
+        self.echo = echo
         self.content = content
         self.prepare_params = prepare_params
         self.is_template = is_template
@@ -61,7 +61,7 @@ class Script(object):
         try:
             cursor.execute(content, params)
         finally:
-            self.show and self.mogrify(cursor, content, params)
+            self.echo and self.mogrify(cursor, content, params)
 
 
 class CursorScript(object):

@@ -57,12 +57,12 @@ def dbpess(qmark_sqldirs):
 
 
 @pytest.fixture
-def dbshow(qmark_sqldirs):
+def dbecho(qmark_sqldirs):
     db = Database(util.SQLITE_MEMORY,
                   qmark_sqldirs,
                   persist=True,
                   changeling=True,
-                  show=True)
+                  echo=True)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
     return db
@@ -173,20 +173,20 @@ def pgdb(pyformat_sqldirs):
 
 
 @pytest.fixture
-def pgdb_show(pyformat_sqldirs):
+def pgdb_echo(pyformat_sqldirs):
     db = Database(util.PGSQL_URI,
                   pyformat_sqldirs,
                   changeling=True,
-                  show=True)
+                  echo=True)
     return db
 
 
 @pytest.fixture
-def pgpooldb_show(pyformat_sqldirs):
+def pgpooldb_echo(pyformat_sqldirs):
     db = Database(util.PGSQL_POOL_URI,
                   pyformat_sqldirs,
                   changeling=True,
-                  show=True)
+                  echo=True)
     return db
 
 
@@ -207,11 +207,11 @@ def mydb(pyformat_sqldirs):
 
 
 @pytest.fixture
-def mydb_show(pyformat_sqldirs):
+def mydb_echo(pyformat_sqldirs):
     db = Database(util.MYSQL_URI,
                   pyformat_sqldirs,
                   dict_cursor=True,
-                  show=True)
+                  echo=True)
     return db
 
 
@@ -222,8 +222,8 @@ def mypooldb(pyformat_sqldirs):
 
 
 @pytest.fixture
-def mypooldb_show(pyformat_sqldirs):
-    db = Database(util.MYSQL_POOL_URI, pyformat_sqldirs, show=True)
+def mypooldb_echo(pyformat_sqldirs):
+    db = Database(util.MYSQL_POOL_URI, pyformat_sqldirs, echo=True)
     return db
 
 

@@ -197,7 +197,7 @@ def test_execute(mydb, mypooldbdict):
 
 
 @pytest.mark.mysql
-def test_show_parameter(mydb_show, mypooldb_show):
+def test_echo_parameter(mydb_echo, mypooldb_echo):
     import sys
     tmp = sys.stdout
     sys.stdout = type('S', (), {})
@@ -208,7 +208,7 @@ def test_show_parameter(mydb_show, mypooldb_show):
 
     sys.stdout.write = write
 
-    for db in (mydb_show, mypooldb_show):
+    for db in (mydb_echo, mypooldb_echo):
         with db.cursor as cursor:
             db.user.by_email(cursor, 'user.1@example.com', 1).one()
             assert (

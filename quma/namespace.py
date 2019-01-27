@@ -27,7 +27,7 @@ class Namespace(object):
         self.db = db
         self.sqldir = sqldir
         self.cache = db.cache
-        self.show = db.show
+        self.echo = db.echo
         self.shadow = shadow
         self._scripts = {}
         if db.cache:
@@ -50,7 +50,7 @@ class Namespace(object):
             with open(str(sqlfile), 'r') as f:
                 self._scripts[attr] = self.db.script_factory(
                     f.read(),
-                    self.show,
+                    self.echo,
                     ext.lower() == '.' + self.db.tmpl_ext,
                     prepare_params=self.db.prepare_params)
 
@@ -68,7 +68,7 @@ class Namespace(object):
             with open(str(sqlfile), 'r') as f:
                 return self.db.script_factory(
                     f.read(),
-                    self.show,
+                    self.echo,
                     Path(sqlfile).suffix == '.' + self.db.tmpl_ext,
                     prepare_params=self.db.prepare_params)
         except FileNotFoundError:
