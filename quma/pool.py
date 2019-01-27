@@ -154,3 +154,6 @@ class Pool(object):
     @property
     def checkedout(self):
         return self._pool.maxsize - self._pool.qsize() + self._overflow
+
+    def mogrify(self, cursor, content, params):
+        return self._conn.mogrify(cursor, content, params)

@@ -22,11 +22,14 @@ class Script(object):
     def __str__(self):
         return self.content
 
-    def print_sql(self):
-        if self.content:
+    def mogrify(self, cursor, content, params):
+        if content:
             sys.stdout.write('-' * 50)
             sys.stdout.write('\n')
-            sys.stdout.write(self.content)
+            try:
+                sys.stdout.write(cursor.mogrify(content, params))
+            except AttributeError:
+                sys.stdout.write(content)
 
     def _prepare(self, cursor, payload, prepare_params):
         # create an empty list if payload == args
@@ -58,7 +61,7 @@ class Script(object):
         try:
             cursor.execute(content, params)
         finally:
-            self.show and self.print_sql()
+            self.show and self.mogrify(cursor, content, params)
 
 
 class CursorScript(object):

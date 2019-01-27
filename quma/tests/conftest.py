@@ -61,7 +61,8 @@ def dbshow(qmark_sqldirs):
     db = Database(util.SQLITE_MEMORY,
                   qmark_sqldirs,
                   persist=True,
-                  changeling=True, show=True)
+                  changeling=True,
+                  show=True)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
     return db
@@ -168,6 +169,24 @@ def pgdb(pyformat_sqldirs):
     db = Database(util.PGSQL_URI,
                   pyformat_sqldirs,
                   changeling=True)
+    return db
+
+
+@pytest.fixture
+def pgdb_show(pyformat_sqldirs):
+    db = Database(util.PGSQL_URI,
+                  pyformat_sqldirs,
+                  changeling=True,
+                  show=True)
+    return db
+
+
+@pytest.fixture
+def pgpooldb_show(pyformat_sqldirs):
+    db = Database(util.PGSQL_POOL_URI,
+                  pyformat_sqldirs,
+                  changeling=True,
+                  show=True)
     return db
 
 

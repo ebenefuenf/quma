@@ -235,6 +235,26 @@ def test_unbunch(pgdb, pgpooldb):
     for db in (pgdb, pgpooldb):
         unbunch(db)
 
+@pytest.mark.postgres
+def test_show_parameter(pgdb_show, pgpooldb_show):
+    import sys
+    tmp = sys.stdout
+    sys.stdout = type('S', (), {})
+    sql = {}
+
+    def write(s):
+        sql['sql'] = s
+
+    sys.stdout.write = write
+
+    for db in (pgdb_show, pgpooldb_show):
+        with db.cursor as cursor:
+            db.user.by_email(cursor, 'user.1@example.com', 1).one()
+            assert (
+                ("SELECT name, city FROM users WHERE email = "
+                "'user.1@example.com' AND 1 = 1;\n") == sql['sql'])
+    sys.stdout = tmp
+
 
 @pytest.mark.postgres
 def test_execute(pgdb, pgpooldb):

@@ -92,6 +92,9 @@ class Cursor(object):
     def set_conn_attr(self, attr, value):
         setattr(self.raw_conn, attr, value)
 
+    def mogrify(self, content, params):
+        return self.conn.mogrify(self.raw_cursor, content, params)
+
     def __getattr__(self, attr):
         try:
             return getattr(self.raw_cursor, attr)

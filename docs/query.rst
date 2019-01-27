@@ -283,8 +283,8 @@ to call :meth:`run()` manually.
         all_users.all()
 
 
-Access the underlying cursor
-----------------------------
+Accessing the underlying cursor
+-------------------------------
 
 You can access the attributes of the cursor which is used to execute the
 query directly on the query object.
