@@ -2,13 +2,12 @@
 Reusing connections
 ===================
 
-To reuse connections you can pass a carrier object to *db* when you
-create a cursor. quma then
-creates the attribute ``__quma_conn__`` on the carrier holding the 
-connection object. You should only use this feature if that fact doesn't
-lead to problems in your application. Only objects which allow adding 
-attributes at runtime are supported. A good example is the request
-object in web applications:
+To reuse connections you can pass an object - the so-called carrier - 
+to *db* when you create a cursor. quma then remembers the carrier object's 
+identity and and returns the same connection which was returned the
+first time when you pass the same carrier again.
+
+A good example is the request object in web applications:
 
 .. code-block:: python
 
@@ -29,15 +28,20 @@ object in web applications:
     def user_view(request):
         with db(request).cursor as cur:
             user = cur.user.by_name(name='Username').one()
-            do_more(request, user['id'])
+
+        do_more(request, user['id'])
 
         with db(request).cursor as cur:
             # reuses the connection
             user = cur.user.rename(id=13, name='New Username')
             # commit every statement previously executed
             cur.commit()
-            # exlicitly close the cursor
+
+            # either exlicitly close the cursor as last step
             cur.close()
+
+        # or release the carrier using the database object
+        db.release(request)
 
 **Note**: It is always a good idea to close a connection if you're done.
 If you are using a carrier and a :doc:`connection pool <pool>` it is absolutely 

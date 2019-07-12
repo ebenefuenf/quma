@@ -105,19 +105,20 @@ def test_carrier(dbfile):
         assert len(dbfile.users.all(cursor)) == 7
         assert len(cursor.users.all()) == 7
         rc = cursor.raw_conn
-    assert hasattr(carrier, '__quma_conn__')
+    assert cursor.carrier.conn
     with dbfile(carrier).cursor as cursor:
         assert rc is cursor.raw_conn
     cursor.close()
-    assert not hasattr(carrier, '__quma_conn__')
+    assert not cursor.carrier
     with dbfile(carrier).cursor as cursor:
         assert rc is not cursor.raw_conn
         rc = cursor.raw_conn
-    assert hasattr(carrier, '__quma_conn__')
+    assert cursor.carrier.conn
+    assert dbfile.heap.heap
     with dbfile(carrier).cursor as cursor:
         assert rc is cursor.raw_conn
     dbfile.release(carrier)
-    assert not hasattr(carrier, '__quma_conn__')
+    assert not dbfile.heap.heap
 
 
 def test_custom_namespace(db):
