@@ -39,7 +39,7 @@ def test_conn_attr(db):
 def test_failing_init(db):
     with pytest.raises(ValueError) as e:
         Database(1, 2, 3)
-    assert 'Max number' in str(e)
+    assert 'Max number' in str(e.value)
 
 
 def test_failing_connect():
