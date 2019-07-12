@@ -17,7 +17,7 @@ MySQL/MariaDB:
 
 .. code-block:: sql
 
-    CREATE DATABASE quma_test_db;
+    CREATE DATABASE quma_test_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     CREATE USER quma_test_user@localhost IDENTIFIED BY 'quma_test_password';
     GRANT ALL ON quma_test_db.* TO quma_test_user@localhost;
 

@@ -16,7 +16,7 @@ def setup_function(function):
 def test_conn_attr(mydb, mypooldb):
     from .test_db import conn_attr
     for db in (mydb, mypooldb):
-        conn_attr(db, 'encoding', 'latin1', 'utf-8')
+        conn_attr(db, 'encoding', 'utf8', 'latin1')
 
 
 @pytest.mark.mysql
