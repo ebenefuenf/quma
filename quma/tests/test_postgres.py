@@ -25,9 +25,9 @@ def test_conn_attr(pgdb, pgpooldb):
 
 @pytest.mark.postgres
 def test_cursor(pgdb, pgpooldb):
-    from .test_db import cursor
+    from .test_db import the_cursor
     for db in (pgdb, pgpooldb):
-        cursor(db)
+        the_cursor(db)
 
 
 @pytest.mark.postgres

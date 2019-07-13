@@ -86,7 +86,7 @@ def test_script(db):
         assert str(cursor.users.all).startswith('SELECT id, name, email')
 
 
-def cursor(db):
+def the_cursor(db):
     with db().cursor as cursor:
         assert type(cursor) is cursor_.Cursor
         assert len(db.users.all(cursor)) == 7
@@ -96,7 +96,7 @@ def cursor(db):
 
 
 def test_cursor(db):
-    cursor(db)
+    the_cursor(db)
 
 
 def test_carrier(dbfile):

@@ -61,7 +61,10 @@ class CarrierHeap(object):
 class DatabaseCallWrapper(object):
     def __init__(self, database, carrier, autocommit):
         self.database = database
-        self.carrier = database.heap.get(carrier)
+        if carrier is None:
+            self.carrier = None
+        else:
+            self.carrier = database.heap.get(carrier)
         self.autocommit = autocommit
 
     @property

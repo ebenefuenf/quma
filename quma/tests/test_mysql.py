@@ -21,9 +21,9 @@ def test_conn_attr(mydb, mypooldb):
 
 @pytest.mark.mysql
 def test_cursor(mydb, mypooldb):
-    from .test_db import cursor
+    from .test_db import the_cursor
     for db in (mydb, mypooldb):
-        cursor(db)
+        the_cursor(db)
 
 
 @pytest.mark.mysql
