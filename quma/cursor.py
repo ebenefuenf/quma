@@ -65,12 +65,15 @@ class Cursor(object):
         """
         Ensures that not only the cursor is closed but also
         the connection if necessary.
+
+        If the connection is bound to the carrier it
+        needs to be returned manually.
+
+        If :param:`force` is set to True return is anyway
         """
         self.raw_cursor.close()
 
         if self.carrier and self.carrier.conn:
-            # If the connection is bound to the carrier it
-            # needs to be returned manually.
             if not force:
                 return
             self.carrier.release()

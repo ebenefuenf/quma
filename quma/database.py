@@ -54,8 +54,12 @@ class CarrierHeap(object):
 
     def release(self, oid):
         self.lock.acquire()
-        del self.heap[oid]
-        self.lock.release()
+        try:
+            del self.heap[oid]
+        except KeyError:
+            pass
+        finally:
+            self.lock.release()
 
 
 class DatabaseCallWrapper(object):
