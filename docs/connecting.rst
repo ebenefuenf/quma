@@ -36,6 +36,11 @@ Connection Examples
     # MySQL/MariaDB network server
     db = Database('mysql://username:password@192.168.1.1:5432/db_name', sqldir)
 
+    # You can pass driver specific parameters e. g. MySQL's charset
+    db = Database('mysql://username:password@192.168.1.1:5432/db_name', 
+                  sqldir, 
+                  charset='utf8')
+
 
 The Database class
 ------------------

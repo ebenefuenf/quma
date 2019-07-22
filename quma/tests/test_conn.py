@@ -24,7 +24,9 @@ def get_cursor_mock(exception):
 
 
 def test_base_connection(dburl):
-    cn = conn.Connection(dburl, persist=True)
+    kwargs = dict(persist=True)
+    cn = conn.Connection(dburl, kwargs)
+    assert kwargs.get('persist') is None
     assert cn.database == util.DB_NAME
     assert cn.username == util.DB_USER
     assert cn.password == util.DB_PASS

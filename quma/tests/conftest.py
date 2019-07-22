@@ -202,7 +202,8 @@ def pgdb_persist(pyformat_sqldirs):
 def mydb(pyformat_sqldirs):
     db = Database(util.MYSQL_URI,
                   pyformat_sqldirs,
-                  dict_cursor=True)
+                  dict_cursor=True,
+                  charset='utf8')
     return db
 
 
@@ -211,19 +212,25 @@ def mydb_echo(pyformat_sqldirs):
     db = Database(util.MYSQL_URI,
                   pyformat_sqldirs,
                   dict_cursor=True,
-                  echo=True)
+                  echo=True,
+                  charset='utf8')
     return db
 
 
 @pytest.fixture
 def mypooldb(pyformat_sqldirs):
-    db = Database(util.MYSQL_POOL_URI, pyformat_sqldirs)
+    db = Database(util.MYSQL_POOL_URI,
+                  pyformat_sqldirs,
+                  charset='utf8')
     return db
 
 
 @pytest.fixture
 def mypooldb_echo(pyformat_sqldirs):
-    db = Database(util.MYSQL_POOL_URI, pyformat_sqldirs, echo=True)
+    db = Database(util.MYSQL_POOL_URI,
+                  pyformat_sqldirs,
+                  echo=True,
+                  charset='utf8')
     return db
 
 
@@ -231,7 +238,8 @@ def mypooldb_echo(pyformat_sqldirs):
 def mypooldbdict(pyformat_sqldirs):
     db = Database(util.MYSQL_POOL_URI,
                   pyformat_sqldirs,
-                  dict_cursor=True)
+                  dict_cursor=True,
+                  charset='utf8')
     return db
 
 
@@ -239,7 +247,8 @@ def mypooldbdict(pyformat_sqldirs):
 def mydbpersist(pyformat_sqldirs):
     db = Database(util.MYSQL_URI,
                   pyformat_sqldirs,
-                  persist=True)
+                  persist=True,
+                  charset='utf8')
     return db
 
 

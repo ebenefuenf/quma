@@ -36,17 +36,17 @@ class Queue(BaseQueue):
 class Pool(object):
     """ A queuing pool of connections """
 
-    def __init__(self, conn, size=5, overflow=10, timeout=None,
-                 pessimistic=False, **kwargs):
-        if conn.persist:
-            raise ValueError('Persistent connections are not allowed')
-        self._MAX = overflow
+    def __init__(self, conn_class, url, **kwargs):
+        size = kwargs.pop('size', 5)
+        self._MAX = kwargs.pop('overflow', 10)
         self._overflow = 0 - size
-        self._timeout = timeout
+        self._timeout = kwargs.pop('timeout', None)
         self._overflow_lock = threading.Lock()
         self._pool = Queue(maxsize=size)
-        self._conn = conn
-        self._pessimistic = pessimistic
+        self._pessimistic = kwargs.get('pessimistic', False)
+        self._conn = conn_class(url, **kwargs)
+        if self._conn.persist:
+            raise ValueError('Persistent connections are not allowed')
 
     def _inc_overflow(self):
         if self._MAX == -1:

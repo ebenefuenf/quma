@@ -4,21 +4,25 @@ from . import exc
 class Connection(object):
     """ Abstract base class for DBMS specific connection objects"""
 
-    def __init__(self, url, **kwargs):
+    def __init__(self, url, kwargs):
+        # kwargs are the **kwargs passed to the specific provider
+        # sub class. They must be passed as regular dict to be
+        # able to pop some values which should not be passed
+        # to the dbapi driver.
         self.database = url.path[1:]  # remove the leading slash
         self.username = url.username
         self.password = url.password
         self.url = url
-
         self.factory = None
         self.changeling = kwargs.pop('changeling', False)
         self.persist = kwargs.pop('persist', False)
-        self.pessimistic = kwargs.get('pessimistic', False)
+        self.pessimistic = kwargs.pop('pessimistic', False)
         self.has_rowcount = True
+        self.dbapi_kwargs = kwargs
 
-    def _init_conn(self, **kwargs):
+    def _init_conn(self):
         if self.persist:
-            self.conn = self.create_conn()
+            self.conn = self.create_conn(**self.dbapi_kwargs)
 
     def cursor(self, conn):
         return conn.cursor()
@@ -41,9 +45,10 @@ class Connection(object):
                 try:
                     self.check()
                 except exc.OperationalError:
-                    self.conn = self.create_conn()
+                    self.conn = self.create_conn(**self.dbapi_kwargs)
             return self.enable_autocommit_if(autocommit, self.conn)
-        return self.enable_autocommit_if(autocommit, self.create_conn())
+        return self.enable_autocommit_if(autocommit,
+                                         self.create_conn(**self.dbapi_kwargs))
 
     def put(self, conn):
         conn.rollback()
