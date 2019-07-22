@@ -118,6 +118,8 @@ def carrier(db):
     with db(carrier).cursor as cursor:
         assert rc is cursor.raw_conn
     db.release(carrier)
+    # Additional releases shouldn't cause an error
+    db.release(carrier)
     assert not db.heap.heap
 
 
