@@ -37,6 +37,12 @@ def test_carrier(pgdb):
 
 
 @pytest.mark.postgres
+def test_pool_carrier(pgpooldb):
+    from .test_db import pool_carrier
+    pool_carrier(pgpooldb)
+
+
+@pytest.mark.postgres
 def test_cursor_call(pgdb, pgpooldb):
     from .test_db import cursor_call
     for db in (pgdb, pgpooldb):

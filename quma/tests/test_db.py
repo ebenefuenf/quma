@@ -1,3 +1,4 @@
+import threading
 import platform
 import sqlite3
 from unittest import mock
@@ -125,6 +126,41 @@ def carrier(db):
 
 def test_carrier(dbfile):
     carrier(dbfile)
+
+
+def pool_carrier(db):
+    carriers = {}
+
+    for _ in range(15):
+        carrier = object()
+        carriers[id(carrier)] = carrier
+
+    def run_threads(func):
+        ts = []
+        for _, carrier in carriers.items():
+            t = threading.Thread(target=func, args=(carrier,))
+            t.start()
+            ts.append(t)
+        for t in ts:
+            t.join()
+
+    def add_carrier(carrier):
+        with db(carrier).cursor as cur:
+            assert cur.carrier.oid == id(carrier)
+
+    run_threads(add_carrier)
+    assert len(db.heap.heap) == 15
+    carrier_set = set({c.oid for _, c in db.heap.heap.items()})
+
+    run_threads(add_carrier)
+    assert len(db.heap.heap) == 15
+    assert carrier_set == set({c.oid for _, c in db.heap.heap.items()})
+
+    def release(carrier):
+        db.release(carrier)
+
+    run_threads(release)
+    assert len(db.heap.heap) == 0
 
 
 def test_custom_namespace(db):
