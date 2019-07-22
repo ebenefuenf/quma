@@ -27,6 +27,12 @@ def test_cursor(mydb, mypooldb):
 
 
 @pytest.mark.mysql
+def test_carrier(mydb):
+    from .test_db import carrier
+    carrier(mydb)
+
+
+@pytest.mark.mysql
 def test_cursor_call(mydb, mypooldb):
     from .test_db import cursor_call
     for db in (mydb, mypooldb):

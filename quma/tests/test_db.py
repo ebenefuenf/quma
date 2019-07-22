@@ -99,26 +99,30 @@ def test_cursor(db):
     the_cursor(db)
 
 
-def test_carrier(dbfile):
+def carrier(db):
     carrier = type('Carrier', (), {})
-    with dbfile(carrier).cursor as cursor:
-        assert len(dbfile.users.all(cursor)) == 7
+    with db(carrier).cursor as cursor:
+        assert len(db.users.all(cursor)) == 7
         assert len(cursor.users.all()) == 7
         rc = cursor.raw_conn
     assert cursor.carrier.conn
-    with dbfile(carrier).cursor as cursor:
+    with db(carrier).cursor as cursor:
         assert rc is cursor.raw_conn
     cursor.close()
     assert not cursor.carrier
-    with dbfile(carrier).cursor as cursor:
+    with db(carrier).cursor as cursor:
         assert rc is not cursor.raw_conn
         rc = cursor.raw_conn
     assert cursor.carrier.conn
-    assert dbfile.heap.heap
-    with dbfile(carrier).cursor as cursor:
+    assert db.heap.heap
+    with db(carrier).cursor as cursor:
         assert rc is cursor.raw_conn
-    dbfile.release(carrier)
-    assert not dbfile.heap.heap
+    db.release(carrier)
+    assert not db.heap.heap
+
+
+def test_carrier(dbfile):
+    carrier(dbfile)
 
 
 def test_custom_namespace(db):
