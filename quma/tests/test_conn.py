@@ -5,13 +5,13 @@ from unittest.mock import Mock
 
 import pytest
 
-from . import util
 from .. import (
     Database,
     conn,
     connect,
     exc,
 )
+from . import util
 
 
 def get_cursor_mock(exception):

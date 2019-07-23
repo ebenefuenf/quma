@@ -2,9 +2,9 @@ from unittest.mock import Mock
 
 import pytest
 
-from . import util
 from ..exc import FetchError
 from ..provider.postgresql import Connection
+from . import util
 
 try:
     import psycopg2

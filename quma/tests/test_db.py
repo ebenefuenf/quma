@@ -1,11 +1,10 @@
-import threading
 import platform
 import sqlite3
+import threading
 from unittest import mock
 
 import pytest
 
-from . import util
 from .. import (
     Database,
     Namespace,
@@ -16,6 +15,7 @@ from .. import (
     query,
     script,
 )
+from . import util
 
 
 def test_init(db):

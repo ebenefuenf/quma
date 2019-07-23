@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from . import util
 from .. import Database
+from . import util
 
 
 @pytest.fixture

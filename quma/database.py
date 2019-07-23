@@ -1,7 +1,7 @@
+import threading
 from importlib import import_module
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
-import threading
 from urllib.parse import urlparse
 
 from . import (
