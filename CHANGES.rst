@@ -1,6 +1,23 @@
 quma Changelog
 ===============
 
+Next Version
+------------
+
+- You can now use original connection parameters of the DB API adapter 
+  which will be passed to the adapters ``connect`` function.
+
+  Example:
+
+  ``db = Database('mysql://...', sqldir, charset='utf8')``
+
+  will result in 
+
+  ``MySQLdb.connect(host='...', db='...', charset='utf8')``
+  
+  Where ``charset`` is part of MySQLdb's API and not part of quma's.
+- Object which are passed as carrier are not altered anymore. Previously
+  carriers had been added an attribute called ``__quma_conn__``.
 
 Version 0.1.0b1
 ---------------
@@ -11,6 +28,7 @@ Released on January 27th 2019
 - When ``echo`` is set to ``True`` *PostgreSQL* and *MySQL/MariaDB* 
   connections now print the query after argument binding which means
   placholders are replaced with parameter values.
+
 Version 0.1.0a5
 ---------------
 
