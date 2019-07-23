@@ -18,6 +18,8 @@ Next Version
   Where ``charset`` is part of MySQLdb's API and not part of quma's.
 - Object which are passed as carrier are not altered anymore. Previously
   carriers had been added an attribute called ``__quma_conn__``.
+- Mako templates are now set up using mako's ``TemplateLookup`` which
+  is initialized with the sql directories.
 
 Version 0.1.0b1
 ---------------

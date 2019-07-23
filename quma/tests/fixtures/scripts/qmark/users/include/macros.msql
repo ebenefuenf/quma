@@ -1,0 +1,3 @@
+<%def name="named_param()" filter="trim">
+:name
+</%def>

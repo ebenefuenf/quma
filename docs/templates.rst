@@ -34,3 +34,13 @@ In Python you call it the same way like simple SQL queries:
 
     cur.users.by_group(admin=True)
 
+Template files lookup
+---------------------
+
+The resolution of included or imported template files is 
+accomplished by mako's class ``TemplateLookup``, which you can 
+learn more about in the mako docs:
+`Using TemplateLookup <https://docs.makotemplates.org/en/latest/usage.html#using-templatelookup>`_
+
+It is initialized with the the same sql directories which are used
+on ``Database`` initialization.

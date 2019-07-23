@@ -52,6 +52,7 @@ class Namespace(object):
                     f.read(),
                     self.echo,
                     ext.lower() == '.' + self.db.tmpl_ext,
+                    self.db.sqldirs,
                     prepare_params=self.db.prepare_params)
 
     def __getattr__(self, attr):
@@ -70,6 +71,7 @@ class Namespace(object):
                     f.read(),
                     self.echo,
                     Path(sqlfile).suffix == '.' + self.db.tmpl_ext,
+                    self.db.sqldirs,
                     prepare_params=self.db.prepare_params)
         except FileNotFoundError:
             return getattr(self.shadow, attr)

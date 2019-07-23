@@ -3,17 +3,20 @@ import sys
 from .query import Query
 
 try:
+    from mako.lookup import TemplateLookup
     from mako.template import Template
 except ImportError:
     Template = None
 
 
 class Script(object):
-    def __init__(self, content, echo, is_template, prepare_params=None):
+    def __init__(self, content, echo, is_template, sqldirs,
+                 prepare_params=None):
         self.echo = echo
         self.content = content
         self.prepare_params = prepare_params
         self.is_template = is_template
+        self.sqldirs = sqldirs
         self.params = None
 
     def __call__(self, cursor, *args, prepare_params=None, **kwargs):
@@ -47,7 +50,9 @@ class Script(object):
 
         if self.is_template:
             try:
-                return Template(self.content).render(**params), params
+                lookup = TemplateLookup(directories=self.sqldirs)
+                return Template(self.content,
+                                lookup=lookup).render(**params), params
             except TypeError:
                 raise ImportError(
                     'To use templates you need to install Mako')
