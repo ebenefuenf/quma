@@ -79,7 +79,7 @@ class PostgresChangelingCursor(DictCursor):
 
 class Connection(conn.Connection):
     def __init__(self, url, **kwargs):
-        super().__init__(url, **kwargs)
+        super().__init__(url, kwargs)
 
         self.hostname = self.url.hostname or 'localhost'
         self.port = self.url.port or 5432
@@ -87,8 +87,7 @@ class Connection(conn.Connection):
             self.factory = PostgresChangelingCursor
         else:
             self.factory = psycopg2.extras.DictCursor
-
-        self._init_conn(**kwargs)
+        self._init_conn()
 
     def get_cursor_attr(self, cursor, key):
         # PG is the only one of the supported DBMS which
@@ -107,14 +106,15 @@ class Connection(conn.Connection):
             return fetch
         return getattr(cursor, key)
 
-    def create_conn(self):
+    def create_conn(self, **kwargs):
         return psycopg2.connect(
             database=self.database,
             user=self.username,
             password=self.password,
             host=self.hostname,
             port=self.port,
-            cursor_factory=self.factory)
+            cursor_factory=self.factory,
+            **kwargs)
 
     def enable_autocommit_if(self, autocommit, conn):
         if autocommit:

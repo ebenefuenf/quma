@@ -49,12 +49,12 @@ class Cursor(object):
     def create_cursor(self, autocommit=None):
         autocommit = autocommit if autocommit is not None else self.autocommit
         if self.carrier:
-            if hasattr(self.carrier, '__quma_conn__'):
-                self.raw_conn = self.carrier.__quma_conn__.raw_conn
+            if self.carrier.conn:
+                self.raw_conn = self.carrier.conn.raw_conn
             else:
-                conn = self.conn.get(autocommit=autocommit)
-                self.carrier.__quma_conn__ = CarriedConnection(self.conn, conn)
-                self.raw_conn = conn
+                raw_conn = self.conn.get(autocommit=autocommit)
+                self.carrier.add_conn(CarriedConnection(self.conn, raw_conn))
+                self.raw_conn = raw_conn
         else:
             self.raw_conn = self.conn.get(autocommit=autocommit)
         self.raw_cursor = RawCursorWrapper(self.conn,
@@ -65,16 +65,19 @@ class Cursor(object):
         """
         Ensures that not only the cursor is closed but also
         the connection if necessary.
+
+        If the connection is bound to the carrier it
+        needs to be returned manually.
+
+        If :param:`force` is set to True return is anyway
         """
         self.raw_cursor.close()
 
-        # If the connection is bound to the carrier it
-        # needs to be returned manually.
-        if hasattr(self.carrier, '__quma_conn__'):
-            if force:
-                del self.carrier.__quma_conn__
-            else:
+        if self.carrier and self.carrier.conn:
+            if not force:
                 return
+            self.carrier.release()
+            self.carrier = None
         self.conn.put(self.raw_conn)
 
     def close(self):

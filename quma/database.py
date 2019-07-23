@@ -1,6 +1,7 @@
 from importlib import import_module
 from importlib.machinery import SourceFileLoader
 from pathlib import Path
+import threading
 from urllib.parse import urlparse
 
 from . import (
@@ -15,10 +16,59 @@ from .namespace import (
 from .script import Script
 
 
+class Carrier(object):
+    def __init__(self, heap, obj):
+        self.obj = obj
+        self.heap = heap
+        self.oid = id(obj)
+        self.conn = None
+
+    def add_conn(self, conn):
+        self.conn = conn
+
+    def release(self):
+        self.heap.release(self.oid)
+
+    def __getattr__(self, attr):
+        return getattr(self.obj, attr)
+
+
+class CarrierHeap(object):
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.heap = {}
+
+    def add(self, obj):
+        carrier = self.heap[id(obj)] = Carrier(self, obj)
+        return carrier
+
+    def get(self, obj):
+        self.lock.acquire()
+        try:
+            carrier = self.heap[id(obj)]
+        except KeyError:
+            carrier = self.add(obj)
+        finally:
+            self.lock.release()
+        return carrier
+
+    def release(self, oid):
+        self.lock.acquire()
+        try:
+            del self.heap[oid]
+        except KeyError:
+            pass
+        finally:
+            self.lock.release()
+
+
 class DatabaseCallWrapper(object):
     def __init__(self, database, carrier, autocommit):
         self.database = database
-        self.carrier = carrier
+        if carrier is None:
+            self.carrier = None
+        else:
+            self.carrier = database.heap.get(carrier)
         self.autocommit = autocommit
 
     @property
@@ -100,6 +150,7 @@ class Database(object):
         # The remaining kwargs are passed to the DBAPI connect call
         self.conn = connect(dburi, **kwargs)
 
+        self.heap = CarrierHeap()
         self.namespaces = {}
 
         try:
@@ -179,9 +230,7 @@ class Database(object):
         :param carrier: An object holding a quma connection. See
             :doc:`Reusing connections <carrier>`
         """
-        if hasattr(carrier, '__quma_conn__'):
-            carrier.__quma_conn__.conn.put(carrier.__quma_conn__.raw_conn)
-            del carrier.__quma_conn__
+        self.heap.release(id(carrier))
 
     @property
     def cursor(self):
@@ -205,12 +254,12 @@ def connect(dburi, **kwargs):
     scheme = url.scheme.split('+')
     module_name = scheme[0]
     module = import_module('quma.provider.{}'.format(module_name))
-    conn = getattr(module, 'Connection')(url, **kwargs)
+    conn_class = getattr(module, 'Connection')
     try:
         if scheme[1].lower() == 'pool':
-            return pool.Pool(conn, **kwargs)
+            return pool.Pool(conn_class, url, **kwargs)
         else:
             raise ValueError('Wrong scheme. Only "provider://" or '
                              '"provider+pool://" are allowed')
     except IndexError:
-        return conn
+        return conn_class(url, **kwargs)

@@ -60,17 +60,17 @@ class SQLiteChangelingRow(sqlite3.Row):
 
 class Connection(conn.Connection):
     def __init__(self, url, **kwargs):
-        super().__init__(url, **kwargs)
+        super().__init__(url, kwargs)
         if not self.database:
             raise ValueError('Required database path missing')
         self.has_rowcount = False
-        self._init_conn(**kwargs)
+        self._init_conn()
 
     def cursor(self, conn):
         return conn.cursor()
 
-    def create_conn(self):
-        conn = sqlite3.connect(database=self.database)
+    def create_conn(self, **kwargs):
+        conn = sqlite3.connect(database=self.database, **kwargs)
         if self.changeling:
             conn.row_factory = SQLiteChangelingRow
         return self.disable_autocommit(conn)

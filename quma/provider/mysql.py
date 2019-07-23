@@ -16,26 +16,26 @@ from .. import (
 
 class Connection(conn.Connection):
     def __init__(self, url, **kwargs):
-        super().__init__(url, **kwargs)
-
+        super().__init__(url, kwargs)
         self.hostname = self.url.hostname or 'localhost'
         self.port = self.url.port or 3306
         if kwargs.pop('dict_cursor', False):
             self.cursor_factory = DictCursor
         else:
             self.cursor_factory = Cursor
-        self._init_conn(**kwargs)
+        self._init_conn()
 
     def cursor(self, conn):
         return conn.cursor()
 
-    def create_conn(self):
+    def create_conn(self, **kwargs):
         conn = MySQLdb.connect(db=self.database,
                                user=self.username,
                                passwd=self.password,
                                host=self.hostname,
                                port=self.port,
-                               cursorclass=self.cursor_factory)
+                               cursorclass=self.cursor_factory,
+                               **kwargs)
         return self.disable_autocommit(conn)
 
     def enable_autocommit_if(self, autocommit, conn):

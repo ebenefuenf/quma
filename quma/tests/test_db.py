@@ -1,3 +1,4 @@
+import threading
 import platform
 import sqlite3
 from unittest import mock
@@ -39,7 +40,7 @@ def test_conn_attr(db):
 def test_failing_init(db):
     with pytest.raises(ValueError) as e:
         Database(1, 2, 3)
-    assert 'Max number' in str(e)
+    assert 'Max number' in str(e.value)
 
 
 def test_failing_connect():
@@ -86,7 +87,7 @@ def test_script(db):
         assert str(cursor.users.all).startswith('SELECT id, name, email')
 
 
-def cursor(db):
+def the_cursor(db):
     with db().cursor as cursor:
         assert type(cursor) is cursor_.Cursor
         assert len(db.users.all(cursor)) == 7
@@ -96,28 +97,70 @@ def cursor(db):
 
 
 def test_cursor(db):
-    cursor(db)
+    the_cursor(db)
+
+
+def carrier(db):
+    carrier = type('Carrier', (), {})
+    with db(carrier).cursor as cursor:
+        assert len(db.users.all(cursor)) == 7
+        assert len(cursor.users.all()) == 7
+        rc = cursor.raw_conn
+    assert cursor.carrier.conn
+    with db(carrier).cursor as cursor:
+        assert rc is cursor.raw_conn
+    cursor.close()
+    assert not cursor.carrier
+    with db(carrier).cursor as cursor:
+        assert rc is not cursor.raw_conn
+        rc = cursor.raw_conn
+    assert cursor.carrier.conn
+    assert db.heap.heap
+    with db(carrier).cursor as cursor:
+        assert rc is cursor.raw_conn
+    db.release(carrier)
+    # Additional releases shouldn't cause an error
+    db.release(carrier)
+    assert not db.heap.heap
 
 
 def test_carrier(dbfile):
-    carrier = type('Carrier', (), {})
-    with dbfile(carrier).cursor as cursor:
-        assert len(dbfile.users.all(cursor)) == 7
-        assert len(cursor.users.all()) == 7
-        rc = cursor.raw_conn
-    assert hasattr(carrier, '__quma_conn__')
-    with dbfile(carrier).cursor as cursor:
-        assert rc is cursor.raw_conn
-    cursor.close()
-    assert not hasattr(carrier, '__quma_conn__')
-    with dbfile(carrier).cursor as cursor:
-        assert rc is not cursor.raw_conn
-        rc = cursor.raw_conn
-    assert hasattr(carrier, '__quma_conn__')
-    with dbfile(carrier).cursor as cursor:
-        assert rc is cursor.raw_conn
-    dbfile.release(carrier)
-    assert not hasattr(carrier, '__quma_conn__')
+    carrier(dbfile)
+
+
+def pool_carrier(db):
+    carriers = {}
+
+    for _ in range(15):
+        carrier = object()
+        carriers[id(carrier)] = carrier
+
+    def run_threads(func):
+        ts = []
+        for _, carrier in carriers.items():
+            t = threading.Thread(target=func, args=(carrier,))
+            t.start()
+            ts.append(t)
+        for t in ts:
+            t.join()
+
+    def add_carrier(carrier):
+        with db(carrier).cursor as cur:
+            assert cur.carrier.oid == id(carrier)
+
+    run_threads(add_carrier)
+    assert len(db.heap.heap) == 15
+    carrier_set = set({c.oid for _, c in db.heap.heap.items()})
+
+    run_threads(add_carrier)
+    assert len(db.heap.heap) == 15
+    assert carrier_set == set({c.oid for _, c in db.heap.heap.items()})
+
+    def release(carrier):
+        db.release(carrier)
+
+    run_threads(release)
+    assert len(db.heap.heap) == 0
 
 
 def test_custom_namespace(db):

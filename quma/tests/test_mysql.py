@@ -16,14 +16,26 @@ def setup_function(function):
 def test_conn_attr(mydb, mypooldb):
     from .test_db import conn_attr
     for db in (mydb, mypooldb):
-        conn_attr(db, 'encoding', 'latin1', 'utf-8')
+        conn_attr(db, 'encoding', 'utf8', 'latin1')
 
 
 @pytest.mark.mysql
 def test_cursor(mydb, mypooldb):
-    from .test_db import cursor
+    from .test_db import the_cursor
     for db in (mydb, mypooldb):
-        cursor(db)
+        the_cursor(db)
+
+
+@pytest.mark.mysql
+def test_carrier(mydb):
+    from .test_db import carrier
+    carrier(mydb)
+
+
+@pytest.mark.mysql
+def test_pool_carrier(mypooldb):
+    from .test_db import pool_carrier
+    pool_carrier(mypooldb)
 
 
 @pytest.mark.mysql
