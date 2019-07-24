@@ -819,6 +819,13 @@ def test_execute(db):
     execute(db, sqlite3.OperationalError)
 
 
+def test_cursor_query(db):
+    with db.cursor as cur:
+        sql = 'SELECT name, city FROM users WHERE email = ? AND 1 = ?;'
+        q = cur.query(sql, 'user.1@example.com', 1)
+        assert q.value() == 'User 1'
+
+
 def test_echo_parameter(dbecho):
     import sys
     tmp = sys.stdout

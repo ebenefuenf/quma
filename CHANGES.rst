@@ -50,6 +50,7 @@ Released on October 19th 2018
   available. Don't fetch the result when these methods are called anymore. 
   Calls of count have overwritten the value of ``rowcount`` and set it 
   to ``-1``.
+- Add ``query`` method to class ``Cursor``.
 
 Version 0.1.0a3
 ---------------

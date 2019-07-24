@@ -73,7 +73,7 @@ class DatabaseCallWrapper(object):
 
     @property
     def cursor(self):
-        return Cursor(self.database.conn,
+        return Cursor(self.database,
                       self.database.namespaces,
                       self.database.contextcommit,
                       carrier=self.carrier,
@@ -235,7 +235,7 @@ class Database(object):
     @property
     def cursor(self):
         """Open a connection and return a cursor."""
-        return Cursor(self.conn, self.namespaces, self.contextcommit)
+        return Cursor(self, self.namespaces, self.contextcommit)
 
     def __getattr__(self, attr):
         try:

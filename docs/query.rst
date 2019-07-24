@@ -252,6 +252,18 @@ You can also use the query object itself for truth value testing:
         user1 = allusers.first()
 
 
+Ad hoc queries
+--------------
+
+To run an ad hoc query on the fly you can use the ``query`` method of the cursor
+
+.. code-block:: python
+
+    with db.cursor as cur:
+        sql = 'SELECT name, city FROM users WHERE email = ?;'
+        user = cur.query(sql, 'user.1@example.com').one()
+
+
 Results are cached
 ------------------
 

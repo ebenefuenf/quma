@@ -2,6 +2,8 @@ from .namespace import (
     CursorNamespace,
     get_namespace,
 )
+from .query import Query
+from .script import Script
 
 
 class CarriedConnection(object):
@@ -24,9 +26,10 @@ class RawCursorWrapper(object):
 
 
 class Cursor(object):
-    def __init__(self, conn, namespaces, contextcommit,
+    def __init__(self, db, namespaces, contextcommit,
                  carrier=None, autocommit=False):
-        self.conn = conn
+        self.db = db
+        self.conn = db.conn
         self.namespaces = namespaces
         self.carrier = carrier
         self.autocommit = autocommit
@@ -88,6 +91,15 @@ class Cursor(object):
 
     def rollback(self):
         self.raw_conn.rollback()
+
+    def query(self, content, *args, is_template=False, **kwargs):
+        """
+        Creates an ad hoc Query object based on content.
+        """
+        script = Script(content, self.db.echo, is_template,
+                        self.db.sqldirs, self.db.prepare_params)
+        return Query(script, self, args, kwargs,
+                     self.db.prepare_params)
 
     def get_conn_attr(self, attr):
         return getattr(self.raw_conn, attr)
