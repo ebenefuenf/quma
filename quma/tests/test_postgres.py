@@ -265,6 +265,17 @@ def test_cursor_query(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_prepared_statement(pgdb, pgpooldb):
+    for db in (pgdb, pgpooldb):
+        with db.cursor as cur:
+            cur.users.pgsql_prepare().run()
+            for i in range(1, 5):
+                q = cur.query(f"EXECUTE prep('user.{i}@example.com', 1);")
+                assert q.value() == f'User {i}'
+            cur.query(f"DEALLOCATE PREPARE prep;").run()
+
+
+@pytest.mark.postgres
 def test_echo_parameter(pgdb_echo, pgpooldb_echo):
     import sys
     tmp = sys.stdout
