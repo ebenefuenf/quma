@@ -13,18 +13,18 @@ def dburl():
     return urlparse(util.PGSQL_URI)
 
 
-@pytest.fixture('session')
+@pytest.fixture(scope='session')
 def pyformat_sqldirs():
     p = pathlib.Path(__file__).parent / 'fixtures' / 'scripts' / 'pyformat'
     return str(p)
 
 
-@pytest.fixture('session')
+@pytest.fixture(scope='session')
 def qmark_sqldirs():
     return pathlib.Path(__file__).parent / 'fixtures' / 'scripts' / 'qmark'
 
 
-@pytest.fixture('session')
+@pytest.fixture(scope='session')
 def qmark_shadow_sqldirs():
     parent = pathlib.Path(__file__).parent
     return [

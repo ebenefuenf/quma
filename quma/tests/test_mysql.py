@@ -213,10 +213,11 @@ def test_prepared_statement(mydb, mypooldb):
     for db in (mydb, mypooldb):
         with db.cursor as cur:
             cur.users.mysql_prepare().run()
+            sql = "EXECUTE prep USING 'user.{}@example.com', 1;"
             for i in range(1, 5):
-                q = cur.query(f"EXECUTE prep USING 'user.{i}@example.com', 1;")
-                assert q.value() == f'User {i}'
-            cur.query(f"DEALLOCATE PREPARE prep;").run()
+                q = cur.query(sql.format(i))
+                assert q.value() == 'User {}'.format(i)
+            cur.query('DEALLOCATE PREPARE prep;').run()
 
 
 @pytest.mark.mysql
