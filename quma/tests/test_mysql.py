@@ -71,44 +71,44 @@ def test_query_cache(mydb, mypooldb):
 
 
 @pytest.mark.mysql
-def test_first(mydb, mypooldbdict):
+def test_first(mydb_dict, mypooldb_dict):
     from .test_db import first
-    for db in (mydb, mypooldbdict):
+    for db in (mydb_dict, mypooldb_dict):
         first(db)
 
 
 @pytest.mark.mysql
-def test_value(mydbpersist, mypooldb):
+def test_value(mydb_persist, mypooldb):
     from .test_db import value
-    for db in (mydbpersist, mypooldb):
+    for db in (mydb_persist, mypooldb):
         value(db)
 
 
 @pytest.mark.mysql
-def test_value_str(mydb, mypooldbdict):
+def test_value_str(mydb_dict, mypooldb_dict):
     from .test_db import value_str
-    for db in (mydb, mypooldbdict):
+    for db in (mydb_dict, mypooldb_dict):
         value_str(db)
 
 
 @pytest.mark.mysql
-def test_query_attr(mydb, mypooldbdict):
+def test_query_attr(mydb, mypooldb_dict):
     from .test_db import query_attr
-    for db in (mydb, mypooldbdict):
+    for db in (mydb, mypooldb_dict):
         query_attr(db)
 
 
 @pytest.mark.mysql
-def test_getitem(mydb, mypooldbdict):
-    from .test_db import getitem
-    for db in (mydb, mypooldbdict):
-        getitem(db)
+def test_get_item(mydb_dict, mypooldb_dict):
+    from .test_db import get_item
+    for db in (mydb_dict, mypooldb_dict):
+        get_item(db)
 
 
 @pytest.mark.mysql
-def test_bool(mydb, mypooldbdict):
+def test_bool(mydb, mypooldb_dict):
     from .test_db import tbool
-    for db in (mydb, mypooldbdict):
+    for db in (mydb, mypooldb_dict):
         tbool(db)
 
 
@@ -145,9 +145,9 @@ def test_rollback(mydb, mypooldb):
 
 
 @pytest.mark.mysql
-def test_multiple_records(mydb, mypooldb):
+def test_multiple_records(mydb_dict, mypooldb):
     from .test_db import multiple_records
-    multiple_records(mydb, lambda user: user['name'])
+    multiple_records(mydb_dict, lambda user: user['name'])
     multiple_records(mypooldb, lambda user: user[0])
 
 
@@ -159,8 +159,8 @@ def test_multiple_records_error(mydb, mypooldb):
 
 
 @pytest.mark.mysql
-def test_tuple_cursor(mydbpersist, mypooldb):
-    for db in (mydbpersist, mypooldb):
+def test_tuple_cursor(mydb_persist, mypooldb):
+    for db in (mydb_persist, mypooldb):
         with db.cursor as cursor:
             user = db.user.by_name(cursor, name='User 4').one()
             assert user[0] == 'user.4@example.com'
@@ -170,8 +170,8 @@ def test_tuple_cursor(mydbpersist, mypooldb):
 
 
 @pytest.mark.mysql
-def test_dict_cursor(mydb, mypooldbdict):
-    for db in (mydb, mypooldbdict):
+def test_dict_cursor(mydb_dict, mypooldb_dict):
+    for db in (mydb_dict, mypooldb_dict):
         with db.cursor as cursor:
             user = db.user.by_name(cursor, name='User 3').one()
             assert user['email'] == 'user.3@example.com'
@@ -202,10 +202,19 @@ def test_unbunch(mydb, mypooldb):
 
 
 @pytest.mark.mysql
-def test_execute(mydb, mypooldbdict):
+def test_execute(mydb, mypooldb_dict):
     from .test_db import execute
-    for db in (mydb, mypooldbdict):
+    for db in (mydb, mypooldb_dict):
         execute(db, MySQLdb.ProgrammingError)
+
+
+@pytest.mark.mysql
+def test_cursor_query(mydb, mypooldb):
+    sql = 'SELECT name, city FROM users WHERE email = %s AND 1 = %s;'
+    for db in (mydb, mypooldb):
+        with db.cursor as cur:
+            q = cur.query(sql, 'user.1@example.com', 1)
+            assert q.value() == 'User 1'
 
 
 @pytest.mark.mysql

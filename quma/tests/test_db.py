@@ -253,7 +253,7 @@ def test_query_attr(db):
     query_attr(db)
 
 
-def getitem(db):
+def get_item(db):
     cursor = db.cursor()
     assert cursor.users.all()[1]['name'] == 'User 2'
     result = db.users.all(cursor)
@@ -261,8 +261,8 @@ def getitem(db):
     cursor.close()
 
 
-def test_getitem(db):
-    getitem(db)
+def test_get_item(db):
+    get_item(db)
 
 
 def tbool(db):

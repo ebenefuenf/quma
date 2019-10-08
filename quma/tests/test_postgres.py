@@ -103,10 +103,10 @@ def test_query_attr(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
-def test_getitem(pgdb, pgpooldb):
-    from .test_db import getitem
+def test_get_item(pgdb, pgpooldb):
+    from .test_db import get_item
     for db in (pgdb, pgpooldb):
-        getitem(db)
+        get_item(db)
 
 
 @pytest.mark.postgres
@@ -253,6 +253,15 @@ def test_execute(pgdb, pgpooldb):
     from .test_db import execute
     for db in (pgdb, pgpooldb):
         execute(db, psycopg2.ProgrammingError)
+
+
+@pytest.mark.postgres
+def test_cursor_query(pgdb, pgpooldb):
+    sql = 'SELECT name, city FROM users WHERE email = %s AND 1 = %s;'
+    for db in (pgdb, pgpooldb):
+        with db.cursor as cur:
+            q = cur.query(sql, 'user.1@example.com', 1)
+            assert q.value() == 'User 1'
 
 
 @pytest.mark.postgres

@@ -157,14 +157,6 @@ def dbseqcb(qmark_sqldirs):
 
 
 @pytest.fixture
-def pgpooldb(pyformat_sqldirs):
-    db = Database(util.PGSQL_POOL_URI,
-                  pyformat_sqldirs,
-                  changeling=True)
-    return db
-
-
-@pytest.fixture
 def pgdb(pyformat_sqldirs):
     db = Database(util.PGSQL_URI,
                   pyformat_sqldirs,
@@ -182,6 +174,22 @@ def pgdb_echo(pyformat_sqldirs):
 
 
 @pytest.fixture
+def pgdb_persist(pyformat_sqldirs):
+    db = Database(util.PGSQL_URI,
+                  pyformat_sqldirs,
+                  persist=True)
+    return db
+
+
+@pytest.fixture
+def pgpooldb(pyformat_sqldirs):
+    db = Database(util.PGSQL_POOL_URI,
+                  pyformat_sqldirs,
+                  changeling=True)
+    return db
+
+
+@pytest.fixture
 def pgpooldb_echo(pyformat_sqldirs):
     db = Database(util.PGSQL_POOL_URI,
                   pyformat_sqldirs,
@@ -191,15 +199,15 @@ def pgpooldb_echo(pyformat_sqldirs):
 
 
 @pytest.fixture
-def pgdb_persist(pyformat_sqldirs):
-    db = Database(util.PGSQL_URI,
+def mydb(pyformat_sqldirs):
+    db = Database(util.MYSQL_URI,
                   pyformat_sqldirs,
-                  persist=True)
+                  charset='utf8')
     return db
 
 
 @pytest.fixture
-def mydb(pyformat_sqldirs):
+def mydb_dict(pyformat_sqldirs):
     db = Database(util.MYSQL_URI,
                   pyformat_sqldirs,
                   dict_cursor=True,
@@ -213,6 +221,15 @@ def mydb_echo(pyformat_sqldirs):
                   pyformat_sqldirs,
                   dict_cursor=True,
                   echo=True,
+                  charset='utf8')
+    return db
+
+
+@pytest.fixture
+def mydb_persist(pyformat_sqldirs):
+    db = Database(util.MYSQL_URI,
+                  pyformat_sqldirs,
+                  persist=True,
                   charset='utf8')
     return db
 
@@ -235,19 +252,10 @@ def mypooldb_echo(pyformat_sqldirs):
 
 
 @pytest.fixture
-def mypooldbdict(pyformat_sqldirs):
+def mypooldb_dict(pyformat_sqldirs):
     db = Database(util.MYSQL_POOL_URI,
                   pyformat_sqldirs,
                   dict_cursor=True,
-                  charset='utf8')
-    return db
-
-
-@pytest.fixture
-def mydbpersist(pyformat_sqldirs):
-    db = Database(util.MYSQL_URI,
-                  pyformat_sqldirs,
-                  persist=True,
                   charset='utf8')
     return db
 
