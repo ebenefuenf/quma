@@ -1,8 +1,10 @@
 quma Changelog
 ===============
 
-Next Version
-------------
+Version 0.1.0b2
+---------------
+
+Released on October 8th 2019
 
 - You can now use original connection parameters of the DB API adapter 
   which will be passed to the adapters ``connect`` function.
@@ -16,10 +18,12 @@ Next Version
   ``MySQLdb.connect(host='...', db='...', charset='utf8')``
   
   Where ``charset`` is part of MySQLdb's API and not part of quma's.
-- Object which are passed as carrier are not altered anymore. Previously
+- Objects which are passed as carrier are not altered anymore. Previously
   carriers had been added an attribute called ``__quma_conn__``.
 - Mako templates are now set up using mako's ``TemplateLookup`` which
   is initialized with the sql directories.
+- Add method ``.query()`` to ``Cursor``.
+- Add "prepared statements" section to docs.
 
 Version 0.1.0b1
 ---------------
@@ -50,7 +54,6 @@ Released on October 19th 2018
   available. Don't fetch the result when these methods are called anymore. 
   Calls of count have overwritten the value of ``rowcount`` and set it 
   to ``-1``.
-- Add ``query`` method to class ``Cursor``.
 
 Version 0.1.0a3
 ---------------
