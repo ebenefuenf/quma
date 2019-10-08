@@ -264,6 +264,30 @@ To run an ad hoc query on the fly you can use the ``query`` method of the cursor
         user = cur.query(sql, 'user.1@example.com').one()
 
 
+Prepared statements
+-------------------
+
+quma does not have a special API for prepared statements, but you can easily 
+use them. In the following example we use PostgreSQL's syntax. 
+Given a SQL script ``sqlscripts/users/prepare.sql`` with the content below ... 
+
+.. code-block:: postgresql
+
+   PREPARE prep (varchar(128), int) AS
+   SELECT name, city FROM users WHERE email = $1 AND 1 = $2;
+
+... you can use it as shown here:
+
+.. code-block:: python
+
+   with db.cursor as cur:
+      cur.users.pgsql_prepare().run()
+      for i in range(1, 5):
+            q = cur.query(f"EXECUTE prep('user.{i}@example.com', 1);")
+            assert q.value() == f'User {i}'
+      cur.query(f"DEALLOCATE PREPARE prep;").run()
+
+
 Results are cached
 ------------------
 
