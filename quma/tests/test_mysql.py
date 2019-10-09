@@ -213,7 +213,13 @@ def test_prepared_statement(mydb, mypooldb):
     for db in (mydb, mypooldb):
         with db.cursor as cur:
             cur.users.mysql_prepare().run()
-            sql = "EXECUTE prep USING 'user.{}@example.com', 1;"
+            version = cur.query('SELECT VERSION();').value()
+            if 'MariaDB' in version:
+                sql = "EXECUTE prep USING 'user.{}@example.com', 1;"
+            else:
+                sql = ('SET @a = "user.{}@example.com"; '
+                       "SET @b = 1; "
+                       "EXECUTE prep USING @a, @b;")
             for i in range(1, 5):
                 q = cur.query(sql.format(i))
                 assert q.value() == 'User {}'.format(i)
