@@ -1,6 +1,16 @@
 quma Changelog
 ===============
 
+Version 0.1.0b3
+---------------
+
+Released on October 9th 2019
+
+- Revised tests. They where failing in CI with 0.1.0b2 as Travis uses 
+  MySQL 5 and prepared statements obvisually doesn't work with MySQLdb
+  and this server version.
+
+
 Version 0.1.0b2
 ---------------
 
