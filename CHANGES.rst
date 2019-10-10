@@ -1,6 +1,16 @@
 quma Changelog
 ===============
 
+
+Version 0.1.0b4
+---------------
+
+Released on October 10th 2019
+
+- Bugfix release: When carrier and pool were used together the pool
+  was not cleaned up properly.
+
+
 Version 0.1.0b3
 ---------------
 
