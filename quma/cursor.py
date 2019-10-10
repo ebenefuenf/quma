@@ -81,6 +81,7 @@ class Cursor(object):
                 return
             self.carrier.release()
             self.carrier = None
+            return
         self.conn.put(self.raw_conn)
 
     def close(self):

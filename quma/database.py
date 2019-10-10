@@ -35,7 +35,7 @@ class Carrier(object):
 
 class CarrierHeap(object):
     def __init__(self):
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.heap = {}
 
     def add(self, obj):
@@ -43,23 +43,22 @@ class CarrierHeap(object):
         return carrier
 
     def get(self, obj):
-        self.lock.acquire()
-        try:
-            carrier = self.heap[id(obj)]
-        except KeyError:
-            carrier = self.add(obj)
-        finally:
-            self.lock.release()
-        return carrier
+        with self.lock:
+            try:
+                carrier = self.heap[id(obj)]
+            except KeyError:
+                carrier = self.add(obj)
+            return carrier
 
     def release(self, oid):
-        self.lock.acquire()
-        try:
-            del self.heap[oid]
-        except KeyError:
-            pass
-        finally:
-            self.lock.release()
+        with self.lock:
+            try:
+                carrier = self.heap[oid]
+                carried_conn = carrier.conn
+                carried_conn.conn.put(carried_conn.raw_conn)
+                del self.heap[oid]
+            except KeyError:
+                pass
 
 
 class DatabaseCallWrapper(object):
