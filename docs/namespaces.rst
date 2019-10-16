@@ -32,7 +32,7 @@ with the first letter uppercase.
             return 'Test'
 
         def get_address(self, cur, username):
-            user = cur.user.by_username(username=username)
+            user = cur.users.by_username(username=username)
             return cur.address.by_user(user.id)
             
 

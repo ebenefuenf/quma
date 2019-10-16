@@ -31,7 +31,7 @@ not established yet.
             return getattr(_db(carrier=self.carrier,
                             autocommit=self.autocommit), attr)
 
-    def connect():
+    def connect(uri):
         global _db
         sqldir = '/path/to/sql/scripts'
 
@@ -45,7 +45,7 @@ Create the instance in your main module:
 
     import my_db_module
 
-    my_db_module.connect()
+    my_db_module.connect('sqlite:///:memory:')
 
 Now you can import the class ``my_db_module.db`` from everywhere
 and use it the same way as a usual instance of ``quma.Database``.
