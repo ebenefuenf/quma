@@ -107,14 +107,21 @@ class Connection(conn.Connection):
         return getattr(cursor, key)
 
     def create_conn(self, **kwargs):
-        return psycopg2.connect(
-            database=self.database,
-            user=self.username,
-            password=self.password,
-            host=self.hostname,
-            port=self.port,
-            cursor_factory=self.factory,
-            **kwargs)
+        try:
+            return psycopg2.connect(
+                database=self.database,
+                user=self.username,
+                password=self.password,
+                host=self.hostname,
+                port=self.port,
+                cursor_factory=self.factory,
+                **kwargs)
+        except psycopg2.OperationalError as e:
+            emsg = str(e).lower()
+            if "password authentication failed" in emsg:
+                raise exc.AuthenticationError(str(e))
+            else:
+                raise exc.ConnectionError(str(e))
 
     def enable_autocommit_if(self, autocommit, conn):
         if autocommit:

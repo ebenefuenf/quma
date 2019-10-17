@@ -23,3 +23,11 @@ class FetchError(Exception):
 
 class TimeoutError(Exception):
     """Raised when a connection pool times out on getting a connection."""
+
+
+class AuthenticationError(Exception):
+    pass
+
+
+class ConnectionError(Exception):
+    pass
