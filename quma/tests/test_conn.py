@@ -5,12 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from .. import (
-    Database,
-    conn,
-    connect,
-    exc,
-)
+from .. import Database, conn, connect, exc
 from . import util
 
 
@@ -20,6 +15,7 @@ def get_cursor_mock(exception):
         m.execute = Mock()
         m.execute.side_effect = exception
         return m
+
     return cursor
 
 
@@ -114,22 +110,18 @@ def non_persistent(uri, connection, pessimistic):
 
 
 @pytest.mark.postgres
-@pytest.mark.parametrize('pessimistic', [
-    False,
-    True,
-])
+@pytest.mark.parametrize('pessimistic', [False, True])
 def test_postgres_non_persistent(pessimistic):
     from psycopg2.extensions import connection
+
     non_persistent(util.PGSQL_URI, connection, pessimistic)
 
 
 @pytest.mark.mysql
-@pytest.mark.parametrize('pessimistic', [
-    False,
-    True,
-])
+@pytest.mark.parametrize('pessimistic', [False, True])
 def test_mysql_non_persistent(pessimistic):
     from MySQLdb.connections import Connection
+
     non_persistent(util.MYSQL_URI, Connection, pessimistic)
 
 
@@ -154,17 +146,20 @@ def persistent(uri, connection):
 @pytest.mark.postgres
 def test_postgres_persistent():
     from psycopg2.extensions import connection
+
     persistent(util.PGSQL_URI, connection)
 
 
 @pytest.mark.mysql
 def test_mysql_persistent():
     from MySQLdb.connections import Connection
+
     persistent(util.MYSQL_URI, Connection)
 
 
 def pool(uri, pessimistic, connection):
     from .. import pool
+
     conn = connect(uri, pessimistic=pessimistic)
     assert type(conn) is pool.Pool
     assert conn.size == 5
@@ -187,22 +182,18 @@ def pool(uri, pessimistic, connection):
 
 
 @pytest.mark.postgres
-@pytest.mark.parametrize('pessimistic', [
-    False,
-    True,
-])
+@pytest.mark.parametrize('pessimistic', [False, True])
 def test_postgres_pool(pessimistic):
     from psycopg2.extensions import connection
+
     pool(util.PGSQL_POOL_URI, pessimistic, connection)
 
 
 @pytest.mark.mysql
-@pytest.mark.parametrize('pessimistic', [
-    False,
-    True,
-])
+@pytest.mark.parametrize('pessimistic', [False, True])
 def test_mysql_pool(pessimistic):
     from MySQLdb.connections import Connection
+
     pool(util.MYSQL_POOL_URI, pessimistic, Connection)
 
 
@@ -339,10 +330,31 @@ def failing_check(uri, error):
 @pytest.mark.postgres
 def test_postgres_failing_check():
     import psycopg2
+
     failing_check(util.PGSQL_URI, psycopg2.OperationalError)
 
 
 @pytest.mark.mysql
 def test_mysql_failing_check():
     import MySQLdb
+
     failing_check(util.MYSQL_URI, MySQLdb.OperationalError)
+
+
+def test_sqlite_failing_connection():
+    with pytest.raises(exc.ConnectionError):
+        connect('sqlite:///|/').get()
+
+
+@pytest.mark.mysql
+def test_mysql_failing_connection():
+    with pytest.raises(exc.ConnectionError):
+        connect('mysql://wrong_user_n4me:wrong_p4$$wrd@/wrng_db_n4me').get()
+
+
+@pytest.mark.postgres
+def test_postgresql_failing_connection():
+    with pytest.raises(exc.ConnectionError):
+        connect(
+            'postgresql://wrong_user_n4me:wrong_p4$$wrd@/wrng_db_n4me'
+        ).get()

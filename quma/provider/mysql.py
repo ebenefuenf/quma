@@ -1,17 +1,12 @@
 try:
     import MySQLdb
-    from MySQLdb.cursors import (
-        Cursor,
-        DictCursor,
-    )
+    from MySQLdb.cursors import Cursor, DictCursor
 except ImportError:
-    raise ImportError('In order to use quma with MySQL you'
-                      'need to install mysqlclient')
+    raise ImportError(
+        'In order to use quma with MySQL you need to install mysqlclient'
+    )
 
-from .. import (
-    conn,
-    exc,
-)
+from .. import conn, exc
 
 
 class Connection(conn.Connection):
@@ -29,13 +24,18 @@ class Connection(conn.Connection):
         return conn.cursor()
 
     def create_conn(self, **kwargs):
-        conn = MySQLdb.connect(db=self.database,
-                               user=self.username,
-                               passwd=self.password,
-                               host=self.hostname,
-                               port=self.port,
-                               cursorclass=self.cursor_factory,
-                               **kwargs)
+        try:
+            conn = MySQLdb.connect(
+                db=self.database,
+                user=self.username,
+                passwd=self.password,
+                host=self.hostname,
+                port=self.port,
+                cursorclass=self.cursor_factory,
+                **kwargs
+            )
+        except MySQLdb.OperationalError as e:
+            raise exc.ConnectionError(e)
         return self.disable_autocommit(conn)
 
     def enable_autocommit_if(self, autocommit, conn):

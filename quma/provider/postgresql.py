@@ -1,19 +1,15 @@
 try:
     import psycopg2
 except ImportError:
-    raise ImportError('In order to use quma with PostgreSQL you '
-                      'need to install psycopg2 or psycopg2cffi')
+    raise ImportError(
+        'In order to use quma with PostgreSQL you '
+        'need to install psycopg2 or psycopg2cffi'
+    )
 
 
-from psycopg2.extras import (
-    DictCursor,
-    DictRow,
-)
+from psycopg2.extras import DictCursor, DictRow
 
-from .. import (
-    conn,
-    exc,
-)
+from .. import conn, exc
 
 
 class PostgresChangelingRow(DictRow):
@@ -22,6 +18,7 @@ class PostgresChangelingRow(DictRow):
 
     Either by index (row[0]), key (row['field']) or by attr (row.field).
     """
+
     __slots__ = DictRow.__slots__
 
     def __init__(self, cursor):
@@ -96,6 +93,7 @@ class Connection(conn.Connection):
         # mysqlclient and sqlite3 return an empty tuple.
         # We do it that way too to provide an uniform api.
         if key in ('fetchall', 'fetchmany'):
+
             def fetch(*args, **kwargs):
                 try:
                     return getattr(cursor, key)(*args, **kwargs)
@@ -103,6 +101,7 @@ class Connection(conn.Connection):
                     if str(e) == 'no results to fetch':
                         return ()
                     raise exc.FetchError(e)
+
             return fetch
         return getattr(cursor, key)
 
@@ -115,13 +114,10 @@ class Connection(conn.Connection):
                 host=self.hostname,
                 port=self.port,
                 cursor_factory=self.factory,
-                **kwargs)
+                **kwargs
+            )
         except psycopg2.OperationalError as e:
-            emsg = str(e).lower()
-            if "password authentication failed" in emsg:
-                raise exc.AuthenticationError(str(e))
-            else:
-                raise exc.ConnectionError(str(e))
+            raise exc.ConnectionError(str(e))
 
     def enable_autocommit_if(self, autocommit, conn):
         if autocommit:

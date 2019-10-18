@@ -1,10 +1,6 @@
 import sqlite3
 
-from .. import (
-    PLATFORM,
-    conn,
-    exc,
-)
+from .. import PLATFORM, conn, exc
 
 
 class SQLiteChangelingRow(sqlite3.Row):
@@ -70,7 +66,10 @@ class Connection(conn.Connection):
         return conn.cursor()
 
     def create_conn(self, **kwargs):
-        conn = sqlite3.connect(database=self.database, **kwargs)
+        try:
+            conn = sqlite3.connect(database=self.database, **kwargs)
+        except sqlite3.Error as e:
+            raise exc.ConnectionError(e)
         if self.changeling:
             conn.row_factory = SQLiteChangelingRow
         return self.disable_autocommit(conn)
