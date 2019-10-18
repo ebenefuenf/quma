@@ -5,7 +5,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from .. import Database, conn, connect, exc
+from .. import (
+    Database,
+    conn,
+    connect,
+    exc,
+)
 from . import util
 
 

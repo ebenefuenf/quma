@@ -7,9 +7,15 @@ except ImportError:
     )
 
 
-from psycopg2.extras import DictCursor, DictRow
+from psycopg2.extras import (
+    DictCursor,
+    DictRow,
+)
 
-from .. import conn, exc
+from .. import (
+    conn,
+    exc,
+)
 
 
 class PostgresChangelingRow(DictRow):

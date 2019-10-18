@@ -177,15 +177,19 @@ def test_custom_namespace(db):
 def cursor_call(db):
     cursor = db.cursor()
     try:
-        db.user.add(cursor,
-                    id=8,
-                    name='Test User 1',
-                    email='test.user@example.com',
-                    city='Test City')
-        cursor.user.add(id=9,
-                        name='Test User 2',
-                        email='test.user@example.com',
-                        city='Test City')
+        db.user.add(
+            cursor,
+            id=8,
+            name='Test User 1',
+            email='test.user@example.com',
+            city='Test City',
+        )
+        cursor.user.add(
+            id=9,
+            name='Test User 2',
+            email='test.user@example.com',
+            city='Test City',
+        )
         cursor.commit()
         db.user.remove(cursor, name='Test User 1')
         cursor.user.remove(name='Test User 2')
@@ -215,12 +219,12 @@ def value(db):
     cursor = db.cursor()
     assert cursor.users.by_email('user.1@example.com', 1).value() == 'User 1'
     assert cursor.users.by_email('user.1@example.com', 1).value(1) == 'City A'
-    assert db.users.by_email(cursor,
-                             'user.2@example.com',
-                             1).value() == 'User 2'
-    assert db.users.by_email(cursor,
-                             'user.2@example.com',
-                             1).value(1) == 'City A'
+    assert (
+        db.users.by_email(cursor, 'user.2@example.com', 1).value() == 'User 2'
+    )
+    assert (
+        db.users.by_email(cursor, 'user.2@example.com', 1).value(1) == 'City A'
+    )
     cursor.close()
 
 
@@ -241,10 +245,9 @@ def test_value_str(db):
 
 def query_attr(db):
     cursor = db.cursor()
-    q = cursor.user.add(id=8,
-                        name='Test User',
-                        email='test.user@example.com',
-                        city='Test City').run()
+    q = cursor.user.add(
+        id=8, name='Test User', email='test.user@example.com', city='Test City'
+    ).run()
     assert q.lastrowid is not None
     cursor.close()
 
@@ -279,15 +282,19 @@ def test_bool(db):
 def commit(db):
     with db.cursor as cursor:
         for i in range(8, 16, 2):
-            db.user.add(cursor,
-                        id=i,
-                        name='Test User {}'.format(i),
-                        email='test.user@example.com',
-                        city='Test City').run()
-            cursor.user.add(id=i + 1,
-                            name='Test User {}'.format(i + 1),
-                            email='test.user@example.com',
-                            city='Test City').run()
+            db.user.add(
+                cursor,
+                id=i,
+                name='Test User {}'.format(i),
+                email='test.user@example.com',
+                city='Test City',
+            ).run()
+            cursor.user.add(
+                id=i + 1,
+                name='Test User {}'.format(i + 1),
+                email='test.user@example.com',
+                city='Test City',
+            ).run()
     with db.cursor as cursor:
         with pytest.raises(db.DoesNotExistError):
             db.user.by_name(cursor, name='Test User 8').one()
@@ -296,15 +303,19 @@ def commit(db):
 
     with db.cursor as cursor:
         for i in range(8, 16, 2):
-            db.user.add(cursor,
-                        id=i,
-                        name='Test User {}'.format(i),
-                        email='test.user@example.com',
-                        city='Test City').run()
-            cursor.user.add(id=i + 1,
-                            name='Test User {}'.format(i + 1),
-                            email='test.user@example.com',
-                            city='Test City').run()
+            db.user.add(
+                cursor,
+                id=i,
+                name='Test User {}'.format(i),
+                email='test.user@example.com',
+                city='Test City',
+            ).run()
+            cursor.user.add(
+                id=i + 1,
+                name='Test User {}'.format(i + 1),
+                email='test.user@example.com',
+                city='Test City',
+            ).run()
         cursor.commit()
 
     cursor = db.cursor()
@@ -327,11 +338,13 @@ def test_commit(dbfile):
 
 def test_contextcommit(dbcommit):
     with dbcommit.cursor as cursor:
-        dbcommit.user.add(cursor,
-                          id=8,
-                          name='Test User',
-                          email='test.user@example.com',
-                          city='Test City').run()
+        dbcommit.user.add(
+            cursor,
+            id=8,
+            name='Test User',
+            email='test.user@example.com',
+            city='Test City',
+        ).run()
     with dbcommit.cursor as cursor:
         user = dbcommit.user.by_name(cursor, name='Test User').one()
         assert user.email == 'test.user@example.com'
@@ -401,11 +414,13 @@ def test_autocommit(qmark_sqldirs):
 
 def rollback(db):
     cursor = db.cursor()
-    db.user.add(cursor,
-                id=8,
-                name='Test User',
-                email='test.user@example.com',
-                city='Test City').run()
+    db.user.add(
+        cursor,
+        id=8,
+        name='Test User',
+        email='test.user@example.com',
+        city='Test City',
+    ).run()
     db.user.by_name(cursor, name='Test User').one()
     cursor.rollback()
     with pytest.raises(db.DoesNotExistError):
@@ -421,9 +436,10 @@ def test_overwrite_script_class(pyformat_sqldirs):
     class MyScript(script.Script):
         def the_test(self):
             return 'Test'
-    db = Database(util.SQLITE_MEMORY,
-                  pyformat_sqldirs,
-                  script_factory=MyScript)
+
+    db = Database(
+        util.SQLITE_MEMORY, pyformat_sqldirs, script_factory=MyScript
+    )
     assert db.user.all.the_test() == 'Test'
 
 
@@ -462,20 +478,22 @@ def no_changeling_cursor(pgdb_persist, getter, error):
 
 
 def test_no_changeling_cursor(db_no_changeling):
-    no_changeling_cursor(db_no_changeling,
-                         lambda user: user['email'],
-                         TypeError)
-    no_changeling_cursor(db_no_changeling,
-                         lambda user: user.email,
-                         AttributeError)
+    no_changeling_cursor(
+        db_no_changeling, lambda user: user['email'], TypeError
+    )
+    no_changeling_cursor(
+        db_no_changeling, lambda user: user.email, AttributeError
+    )
 
 
 def test_pypy_changeling_init(qmark_sqldirs):
     with mock.patch('quma.provider.sqlite.PLATFORM', 'PyPy'):
-        db = Database(util.SQLITE_MEMORY,
-                      sqldirs=qmark_sqldirs,
-                      persist=True,
-                      changeling=True)
+        db = Database(
+            util.SQLITE_MEMORY,
+            sqldirs=qmark_sqldirs,
+            persist=True,
+            changeling=True,
+        )
         db.execute(util.CREATE_USERS)
         db.execute(util.INSERT_USERS)
         if platform.python_implementation() == 'PyPy':
@@ -558,8 +576,10 @@ def multiple_records(db, getter):
         assert len(users) == 2
 
         # cast the iterator to a list
-        if platform.python_implementation() == 'CPython' or \
-           db.conn.__class__.__module__ != 'quma.provider.sqlite':
+        if (
+            platform.python_implementation() == 'CPython'
+            or db.conn.__class__.__module__ != 'quma.provider.sqlite'
+        ):
             # TODO: the cast to list does only work in CPython for all
             # dricers. In PyPy using the sqlite3 driver the fetch call
             # in Query.__iter__ returns an empty list.
@@ -599,38 +619,65 @@ def test_count(db):
 
 def rowcount(db):
     cur = db.cursor()
-    assert db.user.add(
-                    cur,
-                    id=8,
-                    name='Test User 1',
-                    email='test.user@example.com',
-                    city='Test City').count() == 1
-    assert cur.user.add(
-                    id=9,
-                    name='Test User 2',
-                    email='test.user@example.com',
-                    city='Test City').count() == 1
-    assert len(db.user.add(
-                    cur,
-                    id=10,
-                    name='Test User 3',
-                    email='test.user@example.com',
-                    city='Test City')) == 1
-    assert len(cur.user.add(
-                    id=11,
-                    name='Test User 4',
-                    email='test.user@example.com',
-                    city='Test City')) == 1
-    assert db.users.update(cur,
-                           email='test1@example.com',
-                           city='Test City').count() == 4
-    assert cur.users.update(email='test2@example.com',
-                            city='Test City').count() == 4
-    assert len(db.users.update(cur,
-                               email='test3@example.com',
-                               city='Test City')) == 4
-    assert len(cur.users.update(email='test4@example.com',
-                                city='Test City')) == 4
+    assert (
+        db.user.add(
+            cur,
+            id=8,
+            name='Test User 1',
+            email='test.user@example.com',
+            city='Test City',
+        ).count()
+        == 1
+    )
+    assert (
+        cur.user.add(
+            id=9,
+            name='Test User 2',
+            email='test.user@example.com',
+            city='Test City',
+        ).count()
+        == 1
+    )
+    assert (
+        len(
+            db.user.add(
+                cur,
+                id=10,
+                name='Test User 3',
+                email='test.user@example.com',
+                city='Test City',
+            )
+        )
+        == 1
+    )
+    assert (
+        len(
+            cur.user.add(
+                id=11,
+                name='Test User 4',
+                email='test.user@example.com',
+                city='Test City',
+            )
+        )
+        == 1
+    )
+    assert (
+        db.users.update(
+            cur, email='test1@example.com', city='Test City'
+        ).count()
+        == 4
+    )
+    assert (
+        cur.users.update(email='test2@example.com', city='Test City').count()
+        == 4
+    )
+    assert (
+        len(db.users.update(cur, email='test3@example.com', city='Test City'))
+        == 4
+    )
+    assert (
+        len(cur.users.update(email='test4@example.com', city='Test City')) == 4
+    )
     assert db.user.remove(cur, name='Test User 1').count() == 1
     assert cur.user.remove(name='Test User 2').count() == 1
     assert len(db.user.remove(cur, name='Test User 3')) == 1
@@ -796,6 +843,7 @@ def test_caching(db, dbcache):
 
 def test_close(db):
     from .. import provider
+
     assert type(db.conn) is provider.sqlite.Connection
     db.close()
     assert db.conn is None
@@ -828,6 +876,7 @@ def test_cursor_query(db):
 
 def test_echo_parameter(dbecho):
     import sys
+
     tmp = sys.stdout
     sys.stdout = type('S', (), {})
     sql = {}

@@ -22,7 +22,8 @@ except KeyError:
     PGSQL_DB = DB_NAME
 PGSQL_URI = 'postgresql://{}:{}@/{}'.format(PGSQL_USER, PGSQL_PASS, PGSQL_DB)
 PGSQL_POOL_URI = 'postgresql+pool://{}:{}@/{}'.format(
-    PGSQL_USER, PGSQL_PASS, PGSQL_DB)
+    PGSQL_USER, PGSQL_PASS, PGSQL_DB
+)
 
 try:
     MYSQL_USER = os.environ['QUMA_MYSQL_USER']
@@ -38,17 +39,18 @@ except KeyError:
     MYSQL_DB = DB_NAME
 MYSQL_URI = 'mysql://{}:{}@/{}'.format(MYSQL_USER, MYSQL_PASS, MYSQL_DB)
 MYSQL_POOL_URI = 'mysql+pool://{}:{}@/{}'.format(
-    MYSQL_USER, MYSQL_PASS, MYSQL_DB)
+    MYSQL_USER, MYSQL_PASS, MYSQL_DB
+)
 
 DROP_USERS = 'DROP TABLE IF EXISTS users;'
-CREATE_USERS = ("""
+CREATE_USERS = """
 CREATE TABLE users (
     id INT PRIMARY KEY,
     name VARCHAR(128) NOT NULL,
     email VARCHAR(128) NOT NULL,
     city VARCHAR(128) NOT NULL);
-""")
-INSERT_USERS = ("""
+"""
+INSERT_USERS = """
 INSERT INTO
     users (id, name, email, city)
 VALUES
@@ -59,11 +61,12 @@ VALUES
     (5, 'User 5', 'user.5@example.com', 'City C'),
     (6, 'User 6', 'user.6@example.com', 'City C'),
     (7, 'User 7', 'user.7@example.com', 'City C');
-""")
+"""
 
 
 def setup_pg_db():
     import psycopg2
+
     conn = psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS)
     cur = conn.cursor()
     cur.execute(DROP_USERS)
@@ -77,6 +80,7 @@ def setup_pg_db():
 
 def setup_mysql_db():
     import MySQLdb
+
     conn = MySQLdb.connect(db=DB_NAME, user=DB_USER, passwd=DB_PASS)
     cur = conn.cursor()
     cur.execute(DROP_USERS)

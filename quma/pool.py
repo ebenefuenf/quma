@@ -101,8 +101,9 @@ class Pool(object):
         if use_overflow and self._overflow >= self._MAX:
             raise TimeoutError(
                 'QueuePool limit of size %d overflow %d reached, '
-                'connection timed out, timeout %d' %
-                (self.size, self.overflow, self._timeout))
+                'connection timed out, timeout %d'
+                % (self.size, self.overflow, self._timeout)
+            )
 
         if self._inc_overflow() is True:
             try:
@@ -132,12 +133,12 @@ class Pool(object):
         self._overflow = 0 - self.size
 
     def status(self):
-        return ('Pool size: %d Connections in pool: %d '
-                'Current Overflow: %d Current Checked out '
-                'connections: %d' % (self.size,
-                                     self.checkedin,
-                                     self.overflow,
-                                     self.checkedout))
+        return (
+            'Pool size: %d Connections in pool: %d '
+            'Current Overflow: %d Current Checked out '
+            'connections: %d'
+            % (self.size, self.checkedin, self.overflow, self.checkedout)
+        )
 
     @property
     def size(self):

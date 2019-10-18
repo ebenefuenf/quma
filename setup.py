@@ -20,7 +20,7 @@ with open('README.rst', 'rt', encoding='utf8') as f:
 
 test = ['pytest', 'pytest-cov']
 extras = {
-    'test':  test,
+    'test': test,
     'docs': ['sphinx', 'sphinx-autobuild'],
     'templates': ['mako'],
     'postgres': ['psycopg2'],
@@ -59,5 +59,5 @@ setup(
     test_suite='quma.tests',
     setup_requires=['pytest-runner'],
     tests_require=test,
-    extras_require=extras
+    extras_require=extras,
 )

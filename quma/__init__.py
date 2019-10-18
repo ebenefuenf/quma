@@ -29,8 +29,7 @@ PLATFORM = platform.python_implementation()
 __all__ = [
     'Database',
     'Namespace',
-    'connect'
-    'APIError',
+    'connect' 'APIError',
     'DoesNotExistError',
     'FetchError',
     'MultipleRowsError',

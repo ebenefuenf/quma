@@ -72,11 +72,13 @@ class DatabaseCallWrapper(object):
 
     @property
     def cursor(self):
-        return Cursor(self.database,
-                      self.database.namespaces,
-                      self.database.contextcommit,
-                      carrier=self.carrier,
-                      autocommit=self.autocommit)
+        return Cursor(
+            self.database,
+            self.database.namespaces,
+            self.database.contextcommit,
+            carrier=self.carrier,
+            autocommit=self.autocommit,
+        )
 
 
 class Database(object):
@@ -126,6 +128,7 @@ class Database(object):
     :param timeout: The number of seconds to wait before giving
         up on returning a connection. Defaults to None.
     """
+
     DoesNotExistError = exc.DoesNotExistError
     MultipleRowsError = exc.MultipleRowsError
 
@@ -163,8 +166,9 @@ class Database(object):
                 self.register_namespace(sqldir)
 
     def __call__(self, carrier=None, autocommit=False):
-        return DatabaseCallWrapper(self, carrier=carrier,
-                                   autocommit=autocommit)
+        return DatabaseCallWrapper(
+            self, carrier=carrier, autocommit=autocommit
+        )
 
     def register_namespace(self, sqldir):
         def instantiate(ns, ns_class, path):
@@ -258,7 +262,9 @@ def connect(dburi, **kwargs):
         if scheme[1].lower() == 'pool':
             return pool.Pool(conn_class, url, **kwargs)
         else:
-            raise ValueError('Wrong scheme. Only "provider://" or '
-                             '"provider+pool://" are allowed')
+            raise ValueError(
+                'Wrong scheme. Only "provider://" or '
+                '"provider+pool://" are allowed'
+            )
     except IndexError:
         return conn_class(url, **kwargs)

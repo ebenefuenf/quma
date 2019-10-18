@@ -12,8 +12,13 @@ sql_path = os.path.join(here, '../quma/tests/fixtures/scripts/qmark')
 
 
 def get_db():
-    db = quma.Database('sqlite:///:memory:', sql_path,
-                       persist=True, changeling=True, cache=True)
+    db = quma.Database(
+        'sqlite:///:memory:',
+        sql_path,
+        persist=True,
+        changeling=True,
+        cache=True,
+    )
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
     return db
@@ -27,10 +32,12 @@ def db_namespaces():
             db.root.get_users(cursor)
             db.get_test(cursor)
             db.root.get_test(cursor)
-            db.user.add(cursor,
-                        name='Test User',
-                        email='test.user@example.com',
-                        city='Test City').run()
+            db.user.add(
+                cursor,
+                name='Test User',
+                email='test.user@example.com',
+                city='Test City',
+            ).run()
             cursor.commit()
 
             db.user.by_name(cursor, name='User 1').one()
@@ -49,9 +56,11 @@ def cursor_namespaces():
             cursor.root.get_users()
             cursor.get_test()
             cursor.root.get_test()
-            cursor.user.add(name='Test User',
-                            email='test.user@example.com',
-                            city='Test City').run()
+            cursor.user.add(
+                name='Test User',
+                email='test.user@example.com',
+                city='Test City',
+            ).run()
             cursor.commit()
 
             cursor.user.by_name(name='User 1').one()

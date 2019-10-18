@@ -34,8 +34,10 @@ class Namespace(object):
             self._collect_scripts(sqldir)
 
     def _collect_scripts(self, sqldir):
-        sqlfiles = chain(sqldir.glob('*.{}'.format(self.db.file_ext)),
-                         sqldir.glob('*.{}'.format(self.db.tmpl_ext)))
+        sqlfiles = chain(
+            sqldir.glob('*.{}'.format(self.db.file_ext)),
+            sqldir.glob('*.{}'.format(self.db.tmpl_ext)),
+        )
 
         for sqlfile in sqlfiles:
             filename = Path(sqlfile.name)
@@ -53,7 +55,8 @@ class Namespace(object):
                     self.echo,
                     ext.lower() == '.' + self.db.tmpl_ext,
                     self.db.sqldirs,
-                    prepare_params=self.db.prepare_params)
+                    prepare_params=self.db.prepare_params,
+                )
 
     def __getattr__(self, attr):
         if self.cache:
@@ -72,7 +75,8 @@ class Namespace(object):
                     self.echo,
                     Path(sqlfile).suffix == '.' + self.db.tmpl_ext,
                     self.db.sqldirs,
-                    prepare_params=self.db.prepare_params)
+                    prepare_params=self.db.prepare_params,
+                )
         except FileNotFoundError:
             return getattr(self.shadow, attr)
 

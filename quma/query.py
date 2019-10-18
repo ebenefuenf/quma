@@ -40,10 +40,9 @@ class Query(object):
 
     def run(self):
         """Execute the query using the DBAPI driver."""
-        self.script.execute(self.cursor,
-                            list(self.args),
-                            self.kwargs,
-                            self.prepare_params)
+        self.script.execute(
+            self.cursor, list(self.args), self.kwargs, self.prepare_params
+        )
         self._has_been_executed = True
         self._result_cache = None
         return self

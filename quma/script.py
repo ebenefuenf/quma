@@ -10,8 +10,9 @@ except ImportError:
 
 
 class Script(object):
-    def __init__(self, content, echo, is_template, sqldirs,
-                 prepare_params=None):
+    def __init__(
+        self, content, echo, is_template, sqldirs, prepare_params=None
+    ):
         self.echo = echo
         self.content = content
         self.prepare_params = prepare_params
@@ -51,11 +52,12 @@ class Script(object):
         if self.is_template:
             try:
                 lookup = TemplateLookup(directories=self.sqldirs)
-                return Template(self.content,
-                                lookup=lookup).render(**params), params
+                return (
+                    Template(self.content, lookup=lookup).render(**params),
+                    params,
+                )
             except TypeError:
-                raise ImportError(
-                    'To use templates you need to install Mako')
+                raise ImportError('To use templates you need to install Mako')
         return self.content, params
 
     def execute(self, cursor, args, kwargs, prepare_params=None):

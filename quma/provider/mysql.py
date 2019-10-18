@@ -6,7 +6,10 @@ except ImportError:
         'In order to use quma with MySQL you need to install mysqlclient'
     )
 
-from .. import conn, exc
+from .. import (
+    conn,
+    exc,
+)
 
 
 class Connection(conn.Connection):

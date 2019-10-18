@@ -1,6 +1,10 @@
 import sqlite3
 
-from .. import PLATFORM, conn, exc
+from .. import (
+    PLATFORM,
+    conn,
+    exc,
+)
 
 
 class SQLiteChangelingRow(sqlite3.Row):

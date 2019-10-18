@@ -19,6 +19,7 @@ def setup_function(function):
 @pytest.mark.postgres
 def test_conn_attr(pgdb, pgpooldb):
     from .test_db import conn_attr
+
     for db in (pgdb, pgpooldb):
         conn_attr(db, 'autocommit', False, True)
 
@@ -26,6 +27,7 @@ def test_conn_attr(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_cursor(pgdb, pgpooldb):
     from .test_db import the_cursor
+
     for db in (pgdb, pgpooldb):
         the_cursor(db)
 
@@ -33,28 +35,29 @@ def test_cursor(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_carrier(pgdb):
     from .test_db import carrier
+
     carrier(pgdb)
 
 
 @pytest.mark.postgres
 def test_pool_carrier(pgpooldb):
     from .test_db import pool_carrier
+
     pool_carrier(pgpooldb)
 
 
 @pytest.mark.postgres
 def test_cursor_call(pgdb, pgpooldb):
     from .test_db import cursor_call
+
     for db in (pgdb, pgpooldb):
         cursor_call(db)
 
 
 @pytest.mark.postgres
 def test_count(pgdb, pgpooldb):
-    from .test_db import (
-        count,
-        rowcount,
-    )
+    from .test_db import count, rowcount
+
     for db in (pgdb, pgpooldb):
         count(db)
         rowcount(db)
@@ -63,6 +66,7 @@ def test_count(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_exists(pgdb, pgpooldb):
     from .test_db import exists
+
     for db in (pgdb, pgpooldb):
         exists(db)
 
@@ -70,6 +74,7 @@ def test_exists(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_query_cache(pgdb, pgpooldb):
     from .test_db import query_cache
+
     for db in (pgdb, pgpooldb):
         query_cache(db)
 
@@ -77,6 +82,7 @@ def test_query_cache(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_first(pgdb, pgpooldb):
     from .test_db import first
+
     for db in (pgdb, pgpooldb):
         first(db)
 
@@ -84,6 +90,7 @@ def test_first(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_value(pgdb, pgpooldb):
     from .test_db import value
+
     for db in (pgdb, pgpooldb):
         value(db)
 
@@ -91,6 +98,7 @@ def test_value(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_value_str(pgdb, pgpooldb):
     from .test_db import value_str
+
     for db in (pgdb, pgpooldb):
         value_str(db)
 
@@ -98,6 +106,7 @@ def test_value_str(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_query_attr(pgdb, pgpooldb):
     from .test_db import query_attr
+
     for db in (pgdb, pgpooldb):
         query_attr(db)
 
@@ -105,6 +114,7 @@ def test_query_attr(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_get_item(pgdb, pgpooldb):
     from .test_db import get_item
+
     for db in (pgdb, pgpooldb):
         get_item(db)
 
@@ -112,6 +122,7 @@ def test_get_item(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_bool(pgdb, pgpooldb):
     from .test_db import tbool
+
     for db in (pgdb, pgpooldb):
         tbool(db)
 
@@ -119,6 +130,7 @@ def test_bool(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_commit(pgdb, pgpooldb):
     from .test_db import commit
+
     for db in (pgdb, pgpooldb):
         commit(db)
 
@@ -126,24 +138,31 @@ def test_commit(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_autocommit(pyformat_sqldirs):
     from .test_db import autocommit
-    autocommit(util.PGSQL_URI,
-               pyformat_sqldirs,
-               psycopg2.ProgrammingError,
-               psycopg2.ProgrammingError)
+
+    autocommit(
+        util.PGSQL_URI,
+        pyformat_sqldirs,
+        psycopg2.ProgrammingError,
+        psycopg2.ProgrammingError,
+    )
 
 
 @pytest.mark.postgres
 def test_autocommit_pool(pyformat_sqldirs):
     from .test_db import autocommit
-    autocommit(util.PGSQL_POOL_URI,
-               pyformat_sqldirs,
-               psycopg2.ProgrammingError,
-               psycopg2.ProgrammingError)
+
+    autocommit(
+        util.PGSQL_POOL_URI,
+        pyformat_sqldirs,
+        psycopg2.ProgrammingError,
+        psycopg2.ProgrammingError,
+    )
 
 
 @pytest.mark.postgres
 def test_rollback(pgdb, pgpooldb):
     from .test_db import rollback
+
     for db in (pgdb, pgpooldb):
         rollback(db)
 
@@ -151,6 +170,7 @@ def test_rollback(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_changeling_cursor(pgdb, pgpooldb):
     from .test_db import changeling_cursor
+
     for db in (pgdb, pgpooldb):
         changeling_cursor(db)
 
@@ -166,14 +186,14 @@ def test_changeling_cursor_hidden_members(pgdb):
 @pytest.mark.postgres
 def test_no_changeling_cursor(pgdb_persist):
     from .test_db import no_changeling_cursor
-    no_changeling_cursor(pgdb_persist,
-                         lambda user: user.email,
-                         AttributeError)
+
+    no_changeling_cursor(pgdb_persist, lambda user: user.email, AttributeError)
 
 
 @pytest.mark.postgres
 def test_multiple_records(pgdb, pgpooldb):
     from .test_db import multiple_records
+
     for db in (pgdb, pgpooldb):
         multiple_records(db, lambda user: user.name)
 
@@ -181,6 +201,7 @@ def test_multiple_records(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_multiple_records_error(pgdb, pgpooldb):
     from .test_db import multiple_records_error
+
     for db in (pgdb, pgpooldb):
         multiple_records_error(db)
 
@@ -209,7 +230,8 @@ def test_get_cursor_attr(pgdb):
     cursor.fetchall = Mock()
     cursor.fetchall.__name__ = 'fetchall'
     cursor.fetchall.side_effect = psycopg2.ProgrammingError(
-        'no results to fetch')
+        'no results to fetch'
+    )
     assert conn.get_cursor_attr(cursor, 'fetchall')() == ()
     cursor.fetchall.side_effect = psycopg2.ProgrammingError('test')
     with pytest.raises(FetchError) as e:
@@ -221,7 +243,8 @@ def test_get_cursor_attr(pgdb):
         cursor.raw_cursor.fetchall = Mock()
         cursor.raw_cursor.fetchall.__name__ = 'fetchall'
         cursor.raw_cursor.fetchall.side_effect = FetchError(
-                psycopg2.ProgrammingError('pg-exc-test'))
+            psycopg2.ProgrammingError('pg-exc-test')
+        )
         with pytest.raises(psycopg2.ProgrammingError) as e:
             pgdb.users.all(cursor).first()
         assert str(e.value) == 'pg-exc-test'
@@ -230,6 +253,7 @@ def test_get_cursor_attr(pgdb):
 @pytest.mark.postgres
 def test_many(pgdb, pgpooldb):
     from .test_db import many
+
     for db in (pgdb, pgpooldb):
         many(db)
 
@@ -237,6 +261,7 @@ def test_many(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_many_default(pgdb, pgpooldb):
     from .test_db import many_default
+
     for db in (pgdb, pgpooldb):
         many_default(db)
 
@@ -244,6 +269,7 @@ def test_many_default(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_unbunch(pgdb, pgpooldb):
     from .test_db import unbunch
+
     for db in (pgdb, pgpooldb):
         unbunch(db)
 
@@ -251,6 +277,7 @@ def test_unbunch(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_execute(pgdb, pgpooldb):
     from .test_db import execute
+
     for db in (pgdb, pgpooldb):
         execute(db, psycopg2.ProgrammingError)
 
@@ -279,6 +306,7 @@ def test_prepared_statement(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_echo_parameter(pgdb_echo, pgpooldb_echo):
     import sys
+
     tmp = sys.stdout
     sys.stdout = type('S', (), {})
     sql = {}
@@ -292,6 +320,7 @@ def test_echo_parameter(pgdb_echo, pgpooldb_echo):
         with db.cursor as cursor:
             db.user.by_email(cursor, 'user.1@example.com', 1).one()
             assert (
-                ("SELECT name, city FROM users WHERE email = "
-                 "'user.1@example.com' AND 1 = 1;\n") == sql['sql'])
+                "SELECT name, city FROM users WHERE email = "
+                "'user.1@example.com' AND 1 = 1;\n"
+            ) == sql['sql']
     sys.stdout = tmp

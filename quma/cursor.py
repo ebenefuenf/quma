@@ -26,8 +26,9 @@ class RawCursorWrapper(object):
 
 
 class Cursor(object):
-    def __init__(self, db, namespaces, contextcommit,
-                 carrier=None, autocommit=False):
+    def __init__(
+        self, db, namespaces, contextcommit, carrier=None, autocommit=False
+    ):
         self.db = db
         self.conn = db.conn
         self.namespaces = namespaces
@@ -60,8 +61,9 @@ class Cursor(object):
                 self.raw_conn = raw_conn
         else:
             self.raw_conn = self.conn.get(autocommit=autocommit)
-        self.raw_cursor = RawCursorWrapper(self.conn,
-                                           self.conn.cursor(self.raw_conn))
+        self.raw_cursor = RawCursorWrapper(
+            self.conn, self.conn.cursor(self.raw_conn)
+        )
         return self
 
     def put(self, force=False):
@@ -97,10 +99,14 @@ class Cursor(object):
         """
         Creates an ad hoc Query object based on content.
         """
-        script = Script(content, self.db.echo, is_template,
-                        self.db.sqldirs, self.db.prepare_params)
-        return Query(script, self, args, kwargs,
-                     self.db.prepare_params)
+        script = Script(
+            content,
+            self.db.echo,
+            is_template,
+            self.db.sqldirs,
+            self.db.prepare_params,
+        )
+        return Query(script, self, args, kwargs, self.db.prepare_params)
 
     def get_conn_attr(self, attr):
         return getattr(self.raw_conn, attr)
@@ -119,5 +125,7 @@ class Cursor(object):
         try:
             return CursorNamespace(get_namespace(self, attr), self)
         except AttributeError:
-            raise AttributeError('Namespace, Root method, or cursor '
-                                 'attribute "{}" not found.'.format(attr))
+            raise AttributeError(
+                'Namespace, Root method, or cursor '
+                'attribute "{}" not found.'.format(attr)
+            )

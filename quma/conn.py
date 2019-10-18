@@ -47,8 +47,9 @@ class Connection(object):
                 except exc.OperationalError:
                     self.conn = self.create_conn(**self.dbapi_kwargs)
             return self.enable_autocommit_if(autocommit, self.conn)
-        return self.enable_autocommit_if(autocommit,
-                                         self.create_conn(**self.dbapi_kwargs))
+        return self.enable_autocommit_if(
+            autocommit, self.create_conn(**self.dbapi_kwargs)
+        )
 
     def put(self, conn):
         conn.rollback()
@@ -61,8 +62,10 @@ class Connection(object):
             conn.close()
             return
         if not self.persist:
-            raise exc.APIError("Don't call the close() method of "
-                               "non-persistent connections.")
+            raise exc.APIError(
+                "Don't call the close() method of "
+                "non-persistent connections."
+            )
         if self.conn:
             self.conn.close()
             del self.conn
