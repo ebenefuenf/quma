@@ -1,6 +1,11 @@
 quma Changelog
 ===============
 
+Unreleased
+----------
+
+- Raise ``quma.ConnectionError`` when a connection fails.
+
 
 Version 0.1.0b4
 ---------------
