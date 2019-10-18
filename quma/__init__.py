@@ -6,6 +6,7 @@ from .database import (  # noqa: F401
 )
 from .exc import (  # noqa: F401
     APIError,
+    ConnectionError,
     DoesNotExistError,
     FetchError,
     MultipleRowsError,
@@ -29,7 +30,9 @@ PLATFORM = platform.python_implementation()
 __all__ = [
     'Database',
     'Namespace',
-    'connect' 'APIError',
+    'connect',
+    'APIError',
+    'ConnectionError',
     'DoesNotExistError',
     'FetchError',
     'MultipleRowsError',
