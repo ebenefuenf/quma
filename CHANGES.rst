@@ -1,8 +1,8 @@
 quma Changelog
 ===============
 
-Version 0.1
-----------
+Version 0.1.0
+-------------
 
 Released on August 16th 2020
 
