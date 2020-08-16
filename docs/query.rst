@@ -2,20 +2,20 @@
 The Query class
 ==================
 
-When you call a script object it returns an instance of the 
+When you call a script object it returns an instance of the
 :class:`Query` class which holds the code from the script
 file and the parameters passed to the script call.
 
 Queries are executed lazily. This means you have to either call
-a method of the query object or to iterate over it to cause the
+a method of the query object or iterate over it to cause the
 execution of the query against the DBMS.
-    
+
 
 Getting multiple rows from a query
 ----------------------------------
 
 You can either iterate directly over the query object or call its
-:meth:`all()` method to get a list of the all the rows.
+:meth:`all()` method to get a list of all the rows.
 
 .. code-block:: python
 
@@ -43,15 +43,14 @@ Getting a single row
 --------------------
 
 If you know there will be only one row in the result of a query
-you can use the :meth:`one()` method to get it. quma will raise a 
-:exc:`DoesNotExistError` error if there is no row in the result 
-and a :exc:`MultipleRowsError` if there are returned more than one
-row. 
+you can use the :meth:`one()` method to get it. quma will raise a
+:exc:`DoesNotExistError` error if there is no row in the result
+and a :exc:`MultipleRowsError` if there is more than one row.
 
 .. code-block:: python
 
     from quma import (
-        DoesNotExistError, 
+        DoesNotExistError,
         MultipleRowsError,
     )
     ...
@@ -97,7 +96,7 @@ than one row or none at all you can use the :meth:`first()` method:
     user = cur.users.all().first()
 
 The method :meth:`value()` invokes the :meth:`one()` method, and
-upon success returns the value of the first column of the row (i. e. 
+upon success returns the value of the first column of the row (i. e.
 ``fetchall()[0][0]``). This comes in handy if you are using a
 ``RETURNING`` clause, for example, or return the last inserted
 id after an insert.
@@ -116,12 +115,12 @@ the :meth:`run()` method:
 .. code-block:: python
 
     with db.cursor as cur:
-        cur.user.add(name='User', 
+        cur.user.add(name='User',
                      email='user@example.com',
                      city='City').run()
 
-        # or 
-        query = cur.user.add(name='User', 
+        # or
+        query = cur.user.add(name='User',
                              email='user@example.com',
                              city='City')
         query.run()
@@ -138,7 +137,7 @@ quma supports the ``fetchmany`` method of Python's DBAPI by
 providing the :meth:`many()` method of :class:`Query`.
 :meth:`many()` returns an instance of :class:`ManyResult`
 which implements the :meth:`get()` method which internally
-calls the ``fetchmany`` method of the underlying cursor. 
+calls the ``fetchmany`` method of the underlying cursor.
 
 .. code-block:: python
 
@@ -170,10 +169,10 @@ Another example:
     In contrast to all other fetching methods of the query object, like
     :meth:`all()`, :meth:`first()`, or :meth:`one()`, a call of :meth:`many()`
     will not execute the query. Instead, the first call of the :meth:`get()`
-    method of an `many` result object will cause the execution. Also, results
-    of `many` calls are not cached and if a query was already executed 
+    method of a `many` result object will cause the execution. Also, results
+    of `many` calls are not cached and if a query was already executed
     the `many` mechanism will execute it again anyway. So keep in mind that
-    already executed queries will be re-executed when :meth:`many()` is 
+    already executed queries will be re-executed when :meth:`many()` is
     called after the first execution, as in:
 
 .. code-block:: python
@@ -182,9 +181,9 @@ Another example:
     first_user = allusers.first() # query executed the first time
     many_users = allusers.many()
     first_two = manyusers.get(2) # query executed a second time
-    
+
 Additionally, the cache of ``all_users`` from the last example will be
-be invalidated after the first call of :meth:`get()`. So you should
+invalidated after the first call of :meth:`get()`. So you should
 avoid to mix `many` queries with "normal" queries.
 
 A simpler version of :meth:`many()`
@@ -192,7 +191,7 @@ A simpler version of :meth:`many()`
 
 If your expected result set is too large for simply iterating over
 the query object or calling :meth:`all()` (as they call ``fetchall`` internally)
-but you like to work with the result in a single simple loop instead of using 
+but you like to work with the result in a single simple loop instead of using
 :meth:`many()`, you can use the method :meth:`unbunch()`. It is a convenience
 method which internally calls ``fetchmany`` with the given size. Using
 :meth:`unbunch()` we can simplify the :meth:`many()` example with the
@@ -212,7 +211,7 @@ just like :meth:`many()`.
 Getting the number of rows
 --------------------------
 
-If you are only interested in the number of row in a result you can pass a 
+If you are only interested in the number of row in a result you can pass a
 :class:`Query` object to the :func:`len()` function. quma also includes a
 convenience method called :meth:`count()`. Some drivers (like pycopg2) support the
 ``rowcount`` property of PEP249 which specifies the number of rows that the last
@@ -255,7 +254,7 @@ You can also use the query object itself for truth value testing:
 Ad hoc queries
 --------------
 
-To run an ad hoc query on the fly you can use the ``query`` method of the cursor
+To run an ad hoc query on the fly you can use the ``query`` method of the cursor:
 
 .. code-block:: python
 
@@ -267,9 +266,9 @@ To run an ad hoc query on the fly you can use the ``query`` method of the cursor
 Prepared statements
 -------------------
 
-quma does not have a special API for prepared statements, but you can easily 
-use them. In the following example we use PostgreSQL's syntax. 
-Given a SQL script ``sqlscripts/users/prepare.sql`` with the content below ... 
+quma does not have a special API for prepared statements, but you can easily
+use them. In the following example we use PostgreSQL's syntax.
+Given a SQL script ``sqlscripts/users/prepare.sql`` with the content below ...
 
 .. code-block:: postgresql
 
@@ -294,7 +293,7 @@ Results are cached
 As described above, quma executes queries lazily. Only after the first call
 of a method or when an iteration over the query object is started,
 the data will be fetched. The fetched result will be cached in the query
-object. This means you can perform more than one operation on the object while 
+object. This means you can perform more than one operation on the object while
 the query will not be re-executed. If you want to re-execute it, you need
 to call :meth:`run()` manually.
 
