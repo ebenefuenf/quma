@@ -1,6 +1,9 @@
 try:
     import MySQLdb
-    from MySQLdb.cursors import Cursor, DictCursor
+    from MySQLdb.cursors import (
+        Cursor,
+        DictCursor,
+    )
 except ImportError:
     raise ImportError(
         'In order to use quma with MySQL you need to install mysqlclient'
