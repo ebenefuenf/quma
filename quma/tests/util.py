@@ -98,5 +98,5 @@ def setup_mysql_db():
 def remove_db(path):
     try:
         os.remove(path)
-    except FileNotFoundError:
+    except FileNotFoundError:  # pragma: no-cover
         pass

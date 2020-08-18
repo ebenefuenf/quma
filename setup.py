@@ -18,7 +18,7 @@ with open('quma/__init__.py', 'rt', encoding='utf8') as f:
 with open('README.rst', 'rt', encoding='utf8') as f:
     README = f.read()
 
-test = ['pytest', 'pytest-cov']
+test = ['pytest', 'pytest-cov', 'coverage-conditional-plugin']
 extras = {
     'test': test,
     'docs': ['sphinx', 'sphinx-autobuild'],

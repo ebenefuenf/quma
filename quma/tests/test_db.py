@@ -496,10 +496,10 @@ def test_pypy_changeling_init(qmark_sqldirs):
         )
         db.execute(util.CREATE_USERS)
         db.execute(util.INSERT_USERS)
-        if platform.python_implementation() == 'PyPy':
+        if platform.python_implementation() == 'PyPy': # pragma: no-cov-cpython
             with db.cursor as cursor:
                 cursor.users.all().first()
-        else:
+        else:  # pragma: no-cov-pypy
             with pytest.raises(TypeError):
                 with db.cursor as cursor:
                     cursor.users.all().first()

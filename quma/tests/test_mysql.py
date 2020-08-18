@@ -242,8 +242,9 @@ def test_prepared_statement(mydb, mypooldb):
         with db.cursor as cur:
             cur.users.mysql_prepare().run()
             version = cur.query('SELECT VERSION();').value()
-            if 'MariaDB' not in version:
-                # Couldn't get the tests to run under MySQL 5
+            if 'MariaDB' not in version:  # pragma: no-cover
+                # FIXME:
+                print("Couldn't get the tests to run under MySQL 5")
                 return
             sql = "EXECUTE prep USING 'user.{}@example.com', 1;"
             for i in range(1, 5):
