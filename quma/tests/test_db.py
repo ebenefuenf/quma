@@ -1,5 +1,5 @@
-import platform
 import sqlite3
+import sys
 import threading
 from unittest import mock
 
@@ -496,7 +496,7 @@ def test_pypy_changeling_init(qmark_sqldirs):
         )
         db.execute(util.CREATE_USERS)
         db.execute(util.INSERT_USERS)
-        if platform.python_implementation() == 'PyPy': # pragma: no-cov-cpython
+        if sys.implementation.name == 'pypy':  # pragma: no-cov-cpython
             with db.cursor as cursor:
                 cursor.users.all().first()
         else:  # pragma: no-cov-pypy
@@ -577,7 +577,7 @@ def multiple_records(db, getter):
 
         # cast the iterator to a list
         if (
-            platform.python_implementation() == 'CPython'
+            sys.implementation.name == 'cpython'
             or db.conn.__class__.__module__ != 'quma.provider.sqlite'
         ):
             # TODO: the cast to list does only work in CPython for all
