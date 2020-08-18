@@ -12,7 +12,7 @@
    carrier
    changeling
    Passing parameters <parameters>
-   templates
+   Dynamic SQL/Templates <templates>
    shadowing
    Custom namespaces and aliasing <namespaces>
    import

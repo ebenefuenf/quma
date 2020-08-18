@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath('../quma'))
 # -- Project information -----------------------------------------------------
 
 project = 'quma'
-copyright = '2018-2019, ebene fünf GmbH'
+copyright = '2018-2020, ebene fünf GmbH'
 author = 'ebene fünf GmbH'
 
 # The short X.Y version

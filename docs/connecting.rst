@@ -13,32 +13,32 @@ Connection Examples
 
 .. code-block:: python
 
-    sqldir = '/path/to/sql/scripts'
+    sqldirs = '/path/to/sql/scripts'
 
     # can also be a list of paths:
-    sqldir = [
+    sqldirs = [
       '/path/to/sql/scripts',
       '/another/path/to/sql/scripts',
     ]
 
     # SQLite
-    db = Database('sqlite:////path/to/db.sqlite', sqldir)
+    db = Database('sqlite:////path/to/db.sqlite', sqldirs)
     # SQLite in memory db
-    db = Database('sqlite:///:memory:', sqldir)
+    db = Database('sqlite:///:memory:', sqldirs)
 
     # PostgreSQL localhost
-    db = Database('postgresql://username:password@/db_name', sqldir)
+    db = Database('postgresql://username:password@/db_name', sqldirs)
     # PostgreSQL network server
-    db = Database('postgresql://username:password@10.0.0.1:5432/db_name', sqldir)
+    db = Database('postgresql://username:password@10.0.0.1:5432/db_name', sqldirs)
 
     # MySQL/MariaDB localhost
-    db = Database('mysql://username:password@/db_name', sqldir)
+    db = Database('mysql://username:password@/db_name', sqldirs)
     # MySQL/MariaDB network server
-    db = Database('mysql://username:password@192.168.1.1:5432/db_name', sqldir)
+    db = Database('mysql://username:password@192.168.1.1:5432/db_name', sqldirs)
 
     # You can pass driver specific parameters e. g. MySQL's charset
     db = Database('mysql://username:password@192.168.1.1:5432/db_name', 
-                  sqldir, 
+                  sqldirs, 
                   charset='utf8')
 
 

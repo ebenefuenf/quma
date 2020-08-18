@@ -9,7 +9,20 @@ Unlike ORMs, it allows to write SQL as it was intended and to use all features
 the DBMS provides. As it uses plain SQL files you can fully utilize your database
 editor or IDE tool to author your queries.
 
-It also provides a simple connection pool.
+It also provides a simple connection pool and templating for dynamic SQL like 
+conditional WHEREs.
+
+Motivation
+----------
+
+Unlike ORMs, it allows to write SQL as it was intended and to use all features
+the DBMS provides. As it uses plain SQL files you can fully utilize your database
+editor or IDE to author your queries.
+
+If you know how to best design your DDL and already have a SELECT in your mind
+when data needs to be retrieved, welcome, this is for you.
+
+It gives you back your powers you so carelessly gave away to ORMs.
 
 Learn more
 ----------
@@ -39,4 +52,4 @@ License
 
 quma is released under the MIT license.
 
-Copyright © 2018 ebene fünf GmbH. All rights reserved.
+Copyright © 2018-2020 ebene fünf GmbH. All rights reserved.

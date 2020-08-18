@@ -2,7 +2,10 @@
 Testing
 =======
 
-**Prerequisites**: In order to run the tests for *MySQL* or *PostgreSQL*
+Prerequisites
+-------------
+
+In order to run the tests for *MySQL* or *PostgreSQL*
 you need to create a test database:
 
 PostgreSQL:

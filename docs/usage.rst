@@ -62,7 +62,7 @@ and parameters see :doc:`Connecting <connecting>`. quma also supports
 Creating a cursor
 -----------------
 
-DBAPI libs like psycopg2 or sqlite3 have the notion of a cursor,  which is used to
+DBAPI libs like `psycopg2` or `sqlite3` have the notion of a cursor,  which is used to
 manage the context of a fetch operation. quma is similar in that way. 
 To execute queries you need to create a cursor instance.
 

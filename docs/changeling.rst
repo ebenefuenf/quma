@@ -1,5 +1,5 @@
 ================
-Changling Cursor
+Changling cursor
 ================
 
 If you are using **SQLite** or **PostgreSQL** you can access result 
@@ -20,7 +20,7 @@ Shadowed superclass members
 ---------------------------
 
 If a query result has a field with the same name as a member of the superclass
-of the changeling (sqlite: :class:`sqlite3.Row`, psycopg2: 
+of the changeling (`sqlite`: :class:`sqlite3.Row`, `psycopg2`: 
 :class:`psycopg2.extras.DictRow`) it shadows the original member. This means
 the original member isn't accessible. You can access it anyway if you 
 prefix it with an underscore '_'. 

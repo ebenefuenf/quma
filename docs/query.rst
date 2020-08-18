@@ -200,7 +200,7 @@ method which internally calls ``fetchmany`` with the given size. Using
 .. code-block:: python
 
     with db.cursor as cur:
-        for user in cur.users.all().unbunch(3)
+        for user in cur.users.all().unbunch(3):
             print(user.name)
 
 :meth:`unbunch()` re-excutes the query and invalidates the cache on each call,
@@ -254,7 +254,7 @@ You can also use the query object itself for truth value testing:
 Ad hoc queries
 --------------
 
-To run an ad hoc query on the fly you can use the ``query`` method of the cursor:
+To run an ad hoc query you can use the ``query`` method of the cursor:
 
 .. code-block:: python
 

@@ -8,11 +8,11 @@ in the list with the same relative path will shadow (or overwrite) files
 from preceding directories.
 
 Let's say you have two different directories with SQL scripts you
-like to use with quma. For example directory `one`:
+like to use with quma. For example directory `first`:
 
 ::
 
-    /path/to/sql/scripts/one
+    /path/to/sql/scripts/first
     ├── addresses
     │    ├── all.sql
     │    └── remove.sql
@@ -23,11 +23,11 @@ like to use with quma. For example directory `one`:
     └── remove_admin.sql
 
 
-and directory `two`:
+and directory `second`:
 
 ::
 
-    /path/to/sql/scripts/two
+    /path/to/sql/scripts/second
     ├── users
     │    ├── all.sql
     │    └── rename.sql
@@ -41,8 +41,8 @@ When you initialize quma with both directories like this:
     from quma import Database
 
     db = Database('sqlite:///:memory:', [
-        '/path/to/sql/scripts/one',
-        '/path/to/sql/scripts/two',
+        '/path/to/sql/scripts/first',
+        '/path/to/sql/scripts/second',
     ])
 
 quma creates the following members:
@@ -50,11 +50,11 @@ quma creates the following members:
 .. code-block:: python
 
                              # From directory:
-    cur.addresses.all        #   one
-    cur.addresses.remove     #   one
-    cur.users.all            #   two (shadows all.sql from dir one)
-    cur.users.remove         #   one
-    cur.users.rename         #   two
-    cur.create_admin         #   two
-    cur.get_admin            #   two (shadows get_admin.sql from dir one)
-    cur.remove_admin         #   one
+    cur.addresses.all        #   first
+    cur.addresses.remove     #   first
+    cur.users.all            #   second (shadows all.sql from dir first)
+    cur.users.remove         #   first
+    cur.users.rename         #   second
+    cur.create_admin         #   second
+    cur.get_admin            #   second (shadows get_admin.sql from dir first)
+    cur.remove_admin         #   first

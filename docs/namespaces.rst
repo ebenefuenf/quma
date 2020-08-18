@@ -47,7 +47,7 @@ Now you can call the method the same way as you would call scripts:
 
     db.users.get_test(cur)
     cur.users.get_test() # no need to pass cur
-    address = cur.users.get_address('testuser')
+    address = cur.users.get_address('username')
 
 
 Root members
