@@ -15,6 +15,8 @@
 import os
 import sys
 
+import quma
+
 sys.path.insert(0, os.path.abspath('../quma'))
 
 
@@ -27,7 +29,7 @@ author = 'ebene fünf GmbH'
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '0.1.0'
+release = quma.__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -74,7 +76,11 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+on_rtd = os.environ.get('READTHEDOCS') == 'True'
+if on_rtd:
+    html_theme = 'default'
+else:
+    html_theme = 'nature'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -82,8 +88,6 @@ html_theme = 'alabaster'
 #
 html_theme_options = {
     #  'logo': 'logo.png',
-    'github_user': 'ebenefuenf',
-    'github_repo': 'quma',
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
