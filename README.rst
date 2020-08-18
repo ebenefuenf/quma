@@ -8,11 +8,18 @@ quma is a small SQL database library for **Python**  and **PyPy** version 3.5 an
 It maps object methods to SQL script files and supports **SQLite**, **PostgreSQL**,
 **MySQL** and **MariaDB**.
 
+It also provides a simple connection pool and templating for e. a. conditional WHEREs.
+
+**Motivation**
+
 Unlike ORMs, it allows to write SQL as it was intended and to use all features
-the DBMS provides. As it uses plain SQL files you can fully utilize your database 
+the DBMS provides. As it uses plain SQL files you can fully utilize your database
 editor or IDE to author your queries.
 
-It also provides a simple connection pool.
+If you know how to best design your DDL and already have a select in your mind
+when data needs to be retrieved, welcome, this is for you.
+
+It gives you back your powers you so carelessly gave away to ORMs.
 
 Installation
 ------------
@@ -35,9 +42,9 @@ Given a directory with some SQL scripts e. g.:
     │    ├── all.sql
     │    └── remove.sql
     └── get_admin.sql
-    
+
 You can access these scripts after connecting to the database:
-    
+
 .. code-block:: python
 
     from quma import Database
@@ -62,7 +69,7 @@ License
 
 quma is released under the MIT license.
 
-Copyright © 2018 ebene fünf GmbH. All rights reserved.
+Copyright © 2020 ebene fünf GmbH. All rights reserved.
 
 .. |release| image:: https://travis-ci.org/ebenefuenf/quma.svg?branch=master
     :target: https://travis-ci.org/ebenefuenf/quma
