@@ -1,6 +1,6 @@
+import importlib.util
 import threading
 from importlib import import_module
-from importlib.machinery import SourceFileLoader
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -183,7 +183,9 @@ class Database(object):
             try:
                 mod_path = str(path / '__init__.py')
                 mod_name = 'quma.mapping.{}'.format(ns)
-                module = SourceFileLoader(mod_name, mod_path).load_module()
+                spec = importlib.util.spec_from_file_location(mod_name, mod_path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
                 if ns == '__root__':
                     class_name = 'Root'
                 else:
