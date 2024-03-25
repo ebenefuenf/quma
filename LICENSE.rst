@@ -1,4 +1,6 @@
-This is the MIT license: http://www.opensource.org/licenses/mit-license.php
+=====================
+The MIT License (MIT)
+=====================
 
 Copyright 2018-2024 ebene fünf GmbH and contributors <see AUTHORS file>.
 
