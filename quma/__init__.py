@@ -28,16 +28,16 @@ except ImportError:
 PLATFORM = platform.python_implementation()
 
 __all__ = [
-    'Database',
-    'Namespace',
-    'connect',
-    'APIError',
-    'ConnectionError',
-    'DoesNotExistError',
-    'FetchError',
-    'MultipleRowsError',
-    'OperationalError',
-    'TimeoutError',
+    "Database",
+    "Namespace",
+    "connect",
+    "APIError",
+    "ConnectionError",
+    "DoesNotExistError",
+    "FetchError",
+    "MultipleRowsError",
+    "OperationalError",
+    "TimeoutError",
 ]
 
-__version__ = '0.1.0'
+__version__ = "0.1.0"

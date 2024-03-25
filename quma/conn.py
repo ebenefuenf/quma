@@ -2,7 +2,7 @@ from . import exc
 
 
 class Connection(object):
-    """ Abstract base class for DBMS specific connection objects"""
+    """Abstract base class for DBMS specific connection objects"""
 
     def __init__(self, url, kwargs):
         # kwargs are the **kwargs passed to the specific provider
@@ -14,9 +14,9 @@ class Connection(object):
         self.password = url.password
         self.url = url
         self.factory = None
-        self.changeling = kwargs.pop('changeling', False)
-        self.persist = kwargs.pop('persist', False)
-        self.pessimistic = kwargs.pop('pessimistic', False)
+        self.changeling = kwargs.pop("changeling", False)
+        self.persist = kwargs.pop("persist", False)
+        self.pessimistic = kwargs.pop("pessimistic", False)
         self.has_rowcount = True
         self.dbapi_kwargs = kwargs
 
@@ -64,7 +64,7 @@ class Connection(object):
         if not self.persist:
             raise exc.APIError(
                 "Don't call the close() method of "
-                'non-persistent connections.'
+                "non-persistent connections."
             )
         if self.conn:
             self.conn.close()

@@ -135,19 +135,19 @@ class Database(object):
     def __init__(self, dburi, *args, **kwargs):
         # if the second arg is present it must be sqldirs
         if args and len(args) > 1:
-            raise ValueError('Max number of arguments is two')
+            raise ValueError("Max number of arguments is two")
         elif args and len(args) == 1:
             self.sqldirs = args[0]
         else:
-            self.sqldirs = kwargs.pop('sqldirs', [])
+            self.sqldirs = kwargs.pop("sqldirs", [])
 
-        self.file_ext = kwargs.pop('file_ext', 'sql')
-        self.tmpl_ext = kwargs.pop('tmpl_ext', 'msql')
-        self.script_factory = kwargs.pop('script_factory', Script)
-        self.prepare_params = kwargs.pop('prepare_params', None)
-        self.contextcommit = kwargs.pop('contextcommit', False)
-        self.echo = kwargs.pop('echo', False)
-        self.cache = kwargs.pop('cache', False)
+        self.file_ext = kwargs.pop("file_ext", "sql")
+        self.tmpl_ext = kwargs.pop("tmpl_ext", "msql")
+        self.script_factory = kwargs.pop("script_factory", Script)
+        self.prepare_params = kwargs.pop("prepare_params", None)
+        self.contextcommit = kwargs.pop("contextcommit", False)
+        self.echo = kwargs.pop("echo", False)
+        self.cache = kwargs.pop("cache", False)
 
         # The remaining kwargs are passed to the DBAPI connect call
         self.conn = connect(dburi, **kwargs)
@@ -181,24 +181,26 @@ class Database(object):
 
         def register(path, ns):
             try:
-                mod_path = str(path / '__init__.py')
-                mod_name = 'quma.mapping.{}'.format(ns)
-                spec = importlib.util.spec_from_file_location(mod_name, mod_path)
+                mod_path = str(path / "__init__.py")
+                mod_name = "quma.mapping.{}".format(ns)
+                spec = importlib.util.spec_from_file_location(
+                    mod_name, mod_path
+                )
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
-                if ns == '__root__':
-                    class_name = 'Root'
+                if ns == "__root__":
+                    class_name = "Root"
                 else:
                     # snake_case to CamelCase
-                    class_name = ''.join([s.title() for s in ns.split('_')])
+                    class_name = "".join([s.title() for s in ns.split("_")])
                 ns_class = getattr(module, class_name)
-                if hasattr(ns_class, 'alias'):
+                if hasattr(ns_class, "alias"):
                     instantiate(ns_class.alias, ns_class, path)
                 instantiate(ns, ns_class, path)
             except (AttributeError, FileNotFoundError):
                 instantiate(ns, Namespace, path)
 
-        register(Path(sqldir), '__root__')
+        register(Path(sqldir), "__root__")
         for path in Path(sqldir).iterdir():
             if path.is_dir():
                 register(path, path.name)
@@ -256,12 +258,12 @@ def connect(dburi, **kwargs):
     via ``dburi`` (a string in the form of an URL)
     """
     url = urlparse(dburi)
-    scheme = url.scheme.split('+')
+    scheme = url.scheme.split("+")
     module_name = scheme[0]
-    module = import_module('quma.provider.{}'.format(module_name))
-    conn_class = getattr(module, 'Connection')
+    module = import_module("quma.provider.{}".format(module_name))
+    conn_class = getattr(module, "Connection")
     try:
-        if scheme[1].lower() == 'pool':
+        if scheme[1].lower() == "pool":
             return pool.Pool(conn_class, url, **kwargs)
         else:
             raise ValueError(

@@ -27,7 +27,7 @@ def get_cursor_mock(exception):
 def test_base_connection(dburl):
     kwargs = dict(persist=True)
     cn = conn.Connection(dburl, kwargs)
-    assert kwargs.get('persist') is None
+    assert kwargs.get("persist") is None
     assert cn.database == util.DB_NAME
     assert cn.username == util.DB_USER
     assert cn.password == util.DB_PASS
@@ -115,7 +115,7 @@ def non_persistent(uri, connection, pessimistic):
 
 
 @pytest.mark.postgres
-@pytest.mark.parametrize('pessimistic', [False, True])
+@pytest.mark.parametrize("pessimistic", [False, True])
 def test_postgres_non_persistent(pessimistic):
     from psycopg2.extensions import connection
 
@@ -123,7 +123,7 @@ def test_postgres_non_persistent(pessimistic):
 
 
 @pytest.mark.mysql
-@pytest.mark.parametrize('pessimistic', [False, True])
+@pytest.mark.parametrize("pessimistic", [False, True])
 def test_mysql_non_persistent(pessimistic):
     from MySQLdb.connections import Connection
 
@@ -177,7 +177,7 @@ def pool(uri, pessimistic, connection):
     assert cn1 != cn2
     conn.put(cn1)
     conn.put(cn2)
-    assert conn.status().startswith('Pool size: 5 Connections')
+    assert conn.status().startswith("Pool size: 5 Connections")
     assert conn.checkedin == 2
     cn3 = conn.get()
     assert conn.checkedin == 1
@@ -187,7 +187,7 @@ def pool(uri, pessimistic, connection):
 
 
 @pytest.mark.postgres
-@pytest.mark.parametrize('pessimistic', [False, True])
+@pytest.mark.parametrize("pessimistic", [False, True])
 def test_postgres_pool(pessimistic):
     from psycopg2.extensions import connection
 
@@ -195,7 +195,7 @@ def test_postgres_pool(pessimistic):
 
 
 @pytest.mark.mysql
-@pytest.mark.parametrize('pessimistic', [False, True])
+@pytest.mark.parametrize("pessimistic", [False, True])
 def test_mysql_pool(pessimistic):
     from MySQLdb.connections import Connection
 
@@ -235,7 +235,7 @@ def finite_pool(uri):
         try:
             conns.put(conn.get())
         except exc.TimeoutError as e:
-            assert str(e).startswith('QueuePool limit of size')
+            assert str(e).startswith("QueuePool limit of size")
             exces.put(e)
 
     ts = []
@@ -311,7 +311,7 @@ def test_mysql_infinite_pool():
 def persistent_pool(uri, sqldirs):
     with pytest.raises(ValueError) as e:
         Database(uri, sqldirs, persist=True)
-    assert str(e.value).startswith('Persistent connections')
+    assert str(e.value).startswith("Persistent connections")
 
 
 @pytest.mark.postgres
@@ -348,18 +348,18 @@ def test_mysql_failing_check():
 
 def test_sqlite_failing_connection():
     with pytest.raises(exc.ConnectionError):
-        connect('sqlite:/// \n//\r /').get()
+        connect("sqlite:/// \n//\r /").get()
 
 
 @pytest.mark.mysql
 def test_mysql_failing_connection():
     with pytest.raises(exc.ConnectionError):
-        connect('mysql://wrong_user_n4me:wrong_p4$$wrd@/wrng_db_n4me').get()
+        connect("mysql://wrong_user_n4me:wrong_p4$$wrd@/wrng_db_n4me").get()
 
 
 @pytest.mark.postgres
 def test_postgresql_failing_connection():
     with pytest.raises(exc.ConnectionError):
         connect(
-            'postgresql://wrong_user_n4me:wrong_p4$$wrd@/wrng_db_n4me'
+            "postgresql://wrong_user_n4me:wrong_p4$$wrd@/wrng_db_n4me"
         ).get()

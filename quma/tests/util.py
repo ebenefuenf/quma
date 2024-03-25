@@ -1,48 +1,48 @@
 import os
 
-DB_USER = 'quma_test_user'
-DB_PASS = 'quma_test_password'
-DB_NAME = 'quma_test_db'
+DB_USER = "quma_test_user"
+DB_PASS = "quma_test_password"
+DB_NAME = "quma_test_db"
 
-SQLITE_FILE = '/tmp/quma_test.sqlite'
-SQLITE_URI = 'sqlite:///{}'.format(SQLITE_FILE)
-SQLITE_MEMORY = 'sqlite:///:memory:'
+SQLITE_FILE = "/tmp/quma_test.sqlite"
+SQLITE_URI = "sqlite:///{}".format(SQLITE_FILE)
+SQLITE_MEMORY = "sqlite:///:memory:"
 
 try:
-    PGSQL_USER = os.environ['QUMA_PGSQL_USER']
+    PGSQL_USER = os.environ["QUMA_PGSQL_USER"]
 except KeyError:
     PGSQL_USER = DB_USER
 try:
-    PGSQL_PASS = os.environ['QUMA_PGSQL_PASS']
+    PGSQL_PASS = os.environ["QUMA_PGSQL_PASS"]
 except KeyError:
     PGSQL_PASS = DB_PASS
 try:
-    PGSQL_DB = os.environ['QUMA_PGSQL_DB']
+    PGSQL_DB = os.environ["QUMA_PGSQL_DB"]
 except KeyError:
     PGSQL_DB = DB_NAME
-PGSQL_URI = 'postgresql://{}:{}@/{}'.format(PGSQL_USER, PGSQL_PASS, PGSQL_DB)
-PGSQL_POOL_URI = 'postgresql+pool://{}:{}@/{}'.format(
+PGSQL_URI = "postgresql://{}:{}@/{}".format(PGSQL_USER, PGSQL_PASS, PGSQL_DB)
+PGSQL_POOL_URI = "postgresql+pool://{}:{}@/{}".format(
     PGSQL_USER, PGSQL_PASS, PGSQL_DB
 )
 
 try:
-    MYSQL_USER = os.environ['QUMA_MYSQL_USER']
+    MYSQL_USER = os.environ["QUMA_MYSQL_USER"]
 except KeyError:
     MYSQL_USER = DB_USER
 try:
-    MYSQL_PASS = os.environ['QUMA_MYSQL_PASS']
+    MYSQL_PASS = os.environ["QUMA_MYSQL_PASS"]
 except KeyError:
     MYSQL_PASS = DB_PASS
 try:
-    MYSQL_DB = os.environ['QUMA_MYSQL_DB']
+    MYSQL_DB = os.environ["QUMA_MYSQL_DB"]
 except KeyError:
     MYSQL_DB = DB_NAME
-MYSQL_URI = 'mysql://{}:{}@/{}'.format(MYSQL_USER, MYSQL_PASS, MYSQL_DB)
-MYSQL_POOL_URI = 'mysql+pool://{}:{}@/{}'.format(
+MYSQL_URI = "mysql://{}:{}@/{}".format(MYSQL_USER, MYSQL_PASS, MYSQL_DB)
+MYSQL_POOL_URI = "mysql+pool://{}:{}@/{}".format(
     MYSQL_USER, MYSQL_PASS, MYSQL_DB
 )
 
-DROP_USERS = 'DROP TABLE IF EXISTS users;'
+DROP_USERS = "DROP TABLE IF EXISTS users;"
 CREATE_USERS = """
 CREATE TABLE users (
     id INT PRIMARY KEY,
@@ -72,7 +72,7 @@ def setup_pg_db():
     cur.execute(DROP_USERS)
     cur.execute(CREATE_USERS)
     cur.execute(INSERT_USERS)
-    cur.execute('DROP TABLE IF EXISTS test;')
+    cur.execute("DROP TABLE IF EXISTS test;")
     conn.commit()
     cur.close()
     conn.close()
@@ -89,7 +89,7 @@ def setup_mysql_db():
     # To suppress warning 1051 "Unknown table"
     cur.execute("SHOW TABLES LIKE 'test';")
     if len(cur.fetchall()) > 0:
-        cur.execute('DROP TABLE test;')
+        cur.execute("DROP TABLE test;")
     conn.commit()
     cur.close()
     conn.close()

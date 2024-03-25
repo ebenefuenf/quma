@@ -28,8 +28,8 @@ class Script(object):
 
     def mogrify(self, cursor, content, params):
         if content:
-            sys.stdout.write('-' * 50)
-            sys.stdout.write('\n')
+            sys.stdout.write("-" * 50)
+            sys.stdout.write("\n")
             try:
                 sys.stdout.write(cursor.mogrify(content, params))
             except AttributeError:
@@ -57,7 +57,7 @@ class Script(object):
                     params,
                 )
             except TypeError:
-                raise ImportError('To use templates you need to install Mako')
+                raise ImportError("To use templates you need to install Mako")
         return self.content, params
 
     def execute(self, cursor, args, kwargs, prepare_params=None):

@@ -21,7 +21,7 @@ def test_conn_attr(pgdb, pgpooldb):
     from .test_db import conn_attr
 
     for db in (pgdb, pgpooldb):
-        conn_attr(db, 'autocommit', False, True)
+        conn_attr(db, "autocommit", False, True)
 
 
 @pytest.mark.postgres
@@ -181,7 +181,7 @@ def test_changeling_cursor(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_changeling_cursor_hidden_members(pgdb):
     with pgdb.cursor as cursor:
-        user = pgdb.user.by_name(cursor, name='User 1').one()
+        user = pgdb.user.by_name(cursor, name="User 1").one()
         assert user.count == 13
         assert user._count(13) == 2
 
@@ -211,19 +211,19 @@ def test_multiple_records_error(pgdb, pgpooldb):
 
 @pytest.mark.postgres
 def test_faulty_fetch(dburl):
-    cursor = type('C', (), {})
+    cursor = type("C", (), {})
     cn = Connection(dburl)
 
     def fetch():
-        raise psycopg2.ProgrammingError('test error')
+        raise psycopg2.ProgrammingError("test error")
 
     cursor.fetchall = fetch
     cursor.fetchmany = fetch
     with pytest.raises(FetchError) as e:
-        cn.get_cursor_attr(cursor, 'fetchall')()
-    assert str(e.value.error) == 'test error'
+        cn.get_cursor_attr(cursor, "fetchall")()
+    assert str(e.value.error) == "test error"
     with pytest.raises(FetchError) as e:
-        cn.get_cursor_attr(cursor, 'fetchmany')()
+        cn.get_cursor_attr(cursor, "fetchmany")()
 
 
 @pytest.mark.postgres
@@ -231,26 +231,26 @@ def test_get_cursor_attr(pgdb):
     conn = pgdb.conn
     cursor = Mock()
     cursor.fetchall = Mock()
-    cursor.fetchall.__name__ = 'fetchall'
+    cursor.fetchall.__name__ = "fetchall"
     cursor.fetchall.side_effect = psycopg2.ProgrammingError(
-        'no results to fetch'
+        "no results to fetch"
     )
-    assert conn.get_cursor_attr(cursor, 'fetchall')() == ()
-    cursor.fetchall.side_effect = psycopg2.ProgrammingError('test')
+    assert conn.get_cursor_attr(cursor, "fetchall")() == ()
+    cursor.fetchall.side_effect = psycopg2.ProgrammingError("test")
     with pytest.raises(FetchError) as e:
-        conn.get_cursor_attr(cursor, 'fetchall')()
-    assert str(e.value.error) == 'test'
+        conn.get_cursor_attr(cursor, "fetchall")()
+    assert str(e.value.error) == "test"
 
     # Test Script._fetch except
     with pgdb.cursor as cursor:
         cursor.raw_cursor.fetchall = Mock()
-        cursor.raw_cursor.fetchall.__name__ = 'fetchall'
+        cursor.raw_cursor.fetchall.__name__ = "fetchall"
         cursor.raw_cursor.fetchall.side_effect = FetchError(
-            psycopg2.ProgrammingError('pg-exc-test')
+            psycopg2.ProgrammingError("pg-exc-test")
         )
         with pytest.raises(psycopg2.ProgrammingError) as e:
             pgdb.users.all(cursor).first()
-        assert str(e.value) == 'pg-exc-test'
+        assert str(e.value) == "pg-exc-test"
 
 
 @pytest.mark.postgres
@@ -287,11 +287,11 @@ def test_execute(pgdb, pgpooldb):
 
 @pytest.mark.postgres
 def test_cursor_query(pgdb, pgpooldb):
-    sql = 'SELECT name, city FROM users WHERE email = %s AND 1 = %s;'
+    sql = "SELECT name, city FROM users WHERE email = %s AND 1 = %s;"
     for db in (pgdb, pgpooldb):
         with db.cursor as cur:
-            q = cur.query(sql, 'user.1@example.com', 1)
-            assert q.value() == 'User 1'
+            q = cur.query(sql, "user.1@example.com", 1)
+            assert q.value() == "User 1"
 
 
 @pytest.mark.postgres
@@ -302,8 +302,8 @@ def test_prepared_statement(pgdb, pgpooldb):
             sql = "EXECUTE prep('user.{}@example.com', 1);"
             for i in range(1, 5):
                 q = cur.query(sql.format(i))
-                assert q.value() == 'User {}'.format(i)
-            cur.query('DEALLOCATE PREPARE prep;').run()
+                assert q.value() == "User {}".format(i)
+            cur.query("DEALLOCATE PREPARE prep;").run()
 
 
 @pytest.mark.postgres
@@ -311,19 +311,19 @@ def test_echo_parameter(pgdb_echo, pgpooldb_echo):
     import sys
 
     tmp = sys.stdout
-    sys.stdout = type('S', (), {})
+    sys.stdout = type("S", (), {})
     sql = {}
 
     def write(s):
-        sql['sql'] = s
+        sql["sql"] = s
 
     sys.stdout.write = write
 
     for db in (pgdb_echo, pgpooldb_echo):
         with db.cursor as cursor:
-            db.user.by_email(cursor, 'user.1@example.com', 1).one()
+            db.user.by_email(cursor, "user.1@example.com", 1).one()
             assert (
-                'SELECT name, city FROM users WHERE email = '
+                "SELECT name, city FROM users WHERE email = "
                 "'user.1@example.com' AND 1 = 1;\n"
-            ) == sql['sql']
+            ) == sql["sql"]
     sys.stdout = tmp

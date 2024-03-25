@@ -13,7 +13,7 @@ def get_namespace(self, attr):
     if attr in self.namespaces:
         return self.namespaces[attr]
 
-    root = self.namespaces['__root__']
+    root = self.namespaces["__root__"]
     while root:
         try:
             return getattr(root, attr)
@@ -35,8 +35,8 @@ class Namespace(object):
 
     def _collect_scripts(self, sqldir):
         sqlfiles = chain(
-            sqldir.glob('*.{}'.format(self.db.file_ext)),
-            sqldir.glob('*.{}'.format(self.db.tmpl_ext)),
+            sqldir.glob("*.{}".format(self.db.file_ext)),
+            sqldir.glob("*.{}".format(self.db.tmpl_ext)),
         )
 
         for sqlfile in sqlfiles:
@@ -47,13 +47,13 @@ class Namespace(object):
             if hasattr(self, attr):
                 # We have real namespace method which shadows
                 # this file
-                attr = '_' + attr
+                attr = "_" + attr
 
-            with open(str(sqlfile), 'r') as f:
+            with open(str(sqlfile), "r") as f:
                 self._scripts[attr] = self.db.script_factory(
                     f.read(),
                     self.echo,
-                    ext.lower() == '.' + self.db.tmpl_ext,
+                    ext.lower() == "." + self.db.tmpl_ext,
                     self.db.sqldirs,
                     prepare_params=self.db.prepare_params,
                 )
@@ -66,14 +66,14 @@ class Namespace(object):
                 return getattr(self.shadow, attr)
 
         try:
-            sqlfile = self.sqldir / '.'.join((attr, self.db.file_ext))
+            sqlfile = self.sqldir / ".".join((attr, self.db.file_ext))
             if not sqlfile.is_file():
-                sqlfile = self.sqldir / '.'.join((attr, self.db.tmpl_ext))
-            with open(str(sqlfile), 'r') as f:
+                sqlfile = self.sqldir / ".".join((attr, self.db.tmpl_ext))
+            with open(str(sqlfile), "r") as f:
                 return self.db.script_factory(
                     f.read(),
                     self.echo,
-                    Path(sqlfile).suffix == '.' + self.db.tmpl_ext,
+                    Path(sqlfile).suffix == "." + self.db.tmpl_ext,
                     self.db.sqldirs,
                     prepare_params=self.db.prepare_params,
                 )

@@ -14,23 +14,23 @@ def dburl():
     return urlparse(util.PGSQL_URI)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def pyformat_sqldirs():
-    p = pathlib.Path(__file__).parent / 'fixtures' / 'scripts' / 'pyformat'
+    p = pathlib.Path(__file__).parent / "fixtures" / "scripts" / "pyformat"
     return str(p)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def qmark_sqldirs():
-    return pathlib.Path(__file__).parent / 'fixtures' / 'scripts' / 'qmark'
+    return pathlib.Path(__file__).parent / "fixtures" / "scripts" / "qmark"
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def qmark_shadow_sqldirs():
     parent = pathlib.Path(__file__).parent
     return [
-        parent / 'fixtures' / 'scripts' / 'qmark',
-        str(parent / 'fixtures' / 'scripts' / 'qmark_shadow'),
+        parent / "fixtures" / "scripts" / "qmark",
+        str(parent / "fixtures" / "scripts" / "qmark_shadow"),
     ]
 
 
@@ -130,7 +130,7 @@ def db_no_changeling(qmark_sqldirs):
 @pytest.fixture
 def dbdictcb(qmark_sqldirs):
     def dict_callback(carrier, params):
-        params['name'] = carrier.name
+        params["name"] = carrier.name
         return params
 
     db = Database(
@@ -197,14 +197,14 @@ def pgpooldb_echo(pyformat_sqldirs):
 
 @pytest.fixture
 def mydb(pyformat_sqldirs):
-    db = Database(util.MYSQL_URI, pyformat_sqldirs, charset='utf8')
+    db = Database(util.MYSQL_URI, pyformat_sqldirs, charset="utf8")
     return db
 
 
 @pytest.fixture
 def mydb_dict(pyformat_sqldirs):
     db = Database(
-        util.MYSQL_URI, pyformat_sqldirs, dict_cursor=True, charset='utf8'
+        util.MYSQL_URI, pyformat_sqldirs, dict_cursor=True, charset="utf8"
     )
     return db
 
@@ -216,7 +216,7 @@ def mydb_echo(pyformat_sqldirs):
         pyformat_sqldirs,
         dict_cursor=True,
         echo=True,
-        charset='utf8',
+        charset="utf8",
     )
     return db
 
@@ -224,21 +224,21 @@ def mydb_echo(pyformat_sqldirs):
 @pytest.fixture
 def mydb_persist(pyformat_sqldirs):
     db = Database(
-        util.MYSQL_URI, pyformat_sqldirs, persist=True, charset='utf8'
+        util.MYSQL_URI, pyformat_sqldirs, persist=True, charset="utf8"
     )
     return db
 
 
 @pytest.fixture
 def mypooldb(pyformat_sqldirs):
-    db = Database(util.MYSQL_POOL_URI, pyformat_sqldirs, charset='utf8')
+    db = Database(util.MYSQL_POOL_URI, pyformat_sqldirs, charset="utf8")
     return db
 
 
 @pytest.fixture
 def mypooldb_echo(pyformat_sqldirs):
     db = Database(
-        util.MYSQL_POOL_URI, pyformat_sqldirs, echo=True, charset='utf8'
+        util.MYSQL_POOL_URI, pyformat_sqldirs, echo=True, charset="utf8"
     )
     return db
 
@@ -246,11 +246,11 @@ def mypooldb_echo(pyformat_sqldirs):
 @pytest.fixture
 def mypooldb_dict(pyformat_sqldirs):
     db = Database(
-        util.MYSQL_POOL_URI, pyformat_sqldirs, dict_cursor=True, charset='utf8'
+        util.MYSQL_POOL_URI, pyformat_sqldirs, dict_cursor=True, charset="utf8"
     )
     return db
 
 
 @pytest.fixture
 def carrier():
-    return SimpleNamespace(name='User 1', email='user.1@example.com')
+    return SimpleNamespace(name="User 1", email="user.1@example.com")

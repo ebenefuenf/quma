@@ -126,6 +126,6 @@ class Cursor(object):
             return CursorNamespace(get_namespace(self, attr), self)
         except AttributeError:
             raise AttributeError(
-                'Namespace, Root method, or cursor '
+                "Namespace, Root method, or cursor "
                 'attribute "{}" not found.'.format(attr)
             )

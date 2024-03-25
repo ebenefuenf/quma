@@ -17,7 +17,7 @@ def test_conn_attr(mydb, mypooldb):
     from .test_db import conn_attr
 
     for db in (mydb, mypooldb):
-        conn_attr(db, 'encoding', 'utf8', 'latin1')
+        conn_attr(db, "encoding", "utf8", "latin1")
 
 
 @pytest.mark.mysql
@@ -170,7 +170,7 @@ def test_rollback(mydb, mypooldb):
 def test_multiple_records(mydb_dict, mypooldb):
     from .test_db import multiple_records
 
-    multiple_records(mydb_dict, lambda user: user['name'])
+    multiple_records(mydb_dict, lambda user: user["name"])
     multiple_records(mypooldb, lambda user: user[0])
 
 
@@ -186,10 +186,10 @@ def test_multiple_records_error(mydb, mypooldb):
 def test_tuple_cursor(mydb_persist, mypooldb):
     for db in (mydb_persist, mypooldb):
         with db.cursor as cursor:
-            user = db.user.by_name(cursor, name='User 4').one()
-            assert user[0] == 'user.4@example.com'
+            user = db.user.by_name(cursor, name="User 4").one()
+            assert user[0] == "user.4@example.com"
             with pytest.raises(TypeError):
-                user['email']
+                user["email"]
             cursor.rollback()
 
 
@@ -197,8 +197,8 @@ def test_tuple_cursor(mydb_persist, mypooldb):
 def test_dict_cursor(mydb_dict, mypooldb_dict):
     for db in (mydb_dict, mypooldb_dict):
         with db.cursor as cursor:
-            user = db.user.by_name(cursor, name='User 3').one()
-            assert user['email'] == 'user.3@example.com'
+            user = db.user.by_name(cursor, name="User 3").one()
+            assert user["email"] == "user.3@example.com"
             with pytest.raises(KeyError):
                 user[0]
             cursor.rollback()
@@ -241,25 +241,25 @@ def test_prepared_statement(mydb, mypooldb):
     for db in (mydb, mypooldb):
         with db.cursor as cur:
             cur.users.mysql_prepare().run()
-            version = cur.query('SELECT VERSION();').value()
-            if 'MariaDB' not in version:  # pragma: no-cover
+            version = cur.query("SELECT VERSION();").value()
+            if "MariaDB" not in version:  # pragma: no-cover
                 # FIXME:
                 print("Couldn't get the tests to run under MySQL 5")
                 return
             sql = "EXECUTE prep USING 'user.{}@example.com', 1;"
             for i in range(1, 5):
                 q = cur.query(sql.format(i))
-                assert q.value() == 'User {}'.format(i)
-            cur.query('DEALLOCATE PREPARE prep;').run()
+                assert q.value() == "User {}".format(i)
+            cur.query("DEALLOCATE PREPARE prep;").run()
 
 
 @pytest.mark.mysql
 def test_cursor_query(mydb, mypooldb):
-    sql = 'SELECT name, city FROM users WHERE email = %s AND 1 = %s;'
+    sql = "SELECT name, city FROM users WHERE email = %s AND 1 = %s;"
     for db in (mydb, mypooldb):
         with db.cursor as cur:
-            q = cur.query(sql, 'user.1@example.com', 1)
-            assert q.value() == 'User 1'
+            q = cur.query(sql, "user.1@example.com", 1)
+            assert q.value() == "User 1"
 
 
 @pytest.mark.mysql
@@ -267,19 +267,19 @@ def test_echo_parameter(mydb_echo, mypooldb_echo):
     import sys
 
     tmp = sys.stdout
-    sys.stdout = type('S', (), {})
+    sys.stdout = type("S", (), {})
     sql = {}
 
     def write(s):
-        sql['sql'] = s
+        sql["sql"] = s
 
     sys.stdout.write = write
 
     for db in (mydb_echo, mypooldb_echo):
         with db.cursor as cursor:
-            db.user.by_email(cursor, 'user.1@example.com', 1).one()
+            db.user.by_email(cursor, "user.1@example.com", 1).one()
             assert (
-                'SELECT name, city FROM users WHERE email = '
+                "SELECT name, city FROM users WHERE email = "
                 "'user.1@example.com' AND 1 = 1;\n"
-            ) == sql['sql']
+            ) == sql["sql"]
     sys.stdout = tmp

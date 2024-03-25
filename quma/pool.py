@@ -23,7 +23,7 @@ class Queue(BaseQueue):
     """
 
     def __init__(self, maxsize=0):
-        """ Overrides BaseQueue.__init__ to use a RLock instead of Lock"""
+        """Overrides BaseQueue.__init__ to use a RLock instead of Lock"""
 
         self.maxsize = maxsize
         self._init(maxsize)
@@ -35,19 +35,19 @@ class Queue(BaseQueue):
 
 
 class Pool(object):
-    """ A queuing pool of connections """
+    """A queuing pool of connections"""
 
     def __init__(self, conn_class, url, **kwargs):
-        size = kwargs.pop('size', 5)
-        self._MAX = kwargs.pop('overflow', 10)
+        size = kwargs.pop("size", 5)
+        self._MAX = kwargs.pop("overflow", 10)
         self._overflow = 0 - size
-        self._timeout = kwargs.pop('timeout', None)
+        self._timeout = kwargs.pop("timeout", None)
         self._overflow_lock = threading.Lock()
         self._pool = Queue(maxsize=size)
-        self._pessimistic = kwargs.get('pessimistic', False)
+        self._pessimistic = kwargs.get("pessimistic", False)
         self._conn = conn_class(url, **kwargs)
         if self._conn.persist:
-            raise ValueError('Persistent connections are not allowed')
+            raise ValueError("Persistent connections are not allowed")
 
     def _inc_overflow(self):
         if self._MAX == -1:
@@ -101,8 +101,8 @@ class Pool(object):
             pass
         if use_overflow and self._overflow >= self._MAX:
             raise TimeoutError(
-                'QueuePool limit of size %d overflow %d reached, '
-                'connection timed out, timeout %d'
+                "QueuePool limit of size %d overflow %d reached, "
+                "connection timed out, timeout %d"
                 % (self.size, self.overflow, self._timeout)
             )
 
@@ -135,9 +135,9 @@ class Pool(object):
 
     def status(self):
         return (
-            'Pool size: %d Connections in pool: %d '
-            'Current Overflow: %d Current Checked out '
-            'connections: %d'
+            "Pool size: %d Connections in pool: %d "
+            "Current Overflow: %d Current Checked out "
+            "connections: %d"
             % (self.size, self.checkedin, self.overflow, self.checkedout)
         )
 

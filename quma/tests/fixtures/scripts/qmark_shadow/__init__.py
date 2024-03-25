@@ -2,7 +2,7 @@ from quma import Namespace
 
 
 class Root(Namespace):
-    alias = 'root'
+    alias = "root"
 
     def get_test(self, cursor):
-        return 'Masking Test'
+        return "Masking Test"

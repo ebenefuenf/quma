@@ -2,7 +2,7 @@ from quma import Namespace
 
 
 class Users(Namespace):
-    alias = 'user'
+    alias = "user"
 
     def get_test(self, cursor):
-        return 'Test'
+        return "Test"

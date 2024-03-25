@@ -2,8 +2,8 @@ try:
     import psycopg2
 except ImportError:
     raise ImportError(
-        'In order to use quma with PostgreSQL you '
-        'need to install psycopg2 or psycopg2cffi'
+        "In order to use quma with PostgreSQL you "
+        "need to install psycopg2 or psycopg2cffi"
     )
 
 
@@ -35,14 +35,14 @@ class PostgresChangelingRow(DictRow):
         we need to do it using the __dict__ of the class. Otherwise
         there would be a recursion error
         """
-        self.__class__.__dict__['_index'].__set__(self, cursor.index)
+        self.__class__.__dict__["_index"].__set__(self, cursor.index)
         self[:] = [None] * len(cursor.description)
 
     def __getattribute__(self, attr):
         # Lookup fields in the query result
         try:
-            cls = super().__getattribute__('__class__')
-            index = cls.__dict__['_index']
+            cls = super().__getattribute__("__class__")
+            index = cls.__dict__["_index"]
             return list.__getitem__(self, index.__get__(self)[attr])
         except (AttributeError, KeyError):
             pass
@@ -59,7 +59,7 @@ class PostgresChangelingRow(DictRow):
         # with _ the underscore is removed tried again.
         # e. g. row._count(value) will be row.count(value)
         try:
-            if attr.startswith('_'):
+            if attr.startswith("_"):
                 attr = attr[1:]
             else:
                 raise AttributeError
@@ -69,13 +69,13 @@ class PostgresChangelingRow(DictRow):
             raise AttributeError(msg)
 
     def __setattr__(self, attr, value):
-        index = self.__class__.__dict__['_index']
+        index = self.__class__.__dict__["_index"]
         list.__setitem__(self, index.__get__(self)[attr], value)
 
 
 class PostgresChangelingCursor(DictCursor):
     def __init__(self, *args, **kwargs):
-        kwargs['row_factory'] = PostgresChangelingRow
+        kwargs["row_factory"] = PostgresChangelingRow
         super(DictCursor, self).__init__(*args, **kwargs)
         self._prefetch = 1
 
@@ -84,7 +84,7 @@ class Connection(conn.Connection):
     def __init__(self, url, **kwargs):
         super().__init__(url, kwargs)
 
-        self.hostname = self.url.hostname or 'localhost'
+        self.hostname = self.url.hostname or "localhost"
         self.port = self.url.port or 5432
         if self.changeling:
             self.factory = PostgresChangelingCursor
@@ -98,13 +98,13 @@ class Connection(conn.Connection):
         # a CREATE, INSERT, UPDATE and so on.
         # mysqlclient and sqlite3 return an empty tuple.
         # We do it that way too to provide an uniform api.
-        if key in ('fetchall', 'fetchmany'):
+        if key in ("fetchall", "fetchmany"):
 
             def fetch(*args, **kwargs):
                 try:
                     return getattr(cursor, key)(*args, **kwargs)
                 except psycopg2.ProgrammingError as e:
-                    if str(e) == 'no results to fetch':
+                    if str(e) == "no results to fetch":
                         return ()
                     raise exc.FetchError(e)
 
@@ -120,7 +120,7 @@ class Connection(conn.Connection):
                 host=self.hostname,
                 port=self.port,
                 cursor_factory=self.factory,
-                **kwargs
+                **kwargs,
             )
         except psycopg2.OperationalError as e:
             raise exc.ConnectionError(str(e))
@@ -135,11 +135,11 @@ class Connection(conn.Connection):
         return conn
 
     def mogrify(self, cursor, content, params):
-        return cursor.mogrify(content, params).decode('utf-8')
+        return cursor.mogrify(content, params).decode("utf-8")
 
     def _check(self, conn):
         try:
             cur = conn.cursor()
-            cur.execute('SELECT 1')
+            cur.execute("SELECT 1")
         except psycopg2.OperationalError:
             raise exc.OperationalError

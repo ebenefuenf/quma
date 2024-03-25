@@ -6,7 +6,7 @@ try:
     )
 except ImportError:
     raise ImportError(
-        'In order to use quma with MySQL you need to install mysqlclient'
+        "In order to use quma with MySQL you need to install mysqlclient"
     )
 
 from .. import (
@@ -18,9 +18,9 @@ from .. import (
 class Connection(conn.Connection):
     def __init__(self, url, **kwargs):
         super().__init__(url, kwargs)
-        self.hostname = self.url.hostname or 'localhost'
+        self.hostname = self.url.hostname or "localhost"
         self.port = self.url.port or 3306
-        if kwargs.pop('dict_cursor', False):
+        if kwargs.pop("dict_cursor", False):
             self.cursor_factory = DictCursor
         else:
             self.cursor_factory = Cursor
@@ -38,7 +38,7 @@ class Connection(conn.Connection):
                 host=self.hostname,
                 port=self.port,
                 cursorclass=self.cursor_factory,
-                **kwargs
+                **kwargs,
             )
         except MySQLdb.OperationalError as e:
             raise exc.ConnectionError(e)
@@ -54,11 +54,11 @@ class Connection(conn.Connection):
         return conn
 
     def mogrify(self, cursor, content, params):
-        return cursor._executed.decode('utf-8')
+        return cursor._executed.decode("utf-8")
 
     def _check(self, conn):
         try:
             cur = conn.cursor()
-            cur.execute('SELECT 1')
+            cur.execute("SELECT 1")
         except MySQLdb.OperationalError:
             raise exc.OperationalError

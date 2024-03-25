@@ -15,8 +15,8 @@ class SQLiteChangelingRow(sqlite3.Row):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__setattr__('_overwritten', {})
-        if PLATFORM == 'PyPy':
+        super().__setattr__("_overwritten", {})
+        if PLATFORM == "PyPy":
             super().__init__(*args, **kwargs)
         else:
             super().__init__()
@@ -24,7 +24,7 @@ class SQLiteChangelingRow(sqlite3.Row):
     def __getattribute__(self, attr):
         # Lookup overwritten fields
         try:
-            return super().__getattribute__('_overwritten')[attr]
+            return super().__getattribute__("_overwritten")[attr]
         except KeyError:
             pass
         # Lookup fields in the query result
@@ -45,7 +45,7 @@ class SQLiteChangelingRow(sqlite3.Row):
         # with _ the underscore is removed tried again.
         # e. g. row._keys() will be row.keys()
         try:
-            if attr.startswith('_'):
+            if attr.startswith("_"):
                 attr = attr[1:]
             else:
                 raise AttributeError
@@ -55,14 +55,14 @@ class SQLiteChangelingRow(sqlite3.Row):
             raise AttributeError(msg)
 
     def __setattr__(self, attr, value):
-        super().__getattribute__('_overwritten')[attr] = value
+        super().__getattribute__("_overwritten")[attr] = value
 
 
 class Connection(conn.Connection):
     def __init__(self, url, **kwargs):
         super().__init__(url, kwargs)
         if not self.database:
-            raise ValueError('Required database path missing')
+            raise ValueError("Required database path missing")
         self.has_rowcount = False
         self._init_conn()
 
@@ -84,13 +84,13 @@ class Connection(conn.Connection):
         return conn
 
     def disable_autocommit(self, conn):
-        conn.isolation_level = 'DEFERRED'
+        conn.isolation_level = "DEFERRED"
         return conn
 
     def _check(self, conn):
         try:
             cur = conn.cursor()
-            cur.execute('SELECT 1')
+            cur.execute("SELECT 1")
         except sqlite3.ProgrammingError:
             raise exc.OperationalError
         except sqlite3.OperationalError:
