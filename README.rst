@@ -71,7 +71,7 @@ License
 
 quma is released under the MIT license.
 
-Copyright © 2018-2020 ebene fünf GmbH. All rights reserved.
+Copyright © 2018-2024 ebene fünf GmbH. All rights reserved.
 
 .. |release| image:: https://travis-ci.org/ebenefuenf/quma.svg?branch=master
     :target: https://travis-ci.org/ebenefuenf/quma
