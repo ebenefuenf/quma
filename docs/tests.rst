@@ -15,6 +15,8 @@ PostgreSQL:
     CREATE USER quma_test_user WITH PASSWORD 'quma_test_password';
     CREATE DATABASE quma_test_db;
     GRANT ALL PRIVILEGES ON DATABASE quma_test_db to quma_test_user;
+    -- Postgres 15 or higher:
+    GRANT ALL ON SCHEMA public TO quma_test_user;
 
 MySQL/MariaDB:
 
@@ -27,9 +29,9 @@ MySQL/MariaDB:
 How to run the tests
 --------------------
 
-Run ``pytest`` or ``py.test`` to run all tests. 
-``pytest -m "not postgres and not mysql"`` for all general 
-tests. And ``pytest -m "postgres"`` or ``pytest -m "mysql"`` 
+Run ``pytest`` or ``py.test`` to run all tests.
+``pytest -m "not postgres and not mysql"`` for all general
+tests. And ``pytest -m "postgres"`` or ``pytest -m "mysql"``
 for DBMS specific tests.
 
 Overwrite credentials
