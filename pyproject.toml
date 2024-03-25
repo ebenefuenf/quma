@@ -1,3 +1,97 @@
+[project]
+name = "quma"
+dynamic = ["version"]
+description = "A SQL/database library"
+keywords = ["sql", "database"]
+authors = [
+    {name = "ebene fünf GmbH", email = "info@ebenefuenf.de"},
+]
+readme = {file = "README.rst", content-type = "text/x-rst"}
+license = {file = "LICENSE.rst"}
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Database :: Front-Ends",
+]
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-cov", "coverage-conditional-plugin"]
+docs = ["sphinx", "sphinx-autobuild"]
+dev = ["black", "pyproject-flake8", "isort"]
+templates = ["mako"]
+postgres = [
+    "psycopg2; implementation_name=='cpython'",
+    "psycopg2cffi; implementation_name=='pypy'",
+]
+mysql = ["mysqlclient"]
+
+[project.urls]
+Homepage = "https://github.com/ebenefuenf/quma"
+Issues = "https://github.com/ebenefuenf/quma/issues"
+Documentation = "https://quma.readthedocs.io"
+
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.module]
+name = "quma"
+
+[tool.flit.sdist]
+include = [
+    "docs/",
+    "CHANGES.rst",
+    "tox.ini",
+]
+exclude = [
+    "docs/_build/",
+]
+
+[tool.pytest.ini_options]
+addopts = "--verbose -s"
+markers = ["mysql", "postgres"]
+testpaths = ["quma/tests"]
+
+[tool.flake8]
+max-line-length = 79
+select = ["C90", "E", "F", "W", "Q0"]
+ignore = ["W503"]
+inline-quotes = '"'
+multiline-quotes = '"""'
+docstring-quotes = '"""'
+
 [tool.black]
 line-length = 79
 target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+
+[tool.isort]
+line_length = 79
+multi_line_output = 3
+include_trailing_comma = 1
+force_grid_wrap = 2
+
+[tool.coverage.run]
+branch = true
+source = ["quma"]
+plugins = ["coverage_conditional_plugin"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_also = [
+    "pragma: no-cover",
+    "raise NotImplementedError",
+    "except ImportError",
+]
+
+[tool.coverage.coverage_conditional_plugin.rules]
+no-cov-pypy = "implementation_name == 'pypy'"
+no-cov-cpython = "implementation_name == 'cpython'"
