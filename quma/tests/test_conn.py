@@ -348,7 +348,7 @@ def test_mysql_failing_check():
 
 def test_sqlite_failing_connection():
     with pytest.raises(exc.ConnectionError):
-        connect('sqlite:///|/').get()
+        connect('sqlite:/// \n//\r /').get()
 
 
 @pytest.mark.mysql
