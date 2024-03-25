@@ -30,7 +30,7 @@ def conn_attr(db, attr, defval, setval):
         assert c.get_conn_attr(attr) == getattr(c.raw_conn, attr)
         c.set_conn_attr(attr, setval)
         assert getattr(c.raw_conn, attr) == setval
-        assert c.get_conn_attr(attr) is getattr(c.raw_conn, attr)
+        assert c.get_conn_attr(attr) == getattr(c.raw_conn, attr)
 
 
 def test_conn_attr(db):
