@@ -2,7 +2,7 @@
 quma
 ====
 
-|release| |build| |docs|
+|build| |docs|
 
 quma is a small SQL database library for **Python**  and **PyPy** version 3.5 and higher.
 It maps object methods to SQL script files and supports **SQLite**, **PostgreSQL**,
@@ -72,10 +72,6 @@ License
 quma is released under the MIT license.
 
 Copyright © 2018-2024 ebene fünf GmbH. All rights reserved.
-
-.. |release| image:: https://travis-ci.org/ebenefuenf/quma.svg?branch=master
-    :target: https://travis-ci.org/ebenefuenf/quma
-    :alt: master Travis CI Status
 
 .. |build| image:: https://badge.fury.io/py/quma.svg
     :target: https://badge.fury.io/py/quma
