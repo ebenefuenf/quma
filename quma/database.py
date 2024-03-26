@@ -261,14 +261,13 @@ def connect(dburi, **kwargs):
     scheme = url.scheme.split("+")
     module_name = scheme[0]
     module = import_module("quma.provider.{}".format(module_name))
-    conn_class = getattr(module, "Connection")
     try:
         if scheme[1].lower() == "pool":
-            return pool.Pool(conn_class, url, **kwargs)
+            return pool.Pool(module.Connection, url, **kwargs)
         else:
             raise ValueError(
                 'Wrong scheme. Only "provider://" or '
                 '"provider+pool://" are allowed'
             )
     except IndexError:
-        return conn_class(url, **kwargs)
+        return module.Connection(url, **kwargs)
