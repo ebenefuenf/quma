@@ -8,12 +8,12 @@ from quma.tests import util
 loops = int(sys.argv[1]) if len(sys.argv) > 1 else 20000
 
 here = os.path.dirname(__file__)
-sql_path = os.path.join(here, '../quma/tests/fixtures/scripts/qmark')
+sql_path = os.path.join(here, "../quma/tests/fixtures/scripts/qmark")
 
 
 def get_db():
     db = quma.Database(
-        'sqlite:///:memory:',
+        "sqlite:///:memory:",
         sql_path,
         persist=True,
         changeling=True,
@@ -34,17 +34,17 @@ def db_namespaces():
             db.root.get_test(cursor)
             db.user.add(
                 cursor,
-                name='Test User',
-                email='test.user@example.com',
-                city='Test City',
+                name="Test User",
+                email="test.user@example.com",
+                city="Test City",
             ).run()
             cursor.commit()
 
-            db.user.by_name(cursor, name='User 1').one()
-            db.user.by_name(cursor, name='Test User').one()
-            db.users.all(cursor, name='Test User').first()
-            db.users.all(cursor, name='Test User').all()
-            db.user.remove(cursor, name='Test User').run()
+            db.user.by_name(cursor, name="User 1").one()
+            db.user.by_name(cursor, name="Test User").one()
+            db.users.all(cursor, name="Test User").first()
+            db.users.all(cursor, name="Test User").all()
+            db.user.remove(cursor, name="Test User").run()
             cursor.commit()
 
 
@@ -57,24 +57,24 @@ def cursor_namespaces():
             cursor.get_test()
             cursor.root.get_test()
             cursor.user.add(
-                name='Test User',
-                email='test.user@example.com',
-                city='Test City',
+                name="Test User",
+                email="test.user@example.com",
+                city="Test City",
             ).run()
             cursor.commit()
 
-            cursor.user.by_name(name='User 1').one()
-            cursor.user.by_name(name='Test User').one()
-            cursor.users.all(name='Test User').first()
-            cursor.users.all(name='Test User').all()
-            cursor.user.remove(name='Test User').run()
+            cursor.user.by_name(name="User 1").one()
+            cursor.user.by_name(name="Test User").one()
+            cursor.users.all(name="Test User").first()
+            cursor.users.all(name="Test User").all()
+            cursor.user.remove(name="Test User").run()
             cursor.commit()
 
 
-header = '\n{} loops:'.format(loops)
+header = "\n{} loops:".format(loops)
 print(header)
-print('-' * (len(header) - 1))
+print("-" * (len(header) - 1))
 t = Timer(lambda: db_namespaces())
-print('db api:  ', t.timeit(number=1), 'seconds')
+print("db api:  ", t.timeit(number=1), "seconds")
 t = Timer(lambda: cursor_namespaces())
-print('cur api: ', t.timeit(number=1), 'seconds')
+print("cur api: ", t.timeit(number=1), "seconds")
