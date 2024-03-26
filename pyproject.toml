@@ -26,7 +26,7 @@ classifiers = [
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov", "coverage-conditional-plugin"]
 docs = ["sphinx", "sphinx-autobuild"]
-dev = ["black", "pyproject-flake8", "isort"]
+dev = ["ruff"]
 templates = ["mako"]
 postgres = [
     "psycopg2; implementation_name=='cpython'",
@@ -47,37 +47,13 @@ build-backend = "flit_core.buildapi"
 name = "quma"
 
 [tool.flit.sdist]
-include = [
-    "docs/",
-    "CHANGES.rst",
-    "tox.ini",
-]
-exclude = [
-    "docs/_build/",
-]
+include = ["docs/", "CHANGES.rst", "tox.ini"]
+exclude = ["docs/_build/"]
 
 [tool.pytest.ini_options]
 addopts = "--verbose -s"
 markers = ["mysql", "postgres"]
 testpaths = ["quma/tests"]
-
-[tool.flake8]
-max-line-length = 79
-select = ["C90", "E", "F", "W", "Q0"]
-ignore = ["W503"]
-inline-quotes = '"'
-multiline-quotes = '"""'
-docstring-quotes = '"""'
-
-[tool.black]
-line-length = 79
-target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
-
-[tool.isort]
-line_length = 79
-multi_line_output = 3
-include_trailing_comma = 1
-force_grid_wrap = 2
 
 [tool.coverage.run]
 branch = true
@@ -95,3 +71,27 @@ exclude_also = [
 [tool.coverage.coverage_conditional_plugin.rules]
 no-cov-pypy = "implementation_name == 'pypy'"
 no-cov-cpython = "implementation_name == 'cpython'"
+
+[tool.ruff]
+exclude = [
+    ".bzr", ".direnv", ".eggs", ".git", ".git-rewrite", ".hg", ".ipynb_checkpoints",
+    ".mypy_cache", ".nox", ".pants.d", ".pyenv", ".pytest_cache", ".pytype", ".ruff_cache",
+    ".svn", ".tox", ".venv", ".vscode", "__pypackages__", "_build", "buck-out",
+    "build", "dist", "node_modules", "site-packages", "venv",
+]
+line-length = 79
+indent-width = 4
+target-version = "py38"
+
+[tool.ruff.lint]
+extend-select = ["B", "Q", "I", "C90", "W"]
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
