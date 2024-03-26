@@ -700,7 +700,7 @@ def query_cache(db):
         assert users._has_been_executed is False
         assert users._result_cache is None
         i = 0
-        for user in users:
+        for _ in users:
             assert users._has_been_executed is True
             i += 1
         assert users._result_cache is not None
@@ -777,7 +777,7 @@ def test_generator(db):
 def unbunch(db):
     with db.cursor as cur:
         i = 0
-        for user in cur.users.all().unbunch(3):
+        for _ in cur.users.all().unbunch(3):
             i += 1
         assert i == 7
 
