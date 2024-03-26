@@ -4,10 +4,10 @@ try:
         Cursor,
         DictCursor,
     )
-except ImportError:
+except ImportError as e:
     raise ImportError(
         "In order to use quma with MySQL you need to install mysqlclient"
-    )
+    ) from e
 
 from .. import (
     conn,
@@ -41,7 +41,7 @@ class Connection(conn.Connection):
                 **kwargs,
             )
         except MySQLdb.OperationalError as e:
-            raise exc.ConnectionError(e)
+            raise exc.ConnectionError(e) from e
         return self.disable_autocommit(conn)
 
     def enable_autocommit_if(self, autocommit, conn):
@@ -60,5 +60,5 @@ class Connection(conn.Connection):
         try:
             cur = conn.cursor()
             cur.execute("SELECT 1")
-        except MySQLdb.OperationalError:
-            raise exc.OperationalError
+        except MySQLdb.OperationalError as e:
+            raise exc.OperationalError from e

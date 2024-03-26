@@ -56,8 +56,10 @@ class Script(object):
                     Template(self.content, lookup=lookup).render(**params),
                     params,
                 )
-            except TypeError:
-                raise ImportError("To use templates you need to install Mako")
+            except TypeError as e:
+                raise ImportError(
+                    "To use templates you need to install Mako"
+                ) from e
         return self.content, params
 
     def execute(self, cursor, args, kwargs, prepare_params=None):

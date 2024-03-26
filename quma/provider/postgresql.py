@@ -1,10 +1,10 @@
 try:
     import psycopg2
-except ImportError:
+except ImportError as e:
     raise ImportError(
         "In order to use quma with PostgreSQL you "
         "need to install psycopg2 or psycopg2cffi"
-    )
+    ) from e
 
 
 from psycopg2.extras import (
@@ -64,9 +64,9 @@ class PostgresChangelingRow(DictRow):
             else:
                 raise AttributeError
             return super().__getattribute__(attr)
-        except AttributeError:
+        except AttributeError as e:
             msg = 'Row has no field with the name "{}"'.format(attr)
-            raise AttributeError(msg)
+            raise AttributeError(msg) from e
 
     def __setattr__(self, attr, value):
         index = self.__class__.__dict__["_index"]
@@ -106,7 +106,7 @@ class Connection(conn.Connection):
                 except psycopg2.ProgrammingError as e:
                     if str(e) == "no results to fetch":
                         return ()
-                    raise exc.FetchError(e)
+                    raise exc.FetchError(e) from e
 
             return fetch
         return getattr(cursor, key)
@@ -123,7 +123,7 @@ class Connection(conn.Connection):
                 **kwargs,
             )
         except psycopg2.OperationalError as e:
-            raise exc.ConnectionError(str(e))
+            raise exc.ConnectionError(str(e)) from e
 
     def enable_autocommit_if(self, autocommit, conn):
         if autocommit:
@@ -141,5 +141,5 @@ class Connection(conn.Connection):
         try:
             cur = conn.cursor()
             cur.execute("SELECT 1")
-        except psycopg2.OperationalError:
-            raise exc.OperationalError
+        except psycopg2.OperationalError as e:
+            raise exc.OperationalError from e

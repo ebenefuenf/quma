@@ -247,9 +247,9 @@ class Database(object):
     def __getattr__(self, attr):
         try:
             return get_namespace(self, attr)
-        except AttributeError:
+        except AttributeError as e:
             msg = 'Namespace or Root method "{}" not found.'.format(attr)
-            raise AttributeError(msg)
+            raise AttributeError(msg) from e
 
 
 def connect(dburi, **kwargs):

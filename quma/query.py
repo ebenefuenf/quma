@@ -54,7 +54,7 @@ class Query(object):
             try:
                 self._result_cache = self.cursor.fetchall()
             except exc.FetchError as e:
-                raise e.error
+                raise e.error from e
         return self._result_cache
 
     def __getattr__(self, key):

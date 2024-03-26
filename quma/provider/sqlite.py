@@ -50,9 +50,9 @@ class SQLiteChangelingRow(sqlite3.Row):
             else:
                 raise AttributeError
             return super().__getattribute__(attr)
-        except AttributeError:
+        except AttributeError as e:
             msg = 'Row has no field with the name "{}"'.format(attr)
-            raise AttributeError(msg)
+            raise AttributeError(msg) from e
 
     def __setattr__(self, attr, value):
         super().__getattribute__("_overwritten")[attr] = value
@@ -73,7 +73,7 @@ class Connection(conn.Connection):
         try:
             conn = sqlite3.connect(database=self.database, **kwargs)
         except sqlite3.Error as e:
-            raise exc.ConnectionError(e)
+            raise exc.ConnectionError(e) from e
         if self.changeling:
             conn.row_factory = SQLiteChangelingRow
         return self.disable_autocommit(conn)
@@ -91,7 +91,7 @@ class Connection(conn.Connection):
         try:
             cur = conn.cursor()
             cur.execute("SELECT 1")
-        except sqlite3.ProgrammingError:
-            raise exc.OperationalError
-        except sqlite3.OperationalError:
-            raise exc.OperationalError
+        except sqlite3.ProgrammingError as e:
+            raise exc.OperationalError from e
+        except sqlite3.OperationalError as e:
+            raise exc.OperationalError from e

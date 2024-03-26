@@ -19,10 +19,7 @@ class RawCursorWrapper(object):
         self.has_rowcount = conn.has_rowcount
 
     def __getattr__(self, key):
-        try:
-            return self.conn.get_cursor_attr(self.cursor, key)
-        except AttributeError as e:
-            raise e
+        return self.conn.get_cursor_attr(self.cursor, key)
 
 
 class Cursor(object):
@@ -124,8 +121,8 @@ class Cursor(object):
             pass
         try:
             return CursorNamespace(get_namespace(self, attr), self)
-        except AttributeError:
+        except AttributeError as e:
             raise AttributeError(
                 "Namespace, Root method, or cursor "
                 'attribute "{}" not found.'.format(attr)
-            )
+            ) from e
