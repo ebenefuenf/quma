@@ -8,13 +8,11 @@ import pytest
 from .. import (
     Database,
     Namespace,
-)
-from .. import cursor as cursor_
-from .. import (
     database,
     query,
     script,
 )
+from .. import cursor as cursor_
 from . import util
 
 
@@ -570,7 +568,7 @@ def multiple_records(db, getter):
 
         # the .all() method
         users = db.users.by_city(cursor, city="City A").all()
-        assert type(users) is list or type(users) is tuple
+        assert isinstance(users, list) or isinstance(users, tuple)
         for user in users:
             assert getter(user) in ("User 1", "User 2")
         assert len(users) == 2
