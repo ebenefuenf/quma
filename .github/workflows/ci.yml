@@ -9,14 +9,34 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 1
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "pypy3.9", "pypy3.10"]
-
+        include:
+          - python: '3.8'
+            tox: py38
+          - python: '3.9'
+            tox: py39
+          - python: '3.10'
+            tox: py310
+          - python: '3.11'
+            tox: py311
+          - python: '3.12'
+            tox: py312
+          - python: 'pypy3.9'
+            tox: pypy39
+          - python: 'pypy3.10'
+            tox: pypy310
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Set up Python ${{ matrix.python }}
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.python }}
+          cache: 'pip'
+          cache-dependency-path: pyproject.toml
+      - run: pip install -e '.[test,docs,dev,templates]'
       - name: Display Python version
         run: python -c "import sys; print(sys.version)"
+      - name: Run linter and tests
+        run: pip install tox
+        run: tox run -e ${{ matrix.tox }}
