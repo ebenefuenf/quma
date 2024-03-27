@@ -12,7 +12,7 @@ PGSQL_USER = os.environ.get("QUMA_PGSQL_USER", DB_USER)
 PGSQL_PASS = os.environ.get("QUMA_PGSQL_PASS", DB_PASS)
 PGSQL_DB = os.environ.get("QUMA_PGSQL_DB", DB_NAME)
 PGSQL_HOST = os.environ.get("QUMA_PGSQL_HOST", "localhost")
-PGSQL_PORT = os.environ.get("QUMA_PGSQL_PORT", 5432)
+PGSQL_PORT = int(os.environ.get("QUMA_PGSQL_PORT", 5432))
 PGSQL_URI = "postgresql://{}:{}@{}:{}/{}".format(
     PGSQL_USER, PGSQL_PASS, PGSQL_HOST, PGSQL_PORT, PGSQL_DB
 )
@@ -24,7 +24,7 @@ MYSQL_USER = os.environ.get("QUMA_MYSQL_USER", DB_USER)
 MYSQL_PASS = os.environ.get("QUMA_MYSQL_PASS", DB_PASS)
 MYSQL_DB = os.environ.get("QUMA_MYSQL_DB", DB_NAME)
 MYSQL_HOST = os.environ.get("QUMA_MYSQL_HOST", "127.0.0.1")
-MYSQL_PORT = os.environ.get("QUMA_MYSQL_PORT", 3306)
+MYSQL_PORT = int(os.environ.get("QUMA_MYSQL_PORT", 3306))
 MYSQL_URI = "mysql://{}:{}@{}:{}/{}".format(
     MYSQL_USER, MYSQL_PASS, MYSQL_HOST, MYSQL_PORT, MYSQL_DB
 )
@@ -57,7 +57,13 @@ VALUES
 def setup_pg_db():
     import psycopg2
 
-    conn = psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS)
+    conn = psycopg2.connect(
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASS,
+        host=PGSQL_HOST,
+        port=PGSQL_PORT,
+    )
     cur = conn.cursor()
     cur.execute(DROP_USERS)
     cur.execute(CREATE_USERS)
@@ -71,7 +77,13 @@ def setup_pg_db():
 def setup_mysql_db():
     import MySQLdb
 
-    conn = MySQLdb.connect(db=DB_NAME, user=DB_USER, passwd=DB_PASS)
+    conn = MySQLdb.connect(
+        db=DB_NAME,
+        user=DB_USER,
+        passwd=DB_PASS,
+        host=MYSQL_HOST,
+        port=MYSQL_PORT,
+    )
     cur = conn.cursor()
     cur.execute(DROP_USERS)
     cur.execute(CREATE_USERS)
