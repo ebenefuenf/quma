@@ -3,11 +3,12 @@ from unittest.mock import Mock
 import pytest
 
 from ..exc import FetchError
-from ..provider.postgresql import Connection
 from . import util
 
 try:
     import psycopg2
+
+    from ..provider.postgresql import Connection
 except ImportError:
     psycopg2 = None
 
