@@ -8,38 +8,28 @@ SQLITE_FILE = "/tmp/quma_test.sqlite"
 SQLITE_URI = "sqlite:///{}".format(SQLITE_FILE)
 SQLITE_MEMORY = "sqlite:///:memory:"
 
-try:
-    PGSQL_USER = os.environ["QUMA_PGSQL_USER"]
-except KeyError:
-    PGSQL_USER = DB_USER
-try:
-    PGSQL_PASS = os.environ["QUMA_PGSQL_PASS"]
-except KeyError:
-    PGSQL_PASS = DB_PASS
-try:
-    PGSQL_DB = os.environ["QUMA_PGSQL_DB"]
-except KeyError:
-    PGSQL_DB = DB_NAME
-PGSQL_URI = "postgresql://{}:{}@/{}".format(PGSQL_USER, PGSQL_PASS, PGSQL_DB)
-PGSQL_POOL_URI = "postgresql+pool://{}:{}@/{}".format(
-    PGSQL_USER, PGSQL_PASS, PGSQL_DB
+PGSQL_USER = os.environ.get("QUMA_PGSQL_USER", DB_USER)
+PGSQL_PASS = os.environ.get("QUMA_PGSQL_PASS", DB_PASS)
+PGSQL_DB = os.environ.get("QUMA_PGSQL_DB", DB_NAME)
+PGSQL_HOST = os.environ.get("QUMA_PGSQL_HOST", "localhost")
+PGSQL_PORT = os.environ.get("QUMA_PGSQL_PORT", 5432)
+PGSQL_URI = "postgresql://{}:{}@{}:{}/{}".format(
+    PGSQL_USER, PGSQL_PASS, PGSQL_HOST, PGSQL_PORT, PGSQL_DB
+)
+PGSQL_POOL_URI = "postgresql+pool://{}:{}@{}:{}/{}".format(
+    PGSQL_USER, PGSQL_PASS, PGSQL_HOST, PGSQL_PORT, PGSQL_DB
 )
 
-try:
-    MYSQL_USER = os.environ["QUMA_MYSQL_USER"]
-except KeyError:
-    MYSQL_USER = DB_USER
-try:
-    MYSQL_PASS = os.environ["QUMA_MYSQL_PASS"]
-except KeyError:
-    MYSQL_PASS = DB_PASS
-try:
-    MYSQL_DB = os.environ["QUMA_MYSQL_DB"]
-except KeyError:
-    MYSQL_DB = DB_NAME
-MYSQL_URI = "mysql://{}:{}@/{}".format(MYSQL_USER, MYSQL_PASS, MYSQL_DB)
-MYSQL_POOL_URI = "mysql+pool://{}:{}@/{}".format(
-    MYSQL_USER, MYSQL_PASS, MYSQL_DB
+MYSQL_USER = os.environ.get("QUMA_MYSQL_USER", DB_USER)
+MYSQL_PASS = os.environ.get("QUMA_MYSQL_PASS", DB_PASS)
+MYSQL_DB = os.environ.get("QUMA_MYSQL_DB", DB_NAME)
+MYSQL_HOST = os.environ.get("QUMA_MYSQL_HOST", "127.0.0.1")
+MYSQL_PORT = os.environ.get("QUMA_MYSQL_PORT", 3306)
+MYSQL_URI = "mysql://{}:{}@{}:{}/{}".format(
+    MYSQL_USER, MYSQL_PASS, MYSQL_HOST, MYSQL_PORT, MYSQL_DB
+)
+MYSQL_POOL_URI = "mysql+pool://{}:{}@{}:{}/{}".format(
+    MYSQL_USER, MYSQL_PASS, MYSQL_HOST, MYSQL_PORT, MYSQL_DB
 )
 
 DROP_USERS = "DROP TABLE IF EXISTS users;"
