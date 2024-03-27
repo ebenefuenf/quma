@@ -11,14 +11,22 @@ jobs:
     services:
       mariadb:
         image: mariadb:latest
+        env:
+          MARIADB_MYSQL_LOCALHOST_USER: 1
+          MARIADB_MYSQL_LOCALHOST_GRANTS: USAGE
+          MARIADB_ROOT_PASSWORD: root_password
+          MARIADB_DATABASE: quma_test_db
+          MARIADB_USER: quma_test_user
+          MARIADB_PASSWORD: quma_test_password
         ports:
           - 3306
-        env:
-          MYSQL_USER: quma_test_user
-          MYSQL_PASSWORD: quma_test_password
-          MYSQL_DATABASE: quma_test_db
-          MYSQL_ROOT_PASSWORD: password
-        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+        healthcheck:
+          test: [ "CMD", "healthcheck.sh", "--su-mysql", "--connect", "--innodb_initialized" ]
+          start_period: 1m
+          start_interval: 10s
+          interval: 1m
+          timeout: 5s
+          retries: 3
     strategy:
       max-parallel: 1
       matrix:
