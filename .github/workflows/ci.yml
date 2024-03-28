@@ -66,5 +66,5 @@ jobs:
           QUMA_PGSQL_USER: postgres
           QUMA_PGSQL_PASS: postgres
           QUMA_PGSQL_DB: postgres
-          QUMA_PGSQL_HOST: postgres
+          QUMA_PGSQL_HOST: localhost
           QUMA_PGSQL_PORT: 5432
