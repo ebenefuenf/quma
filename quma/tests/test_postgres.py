@@ -211,9 +211,9 @@ def test_multiple_records_error(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
-def test_faulty_fetch(dburl):
+def test_faulty_fetch(pgdburl):
     cursor = type("C", (), {})
-    cn = Connection(dburl)
+    cn = Connection(pgdburl)
 
     def fetch():
         raise psycopg2.ProgrammingError("test error")

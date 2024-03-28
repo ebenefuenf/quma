@@ -8,7 +8,7 @@ from . import util
 
 
 @pytest.fixture
-def dburl():
+def pgdburl():
     from urllib.parse import urlparse
 
     return urlparse(util.PGSQL_URI)

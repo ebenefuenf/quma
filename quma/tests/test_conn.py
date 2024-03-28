@@ -24,14 +24,15 @@ def get_cursor_mock(exception):
     return cursor
 
 
-def test_base_connection(dburl):
+def test_base_connection(pgdburl):
+    # We test with a PostgreSQL url but any other would do
     kwargs = dict(persist=True)
-    cn = conn.Connection(dburl, kwargs)
+    cn = conn.Connection(pgdburl, kwargs)
     assert kwargs.get("persist") is None
-    assert cn.database == util.DB_NAME
-    assert cn.username == util.DB_USER
-    assert cn.password == util.DB_PASS
-    assert cn.url == dburl
+    assert cn.database == util.PGSQL_DB
+    assert cn.username == util.PGSQL_USER
+    assert cn.password == util.PGSQL_PASS
+    assert cn.url == pgdburl
     c = Mock()
     cn.conn = c
     with pytest.raises(NotImplementedError):

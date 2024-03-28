@@ -19,7 +19,6 @@ PGSQL_URI = "postgresql://{}:{}@{}:{}/{}".format(
 PGSQL_POOL_URI = "postgresql+pool://{}:{}@{}:{}/{}".format(
     PGSQL_USER, PGSQL_PASS, PGSQL_HOST, PGSQL_PORT, PGSQL_DB
 )
-print(PGSQL_POOL_URI)
 
 MYSQL_USER = os.environ.get("QUMA_MYSQL_USER", DB_USER)
 MYSQL_PASS = os.environ.get("QUMA_MYSQL_PASS", DB_PASS)
