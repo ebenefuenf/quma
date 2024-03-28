@@ -63,8 +63,8 @@ jobs:
       - name: Run linter and tests
         run: tox run -e ${{ matrix.tox }}
         env:
-          - QUMA_PGSQL_USER: postgres
-          - QUMA_PGSQL_PASS: postgres
-          - QUMA_PGSQL_DB: postgres
-          - QUMA_PGSQL_HOST: postgres
-          - QUMA_PGSQL_PORT: 5432
+          QUMA_PGSQL_USER: postgres
+          QUMA_PGSQL_PASS: postgres
+          QUMA_PGSQL_DB: postgres
+          QUMA_PGSQL_HOST: postgres
+          QUMA_PGSQL_PORT: 5432
