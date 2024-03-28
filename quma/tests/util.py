@@ -58,9 +58,9 @@ def setup_pg_db():
     import psycopg2
 
     conn = psycopg2.connect(
-        dbname=DB_NAME,
-        user=DB_USER,
-        password=DB_PASS,
+        dbname=PGSQL_DB,
+        user=PGSQL_USER,
+        password=PGSQL_PASS,
         host=PGSQL_HOST,
         port=PGSQL_PORT,
     )
@@ -78,9 +78,9 @@ def setup_mysql_db():
     import MySQLdb
 
     conn = MySQLdb.connect(
-        db=DB_NAME,
-        user=DB_USER,
-        passwd=DB_PASS,
+        db=MYSQL_DB,
+        user=MYSQL_USER,
+        passwd=MYSQL_PASS,
         host=MYSQL_HOST,
         port=MYSQL_PORT,
     )

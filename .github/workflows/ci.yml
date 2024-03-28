@@ -9,6 +9,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
     services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
       mariadb:
         image: mariadb:latest
         env:
@@ -51,3 +62,9 @@ jobs:
       - run: pip install tox
       - name: Run linter and tests
         run: tox run -e ${{ matrix.tox }}
+        env:
+          - QUMA_PGSQL_USER: postgres
+          - QUMA_PGSQL_PASS: postgres
+          - QUMA_PGSQL_DB: postgres
+          - QUMA_PGSQL_HOST: postgres
+          - QUMA_PGSQL_PORT: 5432
