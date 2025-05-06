@@ -2,6 +2,15 @@
 quma Changelog
 ===============
 
+
+Version 0.1.1
+-------------
+
+Released on May 6th 2025
+
+- Bugfix release: Ignore ``__pycache__`` directories when loading
+  namespaces.
+
 Version 0.1.0
 -------------
 
