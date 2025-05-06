@@ -66,6 +66,24 @@ You can access these scripts after connecting to the database:
 
         admin = cur.get_admin().one()
 
+Deploy to PyPi
+--------------
+
+Install ``uv`` if not already done. Bump version number in
+``setup.py``, then:
+
+::
+
+    git tag -a X.X.X -m "Release Version X.X.X"
+    git push origin X.X.X
+    uv build
+
+	# publish manually
+    uv publish --username <user> --token <token>
+
+	# publish with credentials in .pypirc
+	uvx uv-publish
+
 License
 -------
 
