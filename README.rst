@@ -74,7 +74,7 @@ Install ``uv`` if not already done. Bump version number in
 
 ::
 
-    git tag -a X.X.X -m "Release Version X.X.X"
+    git tag -a X.X.X -m "quma version X.X.X"
     git push origin X.X.X
     uv build
 
