@@ -202,7 +202,7 @@ class Database(object):
 
         register(Path(sqldir), "__root__")
         for path in Path(sqldir).iterdir():
-            if path.is_dir():
+            if path.is_dir() and path.name != "__pycache__":
                 register(path, path.name)
 
     def execute(self, query, **kwargs):
