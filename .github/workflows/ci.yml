@@ -37,18 +37,14 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - python: '3.8'
-            tox: py38
-          - python: '3.9'
-            tox: py39
           - python: '3.10'
             tox: py310
           - python: '3.11'
             tox: py311
           - python: '3.12'
             tox: py312
-          - python: 'pypy3.9'
-            tox: pypy39
+          - python: '3.13'
+            tox: py313
           - python: 'pypy3.10'
             tox: pypy310
     steps:
