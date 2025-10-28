@@ -2,6 +2,13 @@
 quma Changelog
 ===============
 
+Version 0.2.1
+-------------
+
+Released on October 28th 2025
+
+- Set autocommit only to True if the passed argument is a boolean.
+
 
 Version 0.2.0
 -------------
