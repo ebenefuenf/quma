@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      mariadb:
+        image: mariadb:latest
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
+          MARIADB_MYSQL_LOCALHOST_USER: 1
+          MARIADB_MYSQL_LOCALHOST_GRANTS: USAGE
+          MARIADB_ROOT_PASSWORD: root_password
+          MARIADB_DATABASE: quma_test_db
+          MARIADB_USER: quma_test_user
+          MARIADB_PASSWORD: quma_test_password
+        ports:
+          - 3306:3306
+        options: --health-cmd="healthcheck.sh --connect --innodb_initialized" --health-interval=10s --health-timeout=5s --health-retries=3
+    strategy:
+      max-parallel: 1
+      matrix:
+        include:
+          - python: '3.8'
+            tox: py38
+          - python: '3.9'
+            tox: py39
+          - python: '3.10'
+            tox: py310
+          - python: '3.11'
+            tox: py311
+          - python: '3.12'
+            tox: py312
+          - python: 'pypy3.9'
+            tox: pypy39
+          - python: 'pypy3.10'
+            tox: pypy310
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: 'pip'
+          cache-dependency-path: pyproject.toml
+      - run: pip install tox
+      - name: Run linter and tests
+        run: tox run -e ${{ matrix.tox }}
+        env:
+          QUMA_PGSQL_USER: postgres
+          QUMA_PGSQL_PASS: postgres
+          QUMA_PGSQL_DB: postgres
+          QUMA_PGSQL_HOST: localhost
+          QUMA_PGSQL_PORT: 5432
