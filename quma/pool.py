@@ -25,13 +25,14 @@ class Queue(BaseQueue):
     def __init__(self, maxsize=0):
         """Overrides BaseQueue.__init__ to use a RLock instead of Lock"""
 
-        self.maxsize = maxsize
-        self._init(maxsize)
+        # Call parent init to ensure all attributes are initialized
+        # (including is_shutdown in Python 3.13+)
+        super().__init__(maxsize)
+        # Override threading primitives to use RLock instead of Lock
         self.mutex = threading.RLock()
         self.not_full = threading.Condition(self.mutex)
         self.not_empty = threading.Condition(self.mutex)
         self.all_tasks_done = threading.Condition(self.mutex)
-        self.unfinished_tasks = 0
 
 
 class Pool(object):
