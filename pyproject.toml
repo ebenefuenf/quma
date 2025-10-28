@@ -81,7 +81,7 @@ exclude = [
 ]
 line-length = 79
 indent-width = 4
-target-version = "py38"
+target-version = "py313"
 
 [tool.ruff.lint]
 extend-select = ["B", "Q", "I", "C90", "W"]
