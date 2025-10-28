@@ -30,7 +30,7 @@ class Cursor(object):
         self.conn = db.conn
         self.namespaces = namespaces
         self.carrier = carrier
-        self.autocommit = autocommit
+        self.autocommit = isinstance(autocommit, bool) and autocommit
         self.raw_conn = None
         self.raw_cursor = None
         self.contextcommit = contextcommit
@@ -44,11 +44,15 @@ class Cursor(object):
         if self.conn:
             self.put()
 
-    def __call__(self, autocommit=None):
+    def __call__(self, autocommit=False):
         return self.create_cursor(autocommit=autocommit)
 
-    def create_cursor(self, autocommit=None):
-        autocommit = autocommit if autocommit is not None else self.autocommit
+    def create_cursor(self, autocommit=False):
+        autocommit = (
+            True
+            if isinstance(autocommit, bool) and autocommit
+            else self.autocommit
+        )
         if self.carrier:
             if self.carrier.conn:
                 self.raw_conn = self.carrier.conn.raw_conn
