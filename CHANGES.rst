@@ -3,6 +3,15 @@ quma Changelog
 ===============
 
 
+Version 0.2.0
+-------------
+
+Released on October 28th 2025
+
+- Add support for Python 3.13.
+- Remove support for Python and PyPy <3.10.
+
+
 Version 0.1.1
 -------------
 
