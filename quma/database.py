@@ -55,7 +55,8 @@ class CarrierHeap(object):
             try:
                 carrier = self.heap[oid]
                 carried_conn = carrier.conn
-                carried_conn.conn.put(carried_conn.raw_conn)
+                if carried_conn is not None:
+                    carried_conn.conn.put(carried_conn.raw_conn)
                 del self.heap[oid]
             except KeyError:
                 pass
