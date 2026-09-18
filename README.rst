@@ -66,30 +66,12 @@ You can access these scripts after connecting to the database:
 
         admin = cur.get_admin().one()
 
-Deploy to PyPi
---------------
-
-Install ``uv`` if not already done. Bump version number in
-``setup.py``, then:
-
-::
-
-    git tag -a X.X.X -m "quma version X.X.X"
-    git push origin X.X.X
-    uv build
-
-	# publish manually
-    uv publish --username <user> --token <token>
-
-	# publish with credentials in .pypirc
-	uvx uv-publish
-
 License
 -------
 
 quma is released under the MIT license.
 
-Copyright © 2018-2024 ebene fünf GmbH. All rights reserved.
+Copyright © 2018-present ebene fünf GmbH. All rights reserved.
 
 .. |build| image:: https://badge.fury.io/py/quma.svg
     :target: https://badge.fury.io/py/quma
