@@ -126,6 +126,14 @@ def test_carrier(dbfile):
     carrier(dbfile)
 
 
+def test_release_carrier_without_conn():
+    heap = database.CarrierHeap()
+    obj = object()
+    heap.get(obj)
+    heap.release(id(obj))
+    assert id(obj) not in heap.heap
+
+
 def pool_carrier(db):
     carriers = {}
 
