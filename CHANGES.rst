@@ -2,6 +2,14 @@
 quma Changelog
 ===============
 
+Version 0.2.2
+-------------
+
+Released on September 18th 2026
+
+- Fix release of carriers that never obtained a connection.
+
+
 Version 0.2.1
 -------------
 
