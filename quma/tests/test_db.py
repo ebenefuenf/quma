@@ -7,6 +7,7 @@ from .. import (
     Database,
     Namespace,
     database,
+    exc,
     query,
     script,
 )
@@ -858,6 +859,19 @@ def execute_returns_connection(pooldb, error):
     with pytest.raises(error):
         pooldb.execute("SELECT * FRO")
     assert pooldb.conn.checkedout == 0
+
+
+def close_twice(pooldb):
+    for wrapper in (pooldb, pooldb(object())):
+        with wrapper.cursor as cursor:
+            cursor.close()
+            cursor.close()
+        assert pooldb.conn.checkedin == 1
+        assert pooldb.conn.checkedout == 0
+        with pytest.raises(exc.APIError):
+            cursor.commit()
+        with pytest.raises(exc.APIError):
+            cursor.rollback()
 
 
 def test_execute(db):

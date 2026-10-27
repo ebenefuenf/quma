@@ -1,3 +1,4 @@
+from . import exc
 from .namespace import (
     CursorNamespace,
     get_namespace,
@@ -39,6 +40,8 @@ class Cursor:
         return self.create_cursor()
 
     def __exit__(self, *args):
+        if self.raw_conn is None:
+            return
         if self.contextcommit:
             self.commit()
         if self.conn:
@@ -77,6 +80,8 @@ class Cursor:
 
         If :param:`force` is set to True return is anyway
         """
+        if self.raw_conn is None or self.raw_cursor is None:
+            return
         self.raw_cursor.close()
 
         if self.carrier and self.carrier.conn:
@@ -84,17 +89,23 @@ class Cursor:
                 return
             self.carrier.release()
             self.carrier = None
-            return
-        self.conn.put(self.raw_conn)
+        else:
+            self.conn.put(self.raw_conn)
+        self.raw_conn = None
 
     def close(self):
         self.put(force=True)
 
     def commit(self):
-        self.raw_conn.commit()
+        self._open_conn().commit()
 
     def rollback(self):
-        self.raw_conn.rollback()
+        self._open_conn().rollback()
+
+    def _open_conn(self):
+        if self.raw_conn is None:
+            raise exc.APIError("The cursor has no open connection.")
+        return self.raw_conn
 
     def query(self, content, *args, is_template=False, **kwargs):
         """

@@ -7,6 +7,11 @@ Unreleased
 
 - Fix ``Database.execute()`` keeping its connection checked out. With a
   pool every call used up a connection until the pool was exhausted.
+- Fix closing a cursor twice returning its connection to the pool twice,
+  for example ``cur.close()`` inside a ``with`` block as shown in the
+  docs. Two later checkouts then shared the same connection.
+- ``commit()`` and ``rollback()`` on a closed cursor raise ``APIError``
+  instead of using a connection that may already be in use elsewhere.
 - Close a persistent connection that fails the ``pessimistic`` check
   before replacing it.
 - ``Database.close()`` no longer raises ``APIError`` for connections that

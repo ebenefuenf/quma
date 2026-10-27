@@ -356,6 +356,13 @@ def test_execute_returns_connection(pgdriver, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_close_twice(pgpooldb):
+    from .test_db import close_twice
+
+    close_twice(pgpooldb)
+
+
+@pytest.mark.postgres
 def test_cursor_query(pgdb, pgpooldb):
     sql = "SELECT name, city FROM users WHERE email = %s AND 1 = %s;"
     for db in (pgdb, pgpooldb):

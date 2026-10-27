@@ -244,6 +244,13 @@ def test_execute_returns_connection(mypooldb):
 
 
 @pytest.mark.mysql
+def test_close_twice(mypooldb):
+    from .test_db import close_twice
+
+    close_twice(mypooldb)
+
+
+@pytest.mark.mysql
 def test_prepared_statement(mydb, mypooldb):
     for db in (mydb, mypooldb):
         with db.cursor as cur:
