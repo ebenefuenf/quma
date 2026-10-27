@@ -5,6 +5,8 @@ quma Changelog
 Unreleased
 ----------
 
+- Add support for Python 3.14 and 3.15.
+- Remove support for Python 3.10.
 - Remove support for PyPy.
 
 
