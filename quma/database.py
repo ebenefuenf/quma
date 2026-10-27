@@ -16,7 +16,7 @@ from .namespace import (
 from .script import Script
 
 
-class Carrier(object):
+class Carrier:
     def __init__(self, heap, obj):
         self.obj = obj
         self.heap = heap
@@ -33,7 +33,7 @@ class Carrier(object):
         return getattr(self.obj, attr)
 
 
-class CarrierHeap(object):
+class CarrierHeap:
     def __init__(self):
         self.lock = threading.RLock()
         self.heap = {}
@@ -62,7 +62,7 @@ class CarrierHeap(object):
                 pass
 
 
-class DatabaseCallWrapper(object):
+class DatabaseCallWrapper:
     def __init__(self, database, carrier, autocommit):
         self.database = database
         if carrier is None:
@@ -82,7 +82,7 @@ class DatabaseCallWrapper(object):
         )
 
 
-class Database(object):
+class Database:
     """
     The database object acts as the central object of the
     library.
@@ -183,7 +183,7 @@ class Database(object):
         def register(path, ns):
             try:
                 mod_path = str(path / "__init__.py")
-                mod_name = "quma.mapping.{}".format(ns)
+                mod_name = f"quma.mapping.{ns}"
                 spec = importlib.util.spec_from_file_location(
                     mod_name, mod_path
                 )
@@ -251,7 +251,7 @@ class Database(object):
         try:
             return get_namespace(self, attr)
         except AttributeError as e:
-            msg = 'Namespace or Root method "{}" not found.'.format(attr)
+            msg = f'Namespace or Root method "{attr}" not found.'
             raise AttributeError(msg) from e
 
 
@@ -263,7 +263,7 @@ def connect(dburi, **kwargs):
     url = urlparse(dburi)
     scheme = url.scheme.split("+")
     module_name = scheme[0]
-    module = import_module("quma.provider.{}".format(module_name))
+    module = import_module(f"quma.provider.{module_name}")
     try:
         if scheme[1].lower() == "pool":
             return pool.Pool(module.Connection, url, **kwargs)

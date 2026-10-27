@@ -35,7 +35,7 @@ class Queue(BaseQueue):
         self.all_tasks_done = threading.Condition(self.mutex)
 
 
-class Pool(object):
+class Pool:
     """A queuing pool of connections"""
 
     def __init__(self, conn_class, url, **kwargs):
@@ -102,9 +102,9 @@ class Pool(object):
             pass
         if use_overflow and self._overflow >= self._MAX:
             raise TimeoutError(
-                "QueuePool limit of size %d overflow %d reached, "
-                "connection timed out, timeout %d"
-                % (self.size, self.overflow, self._timeout)
+                f"QueuePool limit of size {self.size} overflow "
+                f"{self.overflow} reached, connection timed out, "
+                f"timeout {self._timeout}"
             )
 
         if self._inc_overflow() is True:
@@ -136,10 +136,9 @@ class Pool(object):
 
     def status(self):
         return (
-            "Pool size: %d Connections in pool: %d "
-            "Current Overflow: %d Current Checked out "
-            "connections: %d"
-            % (self.size, self.checkedin, self.overflow, self.checkedout)
+            f"Pool size: {self.size} Connections in pool: {self.checkedin} "
+            f"Current Overflow: {self.overflow} Current Checked out "
+            f"connections: {self.checkedout}"
         )
 
     @property

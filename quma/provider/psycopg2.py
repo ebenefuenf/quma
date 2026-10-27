@@ -64,7 +64,7 @@ class PostgresChangelingRow(DictRow):
                 raise AttributeError
             return super().__getattribute__(attr)
         except AttributeError as e:
-            msg = 'Row has no field with the name "{}"'.format(attr)
+            msg = f'Row has no field with the name "{attr}"'
             raise AttributeError(msg) from e
 
     def __setattr__(self, attr, value):

@@ -9,7 +9,7 @@ except ImportError:
     Template = None
 
 
-class Script(object):
+class Script:
     def __init__(
         self, content, echo, is_template, sqldirs, prepare_params=None
     ):
@@ -73,7 +73,7 @@ class Script(object):
             self.echo and self.mogrify(cursor, content, params)
 
 
-class CursorScript(object):
+class CursorScript:
     def __init__(self, script, cursor):
         self.script = script
         self.cursor = cursor

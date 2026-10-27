@@ -6,13 +6,13 @@ from .query import Query
 from .script import Script
 
 
-class CarriedConnection(object):
+class CarriedConnection:
     def __init__(self, conn, raw_conn):
         self.conn = conn
         self.raw_conn = raw_conn
 
 
-class RawCursorWrapper(object):
+class RawCursorWrapper:
     def __init__(self, conn, raw_cursor):
         self.conn = conn
         self.cursor = raw_cursor
@@ -22,7 +22,7 @@ class RawCursorWrapper(object):
         return self.conn.get_cursor_attr(self.cursor, key)
 
 
-class Cursor(object):
+class Cursor:
     def __init__(
         self, db, namespaces, contextcommit, carrier=None, autocommit=False
     ):
@@ -128,5 +128,5 @@ class Cursor(object):
         except AttributeError as e:
             raise AttributeError(
                 "Namespace, Root method, or cursor "
-                'attribute "{}" not found.'.format(attr)
+                f'attribute "{attr}" not found.'
             ) from e

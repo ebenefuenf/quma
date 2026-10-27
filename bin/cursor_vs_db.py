@@ -71,7 +71,7 @@ def cursor_namespaces():
             cursor.commit()
 
 
-header = "\n{} loops:".format(loops)
+header = f"\n{loops} loops:"
 print(header)
 print("-" * (len(header) - 1))
 t = Timer(lambda: db_namespaces())

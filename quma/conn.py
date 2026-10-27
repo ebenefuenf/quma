@@ -1,7 +1,7 @@
 from . import exc
 
 
-class Connection(object):
+class Connection:
     """Abstract base class for DBMS specific connection objects"""
 
     def __init__(self, url, kwargs):

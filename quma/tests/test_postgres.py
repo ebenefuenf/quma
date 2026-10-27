@@ -372,7 +372,7 @@ def test_prepared_statement(pgdb, pgpooldb):
             sql = "EXECUTE prep('user.{}@example.com', 1);"
             for i in range(1, 5):
                 q = cur.query(sql.format(i))
-                assert q.value() == "User {}".format(i)
+                assert q.value() == f"User {i}"
             cur.query("DEALLOCATE PREPARE prep;").run()
 
 

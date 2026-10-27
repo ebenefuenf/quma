@@ -5,7 +5,7 @@ DB_PASS = "quma_test_password"
 DB_NAME = "quma_test_db"
 
 SQLITE_FILE = "/tmp/quma_test.sqlite"
-SQLITE_URI = "sqlite:///{}".format(SQLITE_FILE)
+SQLITE_URI = f"sqlite:///{SQLITE_FILE}"
 SQLITE_MEMORY = "sqlite:///:memory:"
 
 PGSQL_USER = os.environ.get("QUMA_PGSQL_USER", DB_USER)
@@ -16,8 +16,9 @@ PGSQL_PORT = int(os.environ.get("QUMA_PGSQL_PORT", 5432))
 
 
 def pg_uri(scheme):
-    return "{}://{}:{}@{}:{}/{}".format(
-        scheme, PGSQL_USER, PGSQL_PASS, PGSQL_HOST, PGSQL_PORT, PGSQL_DB
+    return (
+        f"{scheme}://{PGSQL_USER}:{PGSQL_PASS}"
+        f"@{PGSQL_HOST}:{PGSQL_PORT}/{PGSQL_DB}"
     )
 
 
@@ -29,11 +30,12 @@ MYSQL_PASS = os.environ.get("QUMA_MYSQL_PASS", DB_PASS)
 MYSQL_DB = os.environ.get("QUMA_MYSQL_DB", DB_NAME)
 MYSQL_HOST = os.environ.get("QUMA_MYSQL_HOST", "127.0.0.1")
 MYSQL_PORT = int(os.environ.get("QUMA_MYSQL_PORT", 3306))
-MYSQL_URI = "mysql://{}:{}@{}:{}/{}".format(
-    MYSQL_USER, MYSQL_PASS, MYSQL_HOST, MYSQL_PORT, MYSQL_DB
+MYSQL_URI = (
+    f"mysql://{MYSQL_USER}:{MYSQL_PASS}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}"
 )
-MYSQL_POOL_URI = "mysql+pool://{}:{}@{}:{}/{}".format(
-    MYSQL_USER, MYSQL_PASS, MYSQL_HOST, MYSQL_PORT, MYSQL_DB
+MYSQL_POOL_URI = (
+    f"mysql+pool://{MYSQL_USER}:{MYSQL_PASS}"
+    f"@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DB}"
 )
 
 DROP_USERS = "DROP TABLE IF EXISTS users;"

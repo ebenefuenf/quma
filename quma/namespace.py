@@ -22,7 +22,7 @@ def get_namespace(self, attr):
     raise AttributeError
 
 
-class Namespace(object):
+class Namespace:
     def __init__(self, db, sqldir, shadow=None):
         self.db = db
         self.sqldir = sqldir
@@ -35,8 +35,8 @@ class Namespace(object):
 
     def _collect_scripts(self, sqldir):
         sqlfiles = chain(
-            sqldir.glob("*.{}".format(self.db.file_ext)),
-            sqldir.glob("*.{}".format(self.db.tmpl_ext)),
+            sqldir.glob(f"*.{self.db.file_ext}"),
+            sqldir.glob(f"*.{self.db.tmpl_ext}"),
         )
 
         for sqlfile in sqlfiles:
@@ -49,7 +49,7 @@ class Namespace(object):
                 # this file
                 attr = "_" + attr
 
-            with open(str(sqlfile), "r") as f:
+            with open(str(sqlfile)) as f:
                 self._scripts[attr] = self.db.script_factory(
                     f.read(),
                     self.echo,
@@ -69,7 +69,7 @@ class Namespace(object):
             sqlfile = self.sqldir / ".".join((attr, self.db.file_ext))
             if not sqlfile.is_file():
                 sqlfile = self.sqldir / ".".join((attr, self.db.tmpl_ext))
-            with open(str(sqlfile), "r") as f:
+            with open(str(sqlfile)) as f:
                 return self.db.script_factory(
                     f.read(),
                     self.echo,
@@ -81,7 +81,7 @@ class Namespace(object):
             return getattr(self.shadow, attr)
 
 
-class CursorNamespace(object):
+class CursorNamespace:
     def __init__(self, namespace, cursor):
         self.namespace = namespace
         self.cursor = cursor

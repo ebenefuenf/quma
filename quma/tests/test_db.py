@@ -289,13 +289,13 @@ def commit(db):
             db.user.add(
                 cursor,
                 id=i,
-                name="Test User {}".format(i),
+                name=f"Test User {i}",
                 email="test.user@example.com",
                 city="Test City",
             ).run()
             cursor.user.add(
                 id=i + 1,
-                name="Test User {}".format(i + 1),
+                name=f"Test User {i + 1}",
                 email="test.user@example.com",
                 city="Test City",
             ).run()
@@ -310,13 +310,13 @@ def commit(db):
             db.user.add(
                 cursor,
                 id=i,
-                name="Test User {}".format(i),
+                name=f"Test User {i}",
                 email="test.user@example.com",
                 city="Test City",
             ).run()
             cursor.user.add(
                 id=i + 1,
-                name="Test User {}".format(i + 1),
+                name=f"Test User {i + 1}",
                 email="test.user@example.com",
                 city="Test City",
             ).run()
@@ -324,10 +324,10 @@ def commit(db):
 
     cursor = db.cursor()
     for i in range(8, 16, 2):
-        db.user.by_name(cursor, name="Test User {}".format(i)).one()
-        cursor.user.by_name(name="Test User {}".format(i + 1)).one()
-        db.user.remove(cursor, name="Test User {}".format(i)).run()
-        cursor.user.remove(name="Test User {}".format(i + 1)).run()
+        db.user.by_name(cursor, name=f"Test User {i}").one()
+        cursor.user.by_name(name=f"Test User {i + 1}").one()
+        db.user.remove(cursor, name=f"Test User {i}").run()
+        cursor.user.remove(name=f"Test User {i + 1}").run()
     cursor.commit()
     with pytest.raises(db.DoesNotExistError):
         db.user.by_name(cursor, name="Test User 7").one()
@@ -743,8 +743,7 @@ def test_generator(db):
             manyusers = cur.users.all().many()
             batch = manyusers.get(3)
             while len(batch):
-                for result in batch:
-                    yield result
+                yield from batch
                 batch = manyusers.get(2)
 
     assert len(list(users_generator())) == 7

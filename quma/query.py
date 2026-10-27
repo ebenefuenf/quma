@@ -1,7 +1,7 @@
 from . import exc
 
 
-class ManyResult(object):
+class ManyResult:
     def __init__(self, query):
         self.query = query
         self.cursor = query.cursor
@@ -23,7 +23,7 @@ class ManyResult(object):
         return self.cursor.fetchmany(size)
 
 
-class Query(object):
+class Query:
     """
     The query object is the value you get when you run a query,
     i. e. call a :class:`Script` object.
@@ -64,8 +64,7 @@ class Query(object):
         return self._fetch()[index]
 
     def __iter__(self):
-        for row in self._fetch():
-            yield row
+        yield from self._fetch()
 
     def __bool__(self):
         return len(self._fetch()) > 0
@@ -148,5 +147,4 @@ class Query(object):
             results = self.cursor.fetchmany(size)
             if not results:
                 break
-            for result in results:
-                yield result
+            yield from results
