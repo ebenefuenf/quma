@@ -21,6 +21,9 @@ Unreleased
   as missing Mako.
 - Fix ``autocommit=True`` being ignored when a connection pool reused a
   connection.
+- Fix ``autocommit=True`` failing on PostgreSQL with ``persist=True`` and
+  ``pessimistic=True``. The connection check no longer leaves its own
+  transaction open.
 - Fix a connection pool returning ``None`` instead of a connection when
   another thread took the last overflow slot at the same time.
 - Fix ``with db.cursor() as cur`` opening a second connection and never

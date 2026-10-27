@@ -7,6 +7,8 @@ except ImportError as e:
 
 from functools import partial
 
+from psycopg.pq import TransactionStatus
+
 from .. import (
     conn,
     exc,
@@ -185,8 +187,12 @@ class Connection(conn.Connection):
             return mogrifier.mogrify(content, params)
 
     def _check(self, conn):
+        idle = conn.info.transaction_status == TransactionStatus.IDLE
         try:
             cur = conn.cursor()
             cur.execute("SELECT 1")
         except psycopg.OperationalError as e:
             raise exc.OperationalError from e
+        if idle:
+            # End the check's transaction, it would block enabling autocommit.
+            conn.rollback()

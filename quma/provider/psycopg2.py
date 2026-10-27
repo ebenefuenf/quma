@@ -6,6 +6,7 @@ except ImportError as e:
     ) from e
 
 
+from psycopg2.extensions import TRANSACTION_STATUS_IDLE
 from psycopg2.extras import (
     DictCursor,
     DictRow,
@@ -137,8 +138,12 @@ class Connection(conn.Connection):
         return cursor.mogrify(content, params).decode("utf-8")
 
     def _check(self, conn):
+        idle = conn.get_transaction_status() == TRANSACTION_STATUS_IDLE
         try:
             cur = conn.cursor()
             cur.execute("SELECT 1")
         except psycopg2.OperationalError as e:
             raise exc.OperationalError from e
+        if idle:
+            # End the check's transaction, it would block enabling autocommit.
+            conn.rollback()

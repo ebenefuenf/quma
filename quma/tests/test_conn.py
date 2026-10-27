@@ -284,6 +284,28 @@ def test_mysql_pool_reuse_autocommit(pessimistic):
     )
 
 
+def persistent_pessimistic_autocommit(uri, is_autocommit):
+    db = Database(uri, persist=True, pessimistic=True)
+    for autocommit in (False, True, False):
+        with db(autocommit=autocommit).cursor as cursor:
+            assert is_autocommit(cursor.raw_conn) is autocommit
+    db.close()
+
+
+@pytest.mark.postgres
+def test_postgres_persistent_pessimistic_autocommit(pgdriver):
+    persistent_pessimistic_autocommit(
+        pgdriver.uri, lambda conn: conn.autocommit
+    )
+
+
+@pytest.mark.mysql
+def test_mysql_persistent_pessimistic_autocommit():
+    persistent_pessimistic_autocommit(
+        util.MYSQL_URI, lambda conn: conn.get_autocommit()
+    )
+
+
 @pytest.mark.postgres
 def test_postgres_pessimistic_failure(pgdriver):
     pessimistic_failure(pgdriver.pool_uri)
