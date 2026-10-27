@@ -26,10 +26,12 @@ Connection Examples
     # SQLite in memory db
     db = Database('sqlite:///:memory:', sqldirs)
 
-    # PostgreSQL with psycopg2, localhost
+    # PostgreSQL with psycopg 3, localhost
+    db = Database('psycopg://username:password@/db_name', sqldirs)
+    # PostgreSQL with psycopg 3, network server
+    db = Database('psycopg://username:password@10.0.0.1:5432/db_name', sqldirs)
+    # PostgreSQL with psycopg2
     db = Database('psycopg2://username:password@/db_name', sqldirs)
-    # PostgreSQL with psycopg2, network server
-    db = Database('psycopg2://username:password@10.0.0.1:5432/db_name', sqldirs)
 
     # MySQL/MariaDB localhost
     db = Database('mysql://username:password@/db_name', sqldirs)
@@ -41,8 +43,28 @@ Connection Examples
                   sqldirs, 
                   charset='utf8')
 
-For PostgreSQL the scheme names the driver. ``postgresql://`` is an alias
+PostgreSQL drivers
+------------------
+
+For PostgreSQL the scheme names the driver: ``psycopg://`` uses
+`psycopg 3 <https://www.psycopg.org/psycopg3/>`_ and ``psycopg2://`` uses
+`psycopg2 <https://www.psycopg.org/docs/>`_. ``postgresql://`` is an alias
 for ``psycopg2://``.
+
+quma aims to behave the same with both drivers, so the same SQL scripts work
+with either of them:
+
+* psycopg 3 uses client-side parameter binding like psycopg2
+  (:class:`psycopg.ClientCursor`).
+* If a script contains multiple statements, the cursor exposes the result
+  of the last one, as psycopg2 does.
+* Rows support access by index and key, and by attribute when using
+  ``changeling``.
+
+Values are still adapted by the driver in use. psycopg 3 differs from
+psycopg2 for example in how it adapts tuples and ranges (see `Differences
+from psycopg2 <https://www.psycopg.org/psycopg3/docs/basic/from_pg2.html>`_),
+and its cursors have no ``lastrowid``.
 
 
 The Database class

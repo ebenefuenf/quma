@@ -88,8 +88,8 @@ def pool_overflow_counting(uri):
 
 
 @pytest.mark.postgres
-def test_postgres_pool_overflow_counting():
-    pool_overflow_counting(util.PGSQL_POOL_URI)
+def test_postgres_pool_overflow_counting(pgdriver):
+    pool_overflow_counting(pgdriver.pool_uri)
 
 
 @pytest.mark.mysql
@@ -117,10 +117,8 @@ def non_persistent(uri, connection, pessimistic):
 
 @pytest.mark.postgres
 @pytest.mark.parametrize("pessimistic", [False, True])
-def test_postgres_non_persistent(pessimistic):
-    from psycopg2.extensions import connection
-
-    non_persistent(util.PGSQL_URI, connection, pessimistic)
+def test_postgres_non_persistent(pgdriver, pessimistic):
+    non_persistent(pgdriver.uri, pgdriver.connection, pessimistic)
 
 
 @pytest.mark.mysql
@@ -150,10 +148,8 @@ def persistent(uri, connection):
 
 
 @pytest.mark.postgres
-def test_postgres_persistent():
-    from psycopg2.extensions import connection
-
-    persistent(util.PGSQL_URI, connection)
+def test_postgres_persistent(pgdriver):
+    persistent(pgdriver.uri, pgdriver.connection)
 
 
 @pytest.mark.postgres
@@ -200,10 +196,8 @@ def pool(uri, pessimistic, connection):
 
 @pytest.mark.postgres
 @pytest.mark.parametrize("pessimistic", [False, True])
-def test_postgres_pool(pessimistic):
-    from psycopg2.extensions import connection
-
-    pool(util.PGSQL_POOL_URI, pessimistic, connection)
+def test_postgres_pool(pgdriver, pessimistic):
+    pool(pgdriver.pool_uri, pessimistic, pgdriver.connection)
 
 
 @pytest.mark.mysql
@@ -229,8 +223,8 @@ def pessimistic_failure(uri):
 
 
 @pytest.mark.postgres
-def test_postgres_pessimistic_failure():
-    pessimistic_failure(util.PGSQL_POOL_URI)
+def test_postgres_pessimistic_failure(pgdriver):
+    pessimistic_failure(pgdriver.pool_uri)
 
 
 @pytest.mark.mysql
@@ -269,8 +263,8 @@ def finite_pool(uri):
 
 
 @pytest.mark.postgres
-def test_postgres_finite_pool():
-    finite_pool(util.PGSQL_POOL_URI)
+def test_postgres_finite_pool(pgdriver):
+    finite_pool(pgdriver.pool_uri)
 
 
 @pytest.mark.mysql
@@ -311,8 +305,8 @@ def infinite_pool(uri):
 
 
 @pytest.mark.postgres
-def test_postgres_infinite_pool():
-    infinite_pool(util.PGSQL_POOL_URI)
+def test_postgres_infinite_pool(pgdriver):
+    infinite_pool(pgdriver.pool_uri)
 
 
 @pytest.mark.mysql
@@ -327,8 +321,8 @@ def persistent_pool(uri, sqldirs):
 
 
 @pytest.mark.postgres
-def test_postgres_persistent_pool(pyformat_sqldirs):
-    persistent_pool(util.PGSQL_POOL_URI, pyformat_sqldirs)
+def test_postgres_persistent_pool(pgdriver, pyformat_sqldirs):
+    persistent_pool(pgdriver.pool_uri, pyformat_sqldirs)
 
 
 @pytest.mark.mysql
@@ -345,10 +339,8 @@ def failing_check(uri, error):
 
 
 @pytest.mark.postgres
-def test_postgres_failing_check():
-    import psycopg2
-
-    failing_check(util.PGSQL_URI, psycopg2.OperationalError)
+def test_postgres_failing_check(pgdriver):
+    failing_check(pgdriver.uri, pgdriver.dbapi.OperationalError)
 
 
 @pytest.mark.mysql
@@ -370,8 +362,8 @@ def test_mysql_failing_connection():
 
 
 @pytest.mark.postgres
-def test_postgresql_failing_connection():
+def test_postgresql_failing_connection(pgdriver):
     with pytest.raises(exc.ConnectionError):
         connect(
-            "postgresql://wrong_user_n4me:wrong_p4$$wrd@/wrng_db_n4me"
+            pgdriver.name + "://wrong_user_n4me:wrong_p4$$wrd@/wrng_db_n4me"
         ).get()

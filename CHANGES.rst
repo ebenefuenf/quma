@@ -5,6 +5,7 @@ quma Changelog
 Unreleased
 ----------
 
+- Add support for psycopg 3 with the ``psycopg://`` scheme.
 - Add the ``psycopg2://`` scheme for PostgreSQL. ``postgresql://``
   remains an alias for it.
 - Add support for Python 3.14 and 3.15.

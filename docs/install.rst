@@ -32,7 +32,9 @@ the matching driver:
 
 ::
     
-    # PostgreSQL
+    # PostgreSQL with psycopg 3
+    pip install quma psycopg
+    # PostgreSQL with psycopg2
     pip install quma psycopg2
 
     # MySQL/MariaDB

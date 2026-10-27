@@ -1,7 +1,9 @@
+import pickle
 from unittest.mock import Mock
 
 import pytest
 
+from .. import Database
 from ..exc import FetchError
 from . import util
 
@@ -108,8 +110,11 @@ def test_value_str(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
-def test_query_attr(pgdb, pgpooldb):
+def test_query_attr(pgdriver, pgdb, pgpooldb):
     from .test_db import query_attr
+
+    if pgdriver.name == "psycopg":
+        pytest.skip("psycopg 3 cursors have no lastrowid")
 
     for db in (pgdb, pgpooldb):
         query_attr(db)
@@ -140,26 +145,26 @@ def test_commit(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
-def test_autocommit(pyformat_sqldirs):
+def test_autocommit(pgdriver, pyformat_sqldirs):
     from .test_db import autocommit
 
     autocommit(
-        util.PGSQL_URI,
+        pgdriver.uri,
         pyformat_sqldirs,
-        psycopg2.ProgrammingError,
-        psycopg2.ProgrammingError,
+        pgdriver.dbapi.ProgrammingError,
+        pgdriver.dbapi.ProgrammingError,
     )
 
 
 @pytest.mark.postgres
-def test_autocommit_pool(pyformat_sqldirs):
+def test_autocommit_pool(pgdriver, pyformat_sqldirs):
     from .test_db import autocommit
 
     autocommit(
-        util.PGSQL_POOL_URI,
+        pgdriver.pool_uri,
         pyformat_sqldirs,
-        psycopg2.ProgrammingError,
-        psycopg2.ProgrammingError,
+        pgdriver.dbapi.ProgrammingError,
+        pgdriver.dbapi.ProgrammingError,
     )
 
 
@@ -228,7 +233,8 @@ def test_faulty_fetch(pgdburl):
 
 
 @pytest.mark.postgres
-def test_get_cursor_attr(pgdb):
+def test_get_cursor_attr(pyformat_sqldirs):
+    pgdb = Database(util.PGSQL_URI, pyformat_sqldirs, changeling=True)
     conn = pgdb.conn
     cursor = Mock()
     cursor.fetchall = Mock()
@@ -252,6 +258,65 @@ def test_get_cursor_attr(pgdb):
         with pytest.raises(psycopg2.ProgrammingError) as e:
             pgdb.users.all(cursor).first()
         assert str(e.value) == "pg-exc-test"
+
+
+@pytest.mark.postgres
+def test_psycopg_get_cursor_attr(pyformat_sqldirs):
+    psycopg = pytest.importorskip("psycopg")
+    db = Database(util.pg_uri("psycopg"), pyformat_sqldirs)
+    cursor = Mock()
+    cursor.description = None
+    cursor.fetchall.side_effect = psycopg.ProgrammingError("no result")
+    assert db.conn.get_cursor_attr(cursor, "fetchall")() == ()
+    cursor.description = [Mock()]
+    cursor.fetchall.side_effect = psycopg.ProgrammingError("test")
+    with pytest.raises(FetchError) as e:
+        db.conn.get_cursor_attr(cursor, "fetchall")()
+    assert str(e.value.error) == "test"
+
+
+@pytest.mark.postgres
+def test_fetch_without_result(pgdb, pgpooldb):
+    for db in (pgdb, pgpooldb):
+        with db.cursor as cursor:
+            cursor.execute("CREATE TEMP TABLE test (id int);")
+            assert cursor.fetchall() == ()
+            assert cursor.fetchmany() == ()
+
+
+@pytest.mark.postgres
+def test_multiple_statements(pgdb, pgpooldb):
+    sql = (
+        "CREATE TEMP TABLE test (id int);"
+        "INSERT INTO test VALUES (1), (2), (3);"
+        "UPDATE test SET id = id * 10 WHERE id > 1;"
+        "SELECT id FROM test ORDER BY id;"
+    )
+    for db in (pgdb, pgpooldb):
+        with db.cursor as cursor:
+            cursor.execute(sql)
+            assert cursor.rowcount == 3
+            assert [row[0] for row in cursor.fetchall()] == [1, 20, 30]
+
+
+@pytest.mark.postgres
+def test_row_mapping(pgdb_persist):
+    with pgdb_persist.cursor as cursor:
+        user = pgdb_persist.user.by_name(cursor, name="User 3").one()
+        assert list(user.keys()) == ["email", "city", "count", "count2"]
+        assert list(user.values()) == list(user)
+        assert dict(user) == dict(user.items()) == user.copy()
+        assert user.get("city") == "City B"
+        assert user.get("missing", "default") == "default"
+        assert "email" in user
+        user["email"] = "test@example.com"
+        assert user[0] == "test@example.com"
+        user[1] = "Test City"
+        assert user["city"] == "Test City"
+        restored = pickle.loads(pickle.dumps(user))
+        assert restored == user
+        assert restored["email"] == "test@example.com"
+        cursor.rollback()
 
 
 @pytest.mark.postgres
@@ -279,11 +344,11 @@ def test_unbunch(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
-def test_execute(pgdb, pgpooldb):
+def test_execute(pgdriver, pgdb, pgpooldb):
     from .test_db import execute
 
     for db in (pgdb, pgpooldb):
-        execute(db, psycopg2.ProgrammingError)
+        execute(db, pgdriver.dbapi.ProgrammingError)
 
 
 @pytest.mark.postgres

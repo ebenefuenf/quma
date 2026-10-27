@@ -20,8 +20,9 @@ Shadowed superclass members
 ---------------------------
 
 If a query result has a field with the same name as a member of the superclass
-of the changeling (`sqlite`: :class:`sqlite3.Row`, `psycopg2`: 
-:class:`psycopg2.extras.DictRow`) it shadows the original member. This means
+of the changeling (`sqlite`: :class:`sqlite3.Row`, `psycopg2`:
+:class:`psycopg2.extras.DictRow`, `psycopg`: :class:`list` with the same
+methods as :class:`psycopg2.extras.DictRow`) it shadows the original member. This means
 the original member isn't accessible. You can access it anyway if you 
 prefix it with an underscore '_'. 
 
@@ -46,8 +47,8 @@ Performance
 -----------
 
 By default, changling is *False* which is slightly faster. Then SQLite 
-supports access by index only. PostgreSQL by key and index (we use 
-:class:`psycopg.extras.DictCursor` internally).
+supports access by index only. PostgreSQL by key and index (with psycopg2
+we use :class:`psycopg2.extras.DictCursor` internally).
 
 MySQL/MariaDB
 -------------

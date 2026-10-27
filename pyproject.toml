@@ -29,6 +29,7 @@ docs = ["sphinx", "sphinx-autobuild"]
 dev = ["ruff"]
 templates = ["mako"]
 postgres = ["psycopg2"]
+psycopg = ["psycopg"]
 mysql = ["mysqlclient"]
 
 [project.urls]

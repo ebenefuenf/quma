@@ -163,34 +163,50 @@ def dbseqcb(qmark_sqldirs):
     return db
 
 
+@pytest.fixture(params=["psycopg2", "psycopg"])
+def pgdriver(request):
+    dbapi = pytest.importorskip(request.param)
+    if request.param == "psycopg2":
+        connection = dbapi.extensions.connection
+    else:
+        connection = dbapi.Connection
+    return SimpleNamespace(
+        name=request.param,
+        dbapi=dbapi,
+        connection=connection,
+        uri=util.pg_uri(request.param),
+        pool_uri=util.pg_uri(request.param + "+pool"),
+    )
+
+
 @pytest.fixture
-def pgdb(pyformat_sqldirs):
-    db = Database(util.PGSQL_URI, pyformat_sqldirs, changeling=True)
+def pgdb(pgdriver, pyformat_sqldirs):
+    db = Database(pgdriver.uri, pyformat_sqldirs, changeling=True)
     return db
 
 
 @pytest.fixture
-def pgdb_echo(pyformat_sqldirs):
-    db = Database(util.PGSQL_URI, pyformat_sqldirs, changeling=True, echo=True)
+def pgdb_echo(pgdriver, pyformat_sqldirs):
+    db = Database(pgdriver.uri, pyformat_sqldirs, changeling=True, echo=True)
     return db
 
 
 @pytest.fixture
-def pgdb_persist(pyformat_sqldirs):
-    db = Database(util.PGSQL_URI, pyformat_sqldirs, persist=True)
+def pgdb_persist(pgdriver, pyformat_sqldirs):
+    db = Database(pgdriver.uri, pyformat_sqldirs, persist=True)
     return db
 
 
 @pytest.fixture
-def pgpooldb(pyformat_sqldirs):
-    db = Database(util.PGSQL_POOL_URI, pyformat_sqldirs, changeling=True)
+def pgpooldb(pgdriver, pyformat_sqldirs):
+    db = Database(pgdriver.pool_uri, pyformat_sqldirs, changeling=True)
     return db
 
 
 @pytest.fixture
-def pgpooldb_echo(pyformat_sqldirs):
+def pgpooldb_echo(pgdriver, pyformat_sqldirs):
     db = Database(
-        util.PGSQL_POOL_URI, pyformat_sqldirs, changeling=True, echo=True
+        pgdriver.pool_uri, pyformat_sqldirs, changeling=True, echo=True
     )
     return db
 
