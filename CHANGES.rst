@@ -12,6 +12,8 @@ Unreleased
   docs. Two later checkouts then shared the same connection.
 - ``commit()`` and ``rollback()`` on a closed cursor raise ``APIError``
   instead of using a connection that may already be in use elsewhere.
+- Fix a ``TypeError`` raised while rendering a template being reported
+  as missing Mako.
 - Close a persistent connection that fails the ``pessimistic`` check
   before replacing it.
 - ``Database.close()`` no longer raises ``APIError`` for connections that

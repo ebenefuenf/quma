@@ -6,7 +6,7 @@ try:
     from mako.lookup import TemplateLookup
     from mako.template import Template
 except ImportError:
-    Template = None
+    TemplateLookup = Template = None
 
 
 class Script:
@@ -50,16 +50,13 @@ class Script:
             params.extend(payload)
 
         if self.is_template:
-            try:
-                lookup = TemplateLookup(directories=self.sqldirs)
-                return (
-                    Template(self.content, lookup=lookup).render(**params),
-                    params,
-                )
-            except TypeError as e:
-                raise ImportError(
-                    "To use templates you need to install Mako"
-                ) from e
+            if Template is None or TemplateLookup is None:
+                raise ImportError("To use templates you need to install Mako")
+            lookup = TemplateLookup(directories=self.sqldirs)
+            return (
+                Template(self.content, lookup=lookup).render(**params),
+                params,
+            )
         return self.content, params
 
     def execute(self, cursor, args, kwargs, prepare_params=None):

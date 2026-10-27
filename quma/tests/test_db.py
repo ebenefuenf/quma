@@ -525,6 +525,12 @@ def test_template_script(db):
         script.Template = tmpl
 
 
+def test_template_type_error(db):
+    with db.cursor as cursor:
+        with pytest.raises(TypeError):
+            cursor.query("SELECT ${len(1)};", is_template=True).run()
+
+
 def test_dict_callback(dbdictcb, carrier):
     db = dbdictcb
 
