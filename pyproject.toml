@@ -26,7 +26,7 @@ classifiers = [
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov"]
 docs = ["sphinx", "sphinx-autobuild"]
-dev = ["ruff"]
+dev = ["ruff", "ty==0.0.92"]
 templates = ["mako"]
 postgres = ["psycopg2"]
 psycopg = ["psycopg"]
@@ -90,6 +90,9 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.lint.per-file-ignores]
 "**/{tests}/*" = ["B018"] # Ignore useless expression error in tests
+
+[tool.ty.terminal]
+error-on-warning = true
 
 [tool.ruff.format]
 quote-style = "double"

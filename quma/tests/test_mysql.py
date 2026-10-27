@@ -2,10 +2,7 @@ import pytest
 
 from . import util
 
-try:
-    import MySQLdb
-except ImportError:
-    MySQLdb = None
+MySQLdb = pytest.importorskip("MySQLdb")
 
 
 def setup_function(function):
@@ -277,23 +274,11 @@ def test_cursor_query(mydb, mypooldb):
 
 
 @pytest.mark.mysql
-def test_echo_parameter(mydb_echo, mypooldb_echo):
-    import sys
-
-    tmp = sys.stdout
-    sys.stdout = type("S", (), {})
-    sql = {}
-
-    def write(s):
-        sql["sql"] = s
-
-    sys.stdout.write = write
-
+def test_echo_parameter(mydb_echo, mypooldb_echo, capsys):
     for db in (mydb_echo, mypooldb_echo):
         with db.cursor as cursor:
             db.user.by_email(cursor, "user.1@example.com", 1).one()
-            assert (
+            assert capsys.readouterr().out.endswith(
                 "SELECT name, city FROM users WHERE email = "
                 "'user.1@example.com' AND 1 = 1;\n"
-            ) == sql["sql"]
-    sys.stdout = tmp
+            )

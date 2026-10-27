@@ -29,7 +29,7 @@ class Queue(BaseQueue):
         # (including is_shutdown in Python 3.13+)
         super().__init__(maxsize)
         # Override threading primitives to use RLock instead of Lock
-        self.mutex = threading.RLock()
+        self.mutex = threading.RLock()  # ty: ignore[invalid-assignment]
         self.not_full = threading.Condition(self.mutex)
         self.not_empty = threading.Condition(self.mutex)
         self.all_tasks_done = threading.Condition(self.mutex)

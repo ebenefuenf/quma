@@ -88,7 +88,7 @@ class Connection(conn.Connection):
         if self.changeling:
             self.factory = PostgresChangelingCursor
         else:
-            self.factory = psycopg2.extras.DictCursor
+            self.factory = DictCursor
         self._init_conn()
 
     def get_cursor_attr(self, cursor, key):

@@ -187,6 +187,7 @@ class Database:
                 spec = importlib.util.spec_from_file_location(
                     mod_name, mod_path
                 )
+                assert spec is not None and spec.loader is not None
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
                 if ns == "__root__":

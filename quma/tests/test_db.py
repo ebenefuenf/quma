@@ -830,10 +830,10 @@ def test_caching(db, dbcache):
 
 
 def test_close(qmark_sqldirs):
-    from .. import provider
+    from ..provider import sqlite
 
     db = Database(util.SQLITE_MEMORY, qmark_sqldirs, persist=True)
-    assert type(db.conn) is provider.sqlite.Connection
+    assert type(db.conn) is sqlite.Connection
     db.close()
     assert db.conn is None
     db.close()
@@ -891,21 +891,9 @@ def test_cursor_query(db):
         assert q.value() == "User 1"
 
 
-def test_echo_parameter(dbecho):
-    import sys
-
-    tmp = sys.stdout
-    sys.stdout = type("S", (), {})
-    sql = {}
-
-    def write(s):
-        sql["sql"] = s
-
-    sys.stdout.write = write
+def test_echo_parameter(dbecho, capsys):
     with dbecho.cursor as cursor:
         dbecho.user.by_name(cursor, name="User 1").one()
-        assert "SELECT email, city" in sql["sql"]
+        assert "SELECT email, city" in capsys.readouterr().out
         cursor.user.by_city(city="City 1").first()
-        assert "SELECT name, email" in sql["sql"]
-
-    sys.stdout = tmp
+        assert "SELECT name, email" in capsys.readouterr().out

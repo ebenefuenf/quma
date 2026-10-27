@@ -1,4 +1,5 @@
 import pickle
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -6,13 +7,6 @@ import pytest
 from .. import Database
 from ..exc import FetchError
 from . import util
-
-try:
-    import psycopg2
-
-    from ..provider.psycopg2 import Connection
-except ImportError:
-    psycopg2 = None
 
 
 def setup_function(function):
@@ -214,14 +208,15 @@ def test_multiple_records_error(pgdb, pgpooldb):
 
 @pytest.mark.postgres
 def test_faulty_fetch(pgdburl):
-    cursor = type("C", (), {})
+    psycopg2 = pytest.importorskip("psycopg2")
+    from ..provider.psycopg2 import Connection
+
     cn = Connection(pgdburl)
 
     def fetch():
         raise psycopg2.ProgrammingError("test error")
 
-    cursor.fetchall = fetch
-    cursor.fetchmany = fetch
+    cursor = SimpleNamespace(fetchall=fetch, fetchmany=fetch)
     with pytest.raises(FetchError) as e:
         cn.get_cursor_attr(cursor, "fetchall")()
     assert str(e.value.error) == "test error"
@@ -231,8 +226,10 @@ def test_faulty_fetch(pgdburl):
 
 @pytest.mark.postgres
 def test_get_cursor_attr(pyformat_sqldirs):
+    psycopg2 = pytest.importorskip("psycopg2")
     pgdb = Database(util.PGSQL_URI, pyformat_sqldirs, changeling=True)
     conn = pgdb.conn
+    assert conn is not None
     cursor = Mock()
     cursor.fetchall = Mock()
     cursor.fetchall.__name__ = "fetchall"
@@ -261,14 +258,16 @@ def test_get_cursor_attr(pyformat_sqldirs):
 def test_psycopg_get_cursor_attr(pyformat_sqldirs):
     psycopg = pytest.importorskip("psycopg")
     db = Database(util.pg_uri("psycopg"), pyformat_sqldirs)
+    conn = db.conn
+    assert conn is not None
     cursor = Mock()
     cursor.description = None
     cursor.fetchall.side_effect = psycopg.ProgrammingError("no result")
-    assert db.conn.get_cursor_attr(cursor, "fetchall")() == ()
+    assert conn.get_cursor_attr(cursor, "fetchall")() == ()
     cursor.description = [Mock()]
     cursor.fetchall.side_effect = psycopg.ProgrammingError("test")
     with pytest.raises(FetchError) as e:
-        db.conn.get_cursor_attr(cursor, "fetchall")()
+        conn.get_cursor_attr(cursor, "fetchall")()
     assert str(e.value.error) == "test"
 
 
@@ -384,23 +383,11 @@ def test_prepared_statement(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
-def test_echo_parameter(pgdb_echo, pgpooldb_echo):
-    import sys
-
-    tmp = sys.stdout
-    sys.stdout = type("S", (), {})
-    sql = {}
-
-    def write(s):
-        sql["sql"] = s
-
-    sys.stdout.write = write
-
+def test_echo_parameter(pgdb_echo, pgpooldb_echo, capsys):
     for db in (pgdb_echo, pgpooldb_echo):
         with db.cursor as cursor:
             db.user.by_email(cursor, "user.1@example.com", 1).one()
-            assert (
+            assert capsys.readouterr().out.endswith(
                 "SELECT name, city FROM users WHERE email = "
                 "'user.1@example.com' AND 1 = 1;\n"
-            ) == sql["sql"]
-    sys.stdout = tmp
+            )
