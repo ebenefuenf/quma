@@ -52,6 +52,11 @@ exclude = ["docs/_build/"]
 addopts = "--verbose -s"
 markers = ["mysql", "postgres"]
 testpaths = ["quma/tests"]
+# Warnings raised during garbage collection arrive as unraisable exceptions.
+filterwarnings = [
+    "error::ResourceWarning",
+    "error::pytest.PytestUnraisableExceptionWarning",
+]
 
 [tool.coverage.run]
 branch = true

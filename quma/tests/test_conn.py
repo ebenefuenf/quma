@@ -51,6 +51,7 @@ def test_failing_check():
     connmock.cursor = get_cursor_mock(sqlite3.OperationalError)
     with pytest.raises(exc.OperationalError):
         conn._check(connmock)
+    conn.close()
 
 
 def test_persistent_pessimistic(dbpess):
@@ -70,7 +71,7 @@ def pool_overflow_counting(uri):
     conn = connect(uri, size=1, overflow=4)
     cn1 = conn.get()
     cn2 = conn.get()
-    conn.get()
+    cn3 = conn.get()
     assert conn.overflow == 2
     conn.put(cn1)
     # Queue not full yet, overflow does not decrease
@@ -78,14 +79,16 @@ def pool_overflow_counting(uri):
     conn.put(cn2)
     # Queue is full now, overflow must be lower
     assert conn.overflow == 1
-    conn.get()
-    conn.get()
+    cn4 = conn.get()
+    cn5 = conn.get()
     assert conn.overflow == 2
     conn._conn.get = Mock()
     conn._conn.get.side_effect = ValueError
     with pytest.raises(ValueError):
         conn.get()
     assert conn.overflow == 2
+    for cn in (cn3, cn4, cn5):
+        conn.put(cn)
     conn.close()
 
 
@@ -192,6 +195,7 @@ def pool(uri, pessimistic, connection):
     cn3 = conn.get()
     assert conn.checkedin == 1
     assert cn3 == cn1
+    conn.put(cn3)
     conn.close()
     assert conn.checkedin == 0
 
@@ -216,12 +220,15 @@ def pessimistic_failure(uri):
     conn.put(c1)
     c2 = conn.get()
     assert c1 == c2
+    conn.put(c2)
     conn._conn.check = Mock()
     conn._conn.check.side_effect = exc.OperationalError
     c1 = conn.get()
     conn.put(c1)
     c2 = conn.get()
     assert c1 != c2
+    conn.put(c2)
+    conn.close()
 
 
 @pytest.mark.postgres

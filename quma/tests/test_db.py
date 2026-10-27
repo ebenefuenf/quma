@@ -11,6 +11,7 @@ from .. import (
     script,
 )
 from .. import cursor as cursor_
+from ..pool import Pool
 from . import util
 
 
@@ -355,48 +356,57 @@ def test_contextcommit(dbcommit):
 
 
 def autocommit(uri, sqldirs, insert_error, select_error):
-    db = Database(uri, sqldirs)
+    dbs = []
+
+    def new_db():
+        dbs.append(Database(uri, sqldirs))
+        return dbs[-1]
+
+    db = new_db()
     cursor = db.cursor(autocommit=True)
     with pytest.raises(insert_error):
         cursor.execute("INSERT INTO test (name) VALUES ('Test 1');")
     cursor.execute("CREATE TABLE test (name VARCHAR(10));")
     cursor.close()
-    db = Database(uri, sqldirs)
+    db = new_db()
     with db.cursor as cursor:
         cursor.execute("INSERT INTO test (name) VALUES ('Test 1');")
         cursor.execute("INSERT INTO test (name) VALUES ('Test 2');")
-    db = Database(uri, sqldirs)
+    db = new_db()
     with db.cursor as cursor:
         cursor.execute("SELECT * FROM test;")
         assert len(cursor.fetchall()) == 0
-    db = Database(uri, sqldirs)
+    db = new_db()
     with db(autocommit=True).cursor as cursor:
         cursor.execute("INSERT INTO test (name) VALUES ('Test 1');")
         cursor.execute("INSERT INTO test (name) VALUES ('Test 2');")
-    db = Database(uri, sqldirs)
+    db = new_db()
     with db.cursor as cursor:
         cursor.execute("SELECT * FROM test;")
         assert len(cursor.fetchall()) == 2
-    db = Database(uri, sqldirs)
+    db = new_db()
     cursor = db.cursor()
     cursor.execute("INSERT INTO test (name) VALUES ('Test 3');")
     cursor.execute("INSERT INTO test (name) VALUES ('Test 4');")
     cursor.close()
-    db = Database(uri, sqldirs)
+    db = new_db()
     cursor = db.cursor()
     cursor.execute("SELECT * FROM test;")
     assert len(cursor.fetchall()) == 2
     cursor.close()
-    db = Database(uri, sqldirs)
+    db = new_db()
     cursor = db.cursor(autocommit=True)
     cursor.execute("INSERT INTO test (name) VALUES ('Test 3');")
     cursor.execute("INSERT INTO test (name) VALUES ('Test 4');")
     cursor.close()
-    db = Database(uri, sqldirs)
+    db = new_db()
     cursor = db.cursor()
     cursor.execute("SELECT * FROM test;")
     assert len(cursor.fetchall()) == 4
     cursor.close()
+    for db in dbs:
+        if isinstance(db.conn, Pool):
+            db.close()
 
 
 def test_autocommit(qmark_sqldirs):
@@ -814,9 +824,10 @@ def test_caching(db, dbcache):
         assert len(cursor.user._scripts) >= 0
 
 
-def test_close(db):
+def test_close(qmark_sqldirs):
     from .. import provider
 
+    db = Database(util.SQLITE_MEMORY, qmark_sqldirs, persist=True)
     assert type(db.conn) is provider.sqlite.Connection
     db.close()
     assert db.conn is None

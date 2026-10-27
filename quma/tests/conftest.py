@@ -44,7 +44,8 @@ def db(qmark_sqldirs):
     )
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
@@ -58,7 +59,8 @@ def dbpess(qmark_sqldirs):
     )
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
@@ -72,7 +74,8 @@ def dbecho(qmark_sqldirs):
     )
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
@@ -86,7 +89,8 @@ def dbcache(qmark_sqldirs):
     )
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
@@ -96,7 +100,8 @@ def dbshadow(qmark_shadow_sqldirs):
     )
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
@@ -124,7 +129,8 @@ def db_no_changeling(qmark_sqldirs):
     db = Database(util.SQLITE_MEMORY, qmark_sqldirs, persist=True)
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
@@ -142,7 +148,8 @@ def dbdictcb(qmark_sqldirs):
     )
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
@@ -160,7 +167,8 @@ def dbseqcb(qmark_sqldirs):
     )
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture(params=["psycopg2", "psycopg"])
@@ -194,13 +202,15 @@ def pgdb_echo(pgdriver, pyformat_sqldirs):
 @pytest.fixture
 def pgdb_persist(pgdriver, pyformat_sqldirs):
     db = Database(pgdriver.uri, pyformat_sqldirs, persist=True)
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
 def pgpooldb(pgdriver, pyformat_sqldirs):
     db = Database(pgdriver.pool_uri, pyformat_sqldirs, changeling=True)
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
@@ -208,7 +218,8 @@ def pgpooldb_echo(pgdriver, pyformat_sqldirs):
     db = Database(
         pgdriver.pool_uri, pyformat_sqldirs, changeling=True, echo=True
     )
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
@@ -242,13 +253,15 @@ def mydb_persist(pyformat_sqldirs):
     db = Database(
         util.MYSQL_URI, pyformat_sqldirs, persist=True, charset="utf8"
     )
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
 def mypooldb(pyformat_sqldirs):
     db = Database(util.MYSQL_POOL_URI, pyformat_sqldirs, charset="utf8")
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
@@ -256,7 +269,8 @@ def mypooldb_echo(pyformat_sqldirs):
     db = Database(
         util.MYSQL_POOL_URI, pyformat_sqldirs, echo=True, charset="utf8"
     )
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
@@ -264,7 +278,8 @@ def mypooldb_dict(pyformat_sqldirs):
     db = Database(
         util.MYSQL_POOL_URI, pyformat_sqldirs, dict_cursor=True, charset="utf8"
     )
-    return db
+    yield db
+    db.close()
 
 
 @pytest.fixture
