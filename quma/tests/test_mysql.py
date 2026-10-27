@@ -237,6 +237,13 @@ def test_execute(mydb, mypooldb_dict):
 
 
 @pytest.mark.mysql
+def test_execute_returns_connection(mypooldb):
+    from .test_db import execute_returns_connection
+
+    execute_returns_connection(mypooldb, MySQLdb.ProgrammingError)
+
+
+@pytest.mark.mysql
 def test_prepared_statement(mydb, mypooldb):
     for db in (mydb, mypooldb):
         with db.cursor as cur:

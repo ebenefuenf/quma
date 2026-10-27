@@ -5,6 +5,8 @@ quma Changelog
 Unreleased
 ----------
 
+- Fix ``Database.execute()`` keeping its connection checked out. With a
+  pool every call used up a connection until the pool was exhausted.
 - Add support for psycopg 3 with the ``psycopg://`` scheme.
 - Add the ``psycopg2://`` scheme for PostgreSQL. ``postgresql://``
   remains an alias for it.

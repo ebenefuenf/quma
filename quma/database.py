@@ -222,6 +222,8 @@ class Database(object):
         except Exception as e:
             cur.rollback()
             raise e
+        finally:
+            cur.close()
         return result
 
     def close(self):

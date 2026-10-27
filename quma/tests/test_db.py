@@ -837,6 +837,14 @@ def execute(db, error):
         assert len(cursor.fetchall()) > 0
 
 
+def execute_returns_connection(pooldb, error):
+    pooldb.execute("SELECT * FROM users")
+    assert pooldb.conn.checkedout == 0
+    with pytest.raises(error):
+        pooldb.execute("SELECT * FRO")
+    assert pooldb.conn.checkedout == 0
+
+
 def test_execute(db):
     execute(db, sqlite3.OperationalError)
 
