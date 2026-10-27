@@ -1,7 +1,6 @@
 import sqlite3
 
 from .. import (
-    PLATFORM,
     conn,
     exc,
 )
@@ -16,10 +15,7 @@ class SQLiteChangelingRow(sqlite3.Row):
 
     def __init__(self, *args, **kwargs):
         super().__setattr__("_overwritten", {})
-        if PLATFORM == "PyPy":
-            super().__init__(*args, **kwargs)
-        else:
-            super().__init__()
+        super().__init__()
 
     def __getattribute__(self, attr):
         # Lookup overwritten fields

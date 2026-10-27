@@ -4,7 +4,7 @@ quma
 
 |build| |docs|
 
-quma is a small SQL database library for **Python** and **PyPy** version 3.10 and higher.
+quma is a small SQL database library for **Python** 3.10 and higher.
 It maps object methods to SQL script files and supports **SQLite**, **PostgreSQL**,
 **MySQL** and **MariaDB**.
 

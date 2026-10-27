@@ -1,7 +1,5 @@
 import sqlite3
-import sys
 import threading
-from unittest import mock
 
 import pytest
 
@@ -492,25 +490,6 @@ def test_no_changeling_cursor(db_no_changeling):
     )
 
 
-def test_pypy_changeling_init(qmark_sqldirs):
-    with mock.patch("quma.provider.sqlite.PLATFORM", "PyPy"):
-        db = Database(
-            util.SQLITE_MEMORY,
-            sqldirs=qmark_sqldirs,
-            persist=True,
-            changeling=True,
-        )
-        db.execute(util.CREATE_USERS)
-        db.execute(util.INSERT_USERS)
-        if sys.implementation.name == "pypy":  # pragma: no-cov-cpython
-            with db.cursor as cursor:
-                cursor.users.all().first()
-        else:  # pragma: no-cov-pypy
-            with pytest.raises(TypeError):
-                with db.cursor as cursor:
-                    cursor.users.all().first()
-
-
 def test_qmark_script(db):
     with db.cursor as cursor:
         user = db.user.by_email(cursor, "user.3@example.com", 1).one()
@@ -582,18 +561,7 @@ def multiple_records(db, getter):
         assert len(users) == 2
 
         # cast the iterator to a list
-        if (
-            sys.implementation.name == "cpython"
-            or db.conn.__class__.__module__ != "quma.provider.sqlite"
-        ):
-            # TODO: the cast to list does only work in CPython for all
-            # dricers. In PyPy using the sqlite3 driver the fetch call
-            # in Query.__iter__ returns an empty list.
-            #
-            # The same behavior was present in CPython when we didn't
-            # return a generator but iterated over the fetch result
-            # and yielded the rows. It is only with the SQLite driver.
-            assert len(list(db.users.by_city(cursor, city="City A"))) == 2
+        assert len(list(db.users.by_city(cursor, city="City A"))) == 2
 
 
 def test_multiple_records(dbfile):

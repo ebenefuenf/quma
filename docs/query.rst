@@ -32,12 +32,6 @@ You can either iterate directly over the query object or call its
 When calling :meth:`all()` **MySQL** and **MariaDB** will return a tuple, **PostgreSQL**
 and **SQLite** will return a list.
 
-.. Note::
-
-    If you are using **PyPy** with the `sqlite3` driver the cast
-    using the :func:`list()` function does not currently work and will always
-    result in an empty list.
-
 
 Getting a single row
 --------------------

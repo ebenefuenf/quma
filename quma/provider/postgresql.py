@@ -2,8 +2,7 @@ try:
     import psycopg2
 except ImportError as e:
     raise ImportError(
-        "In order to use quma with PostgreSQL you "
-        "need to install psycopg2 or psycopg2cffi"
+        "In order to use quma with PostgreSQL you need to install psycopg2"
     ) from e
 
 

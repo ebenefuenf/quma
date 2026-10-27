@@ -2,6 +2,12 @@
 quma Changelog
 ===============
 
+Unreleased
+----------
+
+- Remove support for PyPy.
+
+
 Version 0.2.2
 -------------
 

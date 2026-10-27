@@ -19,19 +19,15 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: Implementation :: PyPy",
     "Topic :: Database :: Front-Ends",
 ]
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-cov", "coverage-conditional-plugin"]
+test = ["pytest", "pytest-cov"]
 docs = ["sphinx", "sphinx-autobuild"]
 dev = ["ruff"]
 templates = ["mako"]
-postgres = [
-    "psycopg2; implementation_name=='cpython'",
-    "psycopg2cffi; implementation_name=='pypy'",
-]
+postgres = ["psycopg2"]
 mysql = ["mysqlclient"]
 
 [project.urls]
@@ -58,7 +54,6 @@ testpaths = ["quma/tests"]
 [tool.coverage.run]
 branch = true
 source = ["quma"]
-plugins = ["coverage_conditional_plugin"]
 
 [tool.coverage.report]
 show_missing = true
@@ -67,10 +62,6 @@ exclude_also = [
     "raise NotImplementedError",
     "except ImportError",
 ]
-
-[tool.coverage.coverage_conditional_plugin.rules]
-no-cov-pypy = "implementation_name == 'pypy'"
-no-cov-cpython = "implementation_name == 'cpython'"
 
 [tool.ruff]
 exclude = [

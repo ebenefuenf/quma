@@ -45,8 +45,6 @@ jobs:
             tox: py312
           - python: '3.13'
             tox: py313
-          - python: 'pypy3.10'
-            tox: pypy310
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python }}

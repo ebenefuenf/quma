@@ -34,9 +34,6 @@ the matching driver:
     
     # PostgreSQL
     pip install quma psycopg2
-    # or
-    pip install quma psycopg2cffi
-
 
     # MySQL/MariaDB
     pip install quma mysqlclient
