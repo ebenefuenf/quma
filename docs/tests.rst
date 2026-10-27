@@ -13,10 +13,10 @@ PostgreSQL:
 .. code-block:: sql
 
     CREATE USER quma_test_user WITH PASSWORD 'quma_test_password';
-    CREATE DATABASE quma_test_db;
-    GRANT ALL PRIVILEGES ON DATABASE quma_test_db to quma_test_user;
-    -- Postgres 15 or higher:
-    GRANT ALL ON SCHEMA public TO quma_test_user;
+    CREATE DATABASE quma_test_db OWNER quma_test_user;
+
+The database owner has full rights on the database and its ``public``
+schema, so no further grants are required.
 
 MySQL/MariaDB:
 
