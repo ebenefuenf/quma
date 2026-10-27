@@ -110,11 +110,8 @@ def test_value_str(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
-def test_query_attr(pgdriver, pgdb, pgpooldb):
+def test_query_attr(pgdb, pgpooldb):
     from .test_db import query_attr
-
-    if pgdriver.name == "psycopg":
-        pytest.skip("psycopg 3 cursors have no lastrowid")
 
     for db in (pgdb, pgpooldb):
         query_attr(db)

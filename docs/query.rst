@@ -92,12 +92,21 @@ than one row or none at all you can use the :meth:`first()` method:
 The method :meth:`value()` invokes the :meth:`one()` method, and
 upon success returns the value of the first column of the row (i. e.
 ``fetchall()[0][0]``). This comes in handy if you are using a
-``RETURNING`` clause, for example, or return the last inserted
-id after an insert.
+``RETURNING`` clause, for example to get the id of an inserted row:
+
+.. code-block:: sql
+
+    -- sql/users/add.sql
+    INSERT INTO users (name, email) VALUES (%(name)s, %(email)s) RETURNING id;
 
 .. code-block:: python
 
-    last_inserted_id = cur.users.insert().value()
+    user_id = cur.users.add(name='User', email='user@example.com').value()
+
+**PostgreSQL**, **SQLite** 3.35 and higher, and **MariaDB** 10.5 and higher
+support ``RETURNING``. With **MySQL** use the ``lastrowid`` attribute of the
+cursor instead (see `Accessing the underlying cursor`_). After inserting
+several rows with one statement it holds the id of the first row.
 
 
 Execute only
@@ -321,10 +330,8 @@ query directly on the query object.
 .. code-block:: python
 
     with db.cursor as cur:
-        added = cur.users.add(name='User', email='user.1@example.com').run()
-        if added.lastrowid:
-            user = cur.user.by_id(id=added.lastrowid).run()
-            user.fetchone()
+        removed = cur.users.remove(city='City 1').run()
+        print(removed.rowcount)
 
 
 Overview

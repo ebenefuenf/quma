@@ -252,7 +252,7 @@ def query_attr(db):
     q = cursor.user.add(
         id=8, name="Test User", email="test.user@example.com", city="Test City"
     ).run()
-    assert q.lastrowid is not None
+    assert q.rowcount == 1
     cursor.close()
 
 
