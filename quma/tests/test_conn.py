@@ -156,6 +156,17 @@ def test_postgres_persistent():
     persistent(util.PGSQL_URI, connection)
 
 
+@pytest.mark.postgres
+@pytest.mark.parametrize("scheme", ["postgresql", "postgresql+pool"])
+def test_postgresql_scheme_uses_psycopg2(scheme):
+    from psycopg2.extensions import connection
+
+    conn = connect(util.pg_uri(scheme))
+    raw_conn = conn.get()
+    assert type(raw_conn) is connection
+    conn.put(raw_conn)
+
+
 @pytest.mark.mysql
 def test_mysql_persistent():
     from MySQLdb.connections import Connection

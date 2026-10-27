@@ -26,10 +26,10 @@ Connection Examples
     # SQLite in memory db
     db = Database('sqlite:///:memory:', sqldirs)
 
-    # PostgreSQL localhost
-    db = Database('postgresql://username:password@/db_name', sqldirs)
-    # PostgreSQL network server
-    db = Database('postgresql://username:password@10.0.0.1:5432/db_name', sqldirs)
+    # PostgreSQL with psycopg2, localhost
+    db = Database('psycopg2://username:password@/db_name', sqldirs)
+    # PostgreSQL with psycopg2, network server
+    db = Database('psycopg2://username:password@10.0.0.1:5432/db_name', sqldirs)
 
     # MySQL/MariaDB localhost
     db = Database('mysql://username:password@/db_name', sqldirs)
@@ -40,6 +40,9 @@ Connection Examples
     db = Database('mysql://username:password@192.168.1.1:5432/db_name', 
                   sqldirs, 
                   charset='utf8')
+
+For PostgreSQL the scheme names the driver. ``postgresql://`` is an alias
+for ``psycopg2://``.
 
 
 The Database class

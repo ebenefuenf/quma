@@ -8,7 +8,7 @@ from . import util
 try:
     import psycopg2
 
-    from ..provider.postgresql import Connection
+    from ..provider.psycopg2 import Connection
 except ImportError:
     psycopg2 = None
 

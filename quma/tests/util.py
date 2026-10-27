@@ -13,12 +13,16 @@ PGSQL_PASS = os.environ.get("QUMA_PGSQL_PASS", DB_PASS)
 PGSQL_DB = os.environ.get("QUMA_PGSQL_DB", DB_NAME)
 PGSQL_HOST = os.environ.get("QUMA_PGSQL_HOST", "localhost")
 PGSQL_PORT = int(os.environ.get("QUMA_PGSQL_PORT", 5432))
-PGSQL_URI = "postgresql://{}:{}@{}:{}/{}".format(
-    PGSQL_USER, PGSQL_PASS, PGSQL_HOST, PGSQL_PORT, PGSQL_DB
-)
-PGSQL_POOL_URI = "postgresql+pool://{}:{}@{}:{}/{}".format(
-    PGSQL_USER, PGSQL_PASS, PGSQL_HOST, PGSQL_PORT, PGSQL_DB
-)
+
+
+def pg_uri(scheme):
+    return "{}://{}:{}@{}:{}/{}".format(
+        scheme, PGSQL_USER, PGSQL_PASS, PGSQL_HOST, PGSQL_PORT, PGSQL_DB
+    )
+
+
+PGSQL_URI = pg_uri("psycopg2")
+PGSQL_POOL_URI = pg_uri("psycopg2+pool")
 
 MYSQL_USER = os.environ.get("QUMA_MYSQL_USER", DB_USER)
 MYSQL_PASS = os.environ.get("QUMA_MYSQL_PASS", DB_PASS)
