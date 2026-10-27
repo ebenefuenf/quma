@@ -232,6 +232,20 @@ def pessimistic_failure(uri):
     conn.close()
 
 
+def test_pool_overflow_race():
+    conn = connect(
+        f"sqlite+pool:///{util.SQLITE_FILE}", size=1, overflow=0, timeout=0.01
+    )
+
+    def lose_race():
+        # Another thread takes the last connection first.
+        conn._overflow += 1
+
+    conn._inc_overflow = lose_race
+    with pytest.raises(exc.TimeoutError):
+        conn.get()
+
+
 def pool_reuse_autocommit(uri, pessimistic, is_autocommit):
     conn = connect(uri, size=1, pessimistic=pessimistic)
     for autocommit in (False, True, False):

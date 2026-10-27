@@ -16,6 +16,8 @@ Unreleased
   as missing Mako.
 - Fix ``autocommit=True`` being ignored when a connection pool reused a
   connection.
+- Fix a connection pool returning ``None`` instead of a connection when
+  another thread took the last overflow slot at the same time.
 - Close a persistent connection that fails the ``pessimistic`` check
   before replacing it.
 - ``Database.close()`` no longer raises ``APIError`` for connections that

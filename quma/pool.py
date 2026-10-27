@@ -116,6 +116,8 @@ class Pool:
             except Exception as e:
                 self._dec_overflow()
                 raise e
+        # Another thread took the last overflow slot in the meantime.
+        return self.get(autocommit=autocommit)
 
     def cursor(self, conn):
         return conn.cursor()
