@@ -29,10 +29,21 @@ MySQL/MariaDB:
 How to run the tests
 --------------------
 
-Run ``pytest`` or ``py.test`` to run all tests.
-``pytest -m "not postgres and not mysql"`` for all general
-tests. And ``pytest -m "postgres"`` or ``pytest -m "mysql"``
-for DBMS specific tests.
+In the :doc:`development environment <install>`, run ``uv run pytest``
+to run all tests. ``uv run pytest -m "not postgres and not mysql"`` for
+all general tests. And ``uv run pytest -m "postgres"`` or
+``uv run pytest -m "mysql"`` for DBMS specific tests.
+
+To run the linter and the tests with all supported Python versions,
+use tox with the `tox-uv <https://github.com/tox-dev/tox-uv>`_ plugin,
+which also installs missing Python versions:
+
+::
+
+    uvx --with tox-uv tox run
+
+All tox environments use the same test databases, so don't run them
+in parallel.
 
 Overwrite credentials
 ---------------------

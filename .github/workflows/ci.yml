@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+      - next
+  pull_request:
 
 jobs:
   test:
@@ -36,28 +38,13 @@ jobs:
     strategy:
       max-parallel: 1
       matrix:
-        include:
-          - python: '3.11'
-            tox: py311
-          - python: '3.12'
-            tox: py312
-          - python: '3.13'
-            tox: py313
-          - python: '3.14'
-            tox: py314
-          - python: '3.15'
-            tox: py315
+        tox: [py311, py312, py313, py314, py315]
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-          cache: 'pip'
-          cache-dependency-path: pyproject.toml
-      - run: pip install tox
+      - uses: actions/checkout@v7
+      # setup-uv publishes no floating major tags, so pin the full version.
+      - uses: astral-sh/setup-uv@v10.3.2
       - name: Run linter and tests
-        run: tox run -e ${{ matrix.tox }}
+        run: uvx --with tox-uv tox run -e ${{ matrix.tox }}
         env:
           QUMA_PGSQL_USER: postgres
           QUMA_PGSQL_PASS: postgres

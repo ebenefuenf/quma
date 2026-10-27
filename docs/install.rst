@@ -51,8 +51,10 @@ if you want to use dynamic sql scripts using :doc:`templates <templates>`.
 Development
 -----------
 
+The development environment is managed with `uv <https://docs.astral.sh/uv/>`_:
+
 ::
 
     git clone https://github.com/ebenefuenf/quma
     cd quma
-    pip install -e '.[test,docs,templates,postgres,mysql]'
+    uv sync --all-extras
