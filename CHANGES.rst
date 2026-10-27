@@ -26,6 +26,10 @@ Unreleased
 - Fix ``with db.cursor() as cur`` opening a second connection and never
   returning the first. The ``with`` block now uses the connection opened
   by the call, including its ``autocommit`` setting.
+- Errors in a namespace's ``__init__.py`` are no longer hidden. quma
+  used the default namespace instead when one of them was an
+  ``AttributeError`` or ``FileNotFoundError``. A module without the
+  expected class still gets the default namespace.
 - Close a persistent connection that fails the ``pessimistic`` check
   before replacing it.
 - ``Database.close()`` no longer raises ``APIError`` for connections that

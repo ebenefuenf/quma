@@ -168,6 +168,20 @@ def pool_carrier(db):
     assert len(db.heap.heap) == 0
 
 
+def test_namespace_module_error(tmp_path):
+    (tmp_path / "broken").mkdir()
+    (tmp_path / "broken" / "__init__.py").write_text("import os\nos.missing\n")
+    with pytest.raises(AttributeError):
+        Database(util.SQLITE_MEMORY, tmp_path)
+
+
+def test_namespace_module_without_class(tmp_path):
+    (tmp_path / "helpers").mkdir()
+    (tmp_path / "helpers" / "__init__.py").write_text("VALUE = 1\n")
+    db = Database(util.SQLITE_MEMORY, tmp_path)
+    assert type(db.helpers) is Namespace
+
+
 def test_custom_namespace(db):
     with db.cursor as cursor:
         assert type(db.users).__module__ == "quma.mapping.users"

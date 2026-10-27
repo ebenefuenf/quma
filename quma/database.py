@@ -211,11 +211,11 @@ class Database:
                 self.namespaces[ns] = ns_class(self, path)
 
         def register(path, ns):
-            try:
-                mod_path = str(path / "__init__.py")
-                mod_name = f"quma.mapping.{ns}"
+            ns_class = Namespace
+            mod_path = path / "__init__.py"
+            if mod_path.is_file():
                 spec = importlib.util.spec_from_file_location(
-                    mod_name, mod_path
+                    f"quma.mapping.{ns}", mod_path
                 )
                 assert spec is not None and spec.loader is not None
                 module = importlib.util.module_from_spec(spec)
@@ -225,12 +225,10 @@ class Database:
                 else:
                     # snake_case to CamelCase
                     class_name = "".join([s.title() for s in ns.split("_")])
-                ns_class = getattr(module, class_name)
+                ns_class = getattr(module, class_name, Namespace)
                 if hasattr(ns_class, "alias"):
                     instantiate(ns_class.alias, ns_class, path)
-                instantiate(ns, ns_class, path)
-            except (AttributeError, FileNotFoundError):
-                instantiate(ns, Namespace, path)
+            instantiate(ns, ns_class, path)
 
         register(Path(sqldir), "__root__")
         for path in Path(sqldir).iterdir():
