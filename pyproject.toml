@@ -84,7 +84,7 @@ indent-width = 4
 target-version = "py313"
 
 [tool.ruff.lint]
-extend-select = ["B", "Q", "I", "C90", "W"]
+select = ["E4", "E7", "E9", "F", "B", "Q", "I", "C90", "W"]
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
 # Allow unused variables when underscore-prefixed.
