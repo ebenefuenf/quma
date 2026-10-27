@@ -62,6 +62,8 @@ def test_persistent_pessimistic(dbpess):
     dbpess.conn._check.side_effect = exc.OperationalError
     with dbpess.cursor as cursor:
         assert cn is not cursor.raw_conn
+    with pytest.raises(sqlite3.ProgrammingError):
+        cn.execute("SELECT 1")
 
 
 def pool_overflow_counting(uri):

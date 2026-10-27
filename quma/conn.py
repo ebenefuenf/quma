@@ -45,6 +45,7 @@ class Connection:
                 try:
                     self.check()
                 except exc.OperationalError:
+                    self.conn.close()
                     self.conn = self.create_conn(**self.dbapi_kwargs)
             return self.enable_autocommit_if(autocommit, self.conn)
         return self.enable_autocommit_if(
