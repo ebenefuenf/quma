@@ -94,7 +94,10 @@ class Pool:
                 except OperationalError:
                     self._conn.close(conn)
                     return self._conn.get(autocommit=autocommit)
-            return conn
+                if autocommit:
+                    # The check's transaction would block enabling autocommit.
+                    conn.rollback()
+            return self._conn.enable_autocommit_if(autocommit, conn)
         except Empty:
             # Don't do things inside of "except Empty", because when we say
             # we timed out or can't connect and raise, Python 3 tells

@@ -232,6 +232,31 @@ def pessimistic_failure(uri):
     conn.close()
 
 
+def pool_reuse_autocommit(uri, pessimistic, is_autocommit):
+    conn = connect(uri, size=1, pessimistic=pessimistic)
+    for autocommit in (False, True, False):
+        raw_conn = conn.get(autocommit=autocommit)
+        assert is_autocommit(raw_conn) is autocommit
+        conn.put(raw_conn)
+    conn.close()
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize("pessimistic", [False, True])
+def test_postgres_pool_reuse_autocommit(pgdriver, pessimistic):
+    pool_reuse_autocommit(
+        pgdriver.pool_uri, pessimistic, lambda conn: conn.autocommit
+    )
+
+
+@pytest.mark.mysql
+@pytest.mark.parametrize("pessimistic", [False, True])
+def test_mysql_pool_reuse_autocommit(pessimistic):
+    pool_reuse_autocommit(
+        util.MYSQL_POOL_URI, pessimistic, lambda conn: conn.get_autocommit()
+    )
+
+
 @pytest.mark.postgres
 def test_postgres_pessimistic_failure(pgdriver):
     pessimistic_failure(pgdriver.pool_uri)
