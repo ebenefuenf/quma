@@ -241,6 +241,13 @@ def test_execute_returns_connection(mypooldb):
 
 
 @pytest.mark.mysql
+def test_call_and_enter(mypooldb):
+    from .test_db import call_and_enter
+
+    call_and_enter(mypooldb, lambda conn: conn.get_autocommit())
+
+
+@pytest.mark.mysql
 def test_close_twice(mypooldb):
     from .test_db import close_twice
 

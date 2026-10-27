@@ -23,6 +23,9 @@ Unreleased
   connection.
 - Fix a connection pool returning ``None`` instead of a connection when
   another thread took the last overflow slot at the same time.
+- Fix ``with db.cursor() as cur`` opening a second connection and never
+  returning the first. The ``with`` block now uses the connection opened
+  by the call, including its ``autocommit`` setting.
 - Close a persistent connection that fails the ``pessimistic`` check
   before replacing it.
 - ``Database.close()`` no longer raises ``APIError`` for connections that

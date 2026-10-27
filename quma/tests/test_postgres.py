@@ -357,6 +357,13 @@ def test_execute_returns_connection(pgdriver, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_call_and_enter(pgpooldb):
+    from .test_db import call_and_enter
+
+    call_and_enter(pgpooldb, lambda conn: conn.autocommit)
+
+
+@pytest.mark.postgres
 def test_close_twice(pgpooldb):
     from .test_db import close_twice
 

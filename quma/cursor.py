@@ -61,8 +61,13 @@ class Cursor:
         self.raw_conn: RawConnection | None = None
         self.raw_cursor: RawCursorWrapper | None = None
         self.contextcommit = contextcommit
+        self._opened_by_call = False
 
     def __enter__(self) -> Self:
+        # `with db.cursor() as cur` uses the connection opened by the call.
+        if self._opened_by_call:
+            self._opened_by_call = False
+            return self
         return self.create_cursor()
 
     def __exit__(self, *args: object) -> None:
@@ -74,7 +79,9 @@ class Cursor:
             self.put()
 
     def __call__(self, autocommit: bool = False) -> Self:
-        return self.create_cursor(autocommit=autocommit)
+        self.create_cursor(autocommit=autocommit)
+        self._opened_by_call = True
+        return self
 
     def create_cursor(self, autocommit: bool = False) -> Self:
         autocommit = (
@@ -117,6 +124,7 @@ class Cursor:
         else:
             self._conn().put(self.raw_conn)
         self.raw_conn = None
+        self._opened_by_call = False
 
     def close(self) -> None:
         self.put(force=True)

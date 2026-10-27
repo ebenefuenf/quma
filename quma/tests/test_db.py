@@ -873,6 +873,17 @@ def execute_returns_connection(pooldb, error):
     assert pooldb.conn.checkedout == 0
 
 
+def call_and_enter(pooldb, is_autocommit):
+    with pooldb.cursor(autocommit=True) as cursor:
+        assert is_autocommit(cursor.raw_conn)
+    assert pooldb.conn.checkedout == 0
+    cursor = pooldb.cursor()
+    cursor.close()
+    with cursor:
+        assert pooldb.conn.checkedout == 1
+    assert pooldb.conn.checkedout == 0
+
+
 def close_twice(pooldb):
     for wrapper in (pooldb, pooldb(object())):
         with wrapper.cursor as cursor:
