@@ -116,8 +116,7 @@ def non_persistent(uri, connection, pessimistic):
     assert cn2.closed == 0
     conn.put(cn2)
     assert cn2.closed == 1
-    with pytest.raises(exc.APIError):
-        conn.close()
+    conn.close()
 
 
 @pytest.mark.postgres
@@ -150,6 +149,7 @@ def persistent(uri, connection):
     assert cn2.closed == 1
     with pytest.raises(AttributeError):
         conn.conn
+    conn.close()
 
 
 @pytest.mark.postgres
@@ -166,6 +166,7 @@ def test_postgresql_scheme_uses_psycopg2(scheme):
     raw_conn = conn.get()
     assert type(raw_conn) is connection
     conn.put(raw_conn)
+    conn.close()
 
 
 @pytest.mark.mysql

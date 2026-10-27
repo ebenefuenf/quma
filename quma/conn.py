@@ -62,11 +62,7 @@ class Connection:
         if conn:
             conn.close()
             return
-        if not self.persist:
-            raise exc.APIError(
-                "Don't call the close() method of non-persistent connections."
-            )
-        if self.conn:
+        if getattr(self, "conn", None):
             self.conn.close()
             del self.conn
 

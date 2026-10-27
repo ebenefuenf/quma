@@ -9,6 +9,8 @@ Unreleased
   pool every call used up a connection until the pool was exhausted.
 - Close a persistent connection that fails the ``pessimistic`` check
   before replacing it.
+- ``Database.close()`` no longer raises ``APIError`` for connections that
+  are neither persistent nor pooled, and can be called more than once.
 - Add support for psycopg 3 with the ``psycopg://`` scheme.
 - Add the ``psycopg2://`` scheme for PostgreSQL. ``postgresql://``
   remains an alias for it.

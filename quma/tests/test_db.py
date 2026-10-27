@@ -11,7 +11,6 @@ from .. import (
     script,
 )
 from .. import cursor as cursor_
-from ..pool import Pool
 from . import util
 
 
@@ -405,8 +404,7 @@ def autocommit(uri, sqldirs, insert_error, select_error):
     assert len(cursor.fetchall()) == 4
     cursor.close()
     for db in dbs:
-        if isinstance(db.conn, Pool):
-            db.close()
+        db.close()
 
 
 def test_autocommit(qmark_sqldirs):
@@ -829,6 +827,13 @@ def test_close(qmark_sqldirs):
 
     db = Database(util.SQLITE_MEMORY, qmark_sqldirs, persist=True)
     assert type(db.conn) is provider.sqlite.Connection
+    db.close()
+    assert db.conn is None
+    db.close()
+
+
+def test_close_non_persistent(qmark_sqldirs):
+    db = Database(util.SQLITE_URI, qmark_sqldirs)
     db.close()
     assert db.conn is None
 

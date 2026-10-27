@@ -229,9 +229,13 @@ class Database:
     def close(self):
         """Close (all) open connections. If you want to reconnect you
         need to create a new :class:`quma.Database` instance.
+
+        Calling it again, or on a database without persistent or pooled
+        connections, does nothing.
         """
-        self.conn.close()
-        self.conn = None
+        if self.conn is not None:
+            self.conn.close()
+            self.conn = None
 
     def release(self, carrier):
         """If the ``carrier`` holds a connection close it or return
