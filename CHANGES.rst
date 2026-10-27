@@ -5,6 +5,11 @@ quma Changelog
 Unreleased
 ----------
 
+- Add type annotations for the public API and ship them (``py.typed``).
+  Namespaces, scripts and rows are dynamic and typed as ``Any``.
+- ``Database()`` declares its own options as keyword arguments. All
+  other keyword arguments are still passed on to the connection.
+- Opening a cursor of a closed database raises ``APIError``.
 - Fix ``Database.execute()`` keeping its connection checked out. With a
   pool every call used up a connection until the pool was exhausted.
 - Fix closing a cursor twice returning its connection to the pool twice,

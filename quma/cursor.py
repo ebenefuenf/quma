@@ -1,45 +1,71 @@
+from __future__ import annotations
+
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Self,
+)
+
 from . import exc
+from .conn import (
+    ConnectionLike,
+    Params,
+    RawConnection,
+    RawCursor,
+)
 from .namespace import (
     CursorNamespace,
+    Namespace,
     get_namespace,
 )
 from .query import Query
 from .script import Script
 
+if TYPE_CHECKING:
+    from .database import (
+        Carrier,
+        Database,
+    )
+
 
 class CarriedConnection:
-    def __init__(self, conn, raw_conn):
+    def __init__(self, conn: ConnectionLike, raw_conn: RawConnection) -> None:
         self.conn = conn
         self.raw_conn = raw_conn
 
 
 class RawCursorWrapper:
-    def __init__(self, conn, raw_cursor):
+    def __init__(self, conn: ConnectionLike, raw_cursor: RawCursor) -> None:
         self.conn = conn
         self.cursor = raw_cursor
         self.has_rowcount = conn.has_rowcount
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         return self.conn.get_cursor_attr(self.cursor, key)
 
 
 class Cursor:
     def __init__(
-        self, db, namespaces, contextcommit, carrier=None, autocommit=False
-    ):
+        self,
+        db: Database,
+        namespaces: dict[str, Namespace],
+        contextcommit: bool,
+        carrier: Carrier | None = None,
+        autocommit: bool = False,
+    ) -> None:
         self.db = db
         self.conn = db.conn
         self.namespaces = namespaces
         self.carrier = carrier
         self.autocommit = isinstance(autocommit, bool) and autocommit
-        self.raw_conn = None
-        self.raw_cursor = None
+        self.raw_conn: RawConnection | None = None
+        self.raw_cursor: RawCursorWrapper | None = None
         self.contextcommit = contextcommit
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self.create_cursor()
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object) -> None:
         if self.raw_conn is None:
             return
         if self.contextcommit:
@@ -47,30 +73,29 @@ class Cursor:
         if self.conn:
             self.put()
 
-    def __call__(self, autocommit=False):
+    def __call__(self, autocommit: bool = False) -> Self:
         return self.create_cursor(autocommit=autocommit)
 
-    def create_cursor(self, autocommit=False):
+    def create_cursor(self, autocommit: bool = False) -> Self:
         autocommit = (
             True
             if isinstance(autocommit, bool) and autocommit
             else self.autocommit
         )
+        conn = self._conn()
         if self.carrier:
             if self.carrier.conn:
                 self.raw_conn = self.carrier.conn.raw_conn
             else:
-                raw_conn = self.conn.get(autocommit=autocommit)
-                self.carrier.add_conn(CarriedConnection(self.conn, raw_conn))
+                raw_conn = conn.get(autocommit=autocommit)
+                self.carrier.add_conn(CarriedConnection(conn, raw_conn))
                 self.raw_conn = raw_conn
         else:
-            self.raw_conn = self.conn.get(autocommit=autocommit)
-        self.raw_cursor = RawCursorWrapper(
-            self.conn, self.conn.cursor(self.raw_conn)
-        )
+            self.raw_conn = conn.get(autocommit=autocommit)
+        self.raw_cursor = RawCursorWrapper(conn, conn.cursor(self.raw_conn))
         return self
 
-    def put(self, force=False):
+    def put(self, force: bool = False) -> None:
         """
         Ensures that not only the cursor is closed but also
         the connection if necessary.
@@ -90,24 +115,35 @@ class Cursor:
             self.carrier.release()
             self.carrier = None
         else:
-            self.conn.put(self.raw_conn)
+            self._conn().put(self.raw_conn)
         self.raw_conn = None
 
-    def close(self):
+    def close(self) -> None:
         self.put(force=True)
 
-    def commit(self):
-        self._open_conn().commit()
+    def commit(self) -> None:
+        self._raw_conn().commit()
 
-    def rollback(self):
-        self._open_conn().rollback()
+    def rollback(self) -> None:
+        self._raw_conn().rollback()
 
-    def _open_conn(self):
+    def _conn(self) -> ConnectionLike:
+        if self.conn is None:
+            raise exc.APIError("The database is closed.")
+        return self.conn
+
+    def _raw_conn(self) -> RawConnection:
         if self.raw_conn is None:
             raise exc.APIError("The cursor has no open connection.")
         return self.raw_conn
 
-    def query(self, content, *args, is_template=False, **kwargs):
+    def query(
+        self,
+        content: str,
+        *args: Any,
+        is_template: bool = False,
+        **kwargs: Any,
+    ) -> Query:
         """
         Creates an ad hoc Query object based on content.
         """
@@ -120,16 +156,16 @@ class Cursor:
         )
         return Query(script, self, args, kwargs, self.db.prepare_params)
 
-    def get_conn_attr(self, attr):
+    def get_conn_attr(self, attr: str) -> Any:
         return getattr(self.raw_conn, attr)
 
-    def set_conn_attr(self, attr, value):
+    def set_conn_attr(self, attr: str, value: Any) -> None:
         setattr(self.raw_conn, attr, value)
 
-    def mogrify(self, content, params):
-        return self.conn.mogrify(self.raw_cursor, content, params)
+    def mogrify(self, content: str, params: Params) -> str:
+        return self._conn().mogrify(self.raw_cursor, content, params)
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Any:
         try:
             return getattr(self.raw_cursor, attr)
         except AttributeError:

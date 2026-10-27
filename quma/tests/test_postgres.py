@@ -225,7 +225,7 @@ def test_faulty_fetch(pgdburl):
 
 
 @pytest.mark.postgres
-def test_get_cursor_attr(pyformat_sqldirs):
+def test_get_cursor_attr(pyformat_sqldirs, monkeypatch):
     psycopg2 = pytest.importorskip("psycopg2")
     pgdb = Database(util.PGSQL_URI, pyformat_sqldirs, changeling=True)
     conn = pgdb.conn
@@ -244,11 +244,13 @@ def test_get_cursor_attr(pyformat_sqldirs):
 
     # Test Script._fetch except
     with pgdb.cursor as cursor:
-        cursor.raw_cursor.fetchall = Mock()
-        cursor.raw_cursor.fetchall.__name__ = "fetchall"
-        cursor.raw_cursor.fetchall.side_effect = FetchError(
-            psycopg2.ProgrammingError("pg-exc-test")
+        raw_cursor = cursor.raw_cursor
+        assert raw_cursor is not None
+        fetchall = Mock(
+            side_effect=FetchError(psycopg2.ProgrammingError("pg-exc-test"))
         )
+        fetchall.__name__ = "fetchall"
+        monkeypatch.setattr(raw_cursor, "fetchall", fetchall, raising=False)
         with pytest.raises(psycopg2.ProgrammingError) as e:
             pgdb.users.all(cursor).first()
         assert str(e.value) == "pg-exc-test"

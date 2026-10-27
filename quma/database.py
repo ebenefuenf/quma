@@ -1,48 +1,68 @@
+from __future__ import annotations
+
 import importlib.util
+import os
 import threading
+from collections.abc import (
+    Callable,
+    Sequence,
+)
 from importlib import import_module
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 from . import (
     exc,
     pool,
 )
-from .cursor import Cursor
+from .conn import (
+    ConnectionLike,
+    Row,
+)
+from .cursor import (
+    CarriedConnection,
+    Cursor,
+)
 from .namespace import (
     Namespace,
     get_namespace,
 )
-from .script import Script
+from .script import (
+    PrepareParams,
+    Script,
+    SqlDirs,
+    StrPath,
+)
 
 
 class Carrier:
-    def __init__(self, heap, obj):
+    def __init__(self, heap: CarrierHeap, obj: object) -> None:
         self.obj = obj
         self.heap = heap
         self.oid = id(obj)
-        self.conn = None
+        self.conn: CarriedConnection | None = None
 
-    def add_conn(self, conn):
+    def add_conn(self, conn: CarriedConnection) -> None:
         self.conn = conn
 
-    def release(self):
+    def release(self) -> None:
         self.heap.release(self.oid)
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Any:
         return getattr(self.obj, attr)
 
 
 class CarrierHeap:
-    def __init__(self):
+    def __init__(self) -> None:
         self.lock = threading.RLock()
-        self.heap = {}
+        self.heap: dict[int, Carrier] = {}
 
-    def add(self, obj):
+    def add(self, obj: object) -> Carrier:
         carrier = self.heap[id(obj)] = Carrier(self, obj)
         return carrier
 
-    def get(self, obj):
+    def get(self, obj: object) -> Carrier:
         with self.lock:
             try:
                 carrier = self.heap[id(obj)]
@@ -50,7 +70,7 @@ class CarrierHeap:
                 carrier = self.add(obj)
             return carrier
 
-    def release(self, oid):
+    def release(self, oid: int) -> None:
         with self.lock:
             try:
                 carrier = self.heap[oid]
@@ -63,7 +83,9 @@ class CarrierHeap:
 
 
 class DatabaseCallWrapper:
-    def __init__(self, database, carrier, autocommit):
+    def __init__(
+        self, database: Database, carrier: object | None, autocommit: bool
+    ) -> None:
         self.database = database
         if carrier is None:
             self.carrier = None
@@ -72,7 +94,7 @@ class DatabaseCallWrapper:
         self.autocommit = autocommit
 
     @property
-    def cursor(self):
+    def cursor(self) -> Cursor:
         return Cursor(
             self.database,
             self.database.namespaces,
@@ -133,45 +155,53 @@ class Database:
     DoesNotExistError = exc.DoesNotExistError
     MultipleRowsError = exc.MultipleRowsError
 
-    def __init__(self, dburi, *args, **kwargs):
-        # if the second arg is present it must be sqldirs
-        if args and len(args) > 1:
+    def __init__(
+        self,
+        dburi: str,
+        sqldirs: SqlDirs = (),
+        *args: Any,
+        file_ext: str = "sql",
+        tmpl_ext: str = "msql",
+        script_factory: Callable[..., Script] = Script,
+        prepare_params: PrepareParams | None = None,
+        contextcommit: bool = False,
+        echo: bool = False,
+        cache: bool = False,
+        **kwargs: Any,
+    ) -> None:
+        if args:
             raise ValueError("Max number of arguments is two")
-        elif args and len(args) == 1:
-            self.sqldirs = args[0]
-        else:
-            self.sqldirs = kwargs.pop("sqldirs", [])
-
-        self.file_ext = kwargs.pop("file_ext", "sql")
-        self.tmpl_ext = kwargs.pop("tmpl_ext", "msql")
-        self.script_factory = kwargs.pop("script_factory", Script)
-        self.prepare_params = kwargs.pop("prepare_params", None)
-        self.contextcommit = kwargs.pop("contextcommit", False)
-        self.echo = kwargs.pop("echo", False)
-        self.cache = kwargs.pop("cache", False)
+        if isinstance(sqldirs, os.PathLike):
+            sqldirs = os.fspath(sqldirs)
+        self.sqldirs = sqldirs
+        self.file_ext = file_ext
+        self.tmpl_ext = tmpl_ext
+        self.script_factory = script_factory
+        self.prepare_params = prepare_params
+        self.contextcommit = contextcommit
+        self.echo = echo
+        self.cache = cache
 
         # The remaining kwargs are passed to the DBAPI connect call
-        self.conn = connect(dburi, **kwargs)
+        self.conn: ConnectionLike | None = connect(dburi, **kwargs)
 
         self.heap = CarrierHeap()
-        self.namespaces = {}
+        self.namespaces: dict[str, Namespace] = {}
 
-        try:
-            # A single directory
-            if issubclass(type(self.sqldirs), Path):
-                self.sqldirs = str(self.sqldirs)
-            self.register_namespace(self.sqldirs)
-        except TypeError:
-            # A list/collection of directories
-            for sqldir in self.sqldirs:
+        if isinstance(sqldirs, str):
+            self.register_namespace(sqldirs)
+        else:
+            for sqldir in sqldirs:
                 self.register_namespace(sqldir)
 
-    def __call__(self, carrier=None, autocommit=False):
+    def __call__(
+        self, carrier: object | None = None, autocommit: bool = False
+    ) -> DatabaseCallWrapper:
         return DatabaseCallWrapper(
             self, carrier=carrier, autocommit=autocommit
         )
 
-    def register_namespace(self, sqldir):
+    def register_namespace(self, sqldir: StrPath) -> None:
         def instantiate(ns, ns_class, path):
             if ns in self.namespaces:
                 # pass the old namespace to the new instance
@@ -207,7 +237,7 @@ class Database:
             if path.is_dir() and path.name != "__pycache__":
                 register(path, path.name)
 
-    def execute(self, query, **kwargs):
+    def execute(self, query: str, **kwargs: Any) -> Sequence[Row] | None:
         """Execute the statements in ``query`` and commit
         immediately.
 
@@ -227,7 +257,7 @@ class Database:
             cur.close()
         return result
 
-    def close(self):
+    def close(self) -> None:
         """Close (all) open connections. If you want to reconnect you
         need to create a new :class:`quma.Database` instance.
 
@@ -238,7 +268,7 @@ class Database:
             self.conn.close()
             self.conn = None
 
-    def release(self, carrier):
+    def release(self, carrier: object) -> None:
         """If the ``carrier`` holds a connection close it or return
         it to the pool.
 
@@ -248,11 +278,11 @@ class Database:
         self.heap.release(id(carrier))
 
     @property
-    def cursor(self):
+    def cursor(self) -> Cursor:
         """Open a connection and return a cursor."""
         return Cursor(self, self.namespaces, self.contextcommit)
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Any:
         try:
             return get_namespace(self, attr)
         except AttributeError as e:
@@ -260,7 +290,7 @@ class Database:
             raise AttributeError(msg) from e
 
 
-def connect(dburi, **kwargs):
+def connect(dburi: str, **kwargs: Any) -> ConnectionLike:
     """
     Create and return a Connection or Pool object specified
     via ``dburi`` (a string in the form of an URL)

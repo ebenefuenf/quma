@@ -11,7 +11,20 @@ from .. import (
     connect,
     exc,
 )
+from ..pool import Pool
 from . import util
+
+
+def connect_pool(uri, **kwargs):
+    pool = connect(uri, **kwargs)
+    assert isinstance(pool, Pool)
+    return pool
+
+
+def connect_single(uri, **kwargs):
+    single = connect(uri, **kwargs)
+    assert isinstance(single, conn.Connection)
+    return single
 
 
 def get_cursor_mock(exception):
@@ -43,7 +56,7 @@ def test_base_connection(pgdburl):
 
 
 def test_failing_check():
-    conn = connect(util.SQLITE_MEMORY, persist=True, pessimistic=True)
+    conn = connect_single(util.SQLITE_MEMORY, persist=True, pessimistic=True)
     connmock = Mock()
     connmock.cursor = get_cursor_mock(sqlite3.ProgrammingError)
     with pytest.raises(exc.OperationalError):
@@ -68,7 +81,7 @@ def test_persistent_pessimistic(dbpess):
 
 
 def pool_overflow_counting(uri):
-    conn = connect(uri, size=1, overflow=4)
+    conn = connect_pool(uri, size=1, overflow=4)
     cn1 = conn.get()
     cn2 = conn.get()
     cn3 = conn.get()
@@ -103,7 +116,7 @@ def test_mysql_pool_overflow_counting():
 
 
 def non_persistent(uri, connection, pessimistic):
-    conn = connect(uri, pessimistic=pessimistic)
+    conn = connect_single(uri, pessimistic=pessimistic)
     cn1 = conn.get()
     assert cn1.closed == 0
     with pytest.raises(AttributeError):
@@ -134,7 +147,7 @@ def test_mysql_non_persistent(pessimistic):
 
 
 def persistent(uri, connection):
-    conn = connect(uri, persist=True)
+    conn = connect_single(uri, persist=True)
     cn1 = conn.get()
     assert cn1.closed == 0
     assert conn.conn == cn1
@@ -216,7 +229,7 @@ def test_mysql_pool(pessimistic):
 
 
 def pessimistic_failure(uri):
-    conn = connect(uri, size=1, overflow=-1, pessimistic=True)
+    conn = connect_pool(uri, size=1, overflow=-1, pessimistic=True)
     c1 = conn.get()
     conn.put(c1)
     c2 = conn.get()
@@ -232,8 +245,8 @@ def pessimistic_failure(uri):
     conn.close()
 
 
-def test_pool_overflow_race():
-    conn = connect(
+def test_pool_overflow_race(monkeypatch):
+    conn = connect_pool(
         f"sqlite+pool:///{util.SQLITE_FILE}", size=1, overflow=0, timeout=0.01
     )
 
@@ -241,7 +254,7 @@ def test_pool_overflow_race():
         # Another thread takes the last connection first.
         conn._overflow += 1
 
-    conn._inc_overflow = lose_race
+    monkeypatch.setattr(conn, "_inc_overflow", lose_race)
     with pytest.raises(exc.TimeoutError):
         conn.get()
 
@@ -380,7 +393,7 @@ def test_mysql_persistent_pool(pyformat_sqldirs):
 
 
 def failing_check(uri, error):
-    conn = connect(uri, pessimistic=True)
+    conn = connect_single(uri, pessimistic=True)
     connmock = Mock()
     connmock.cursor = get_cursor_mock(error)
     with pytest.raises(exc.OperationalError):

@@ -36,7 +36,7 @@ def test_conn_attr(db):
 
 def test_failing_init(db):
     with pytest.raises(ValueError) as e:
-        Database(1, 2, 3)
+        Database(1, 2, 3)  # ty: ignore[invalid-argument-type]
     assert "Max number" in str(e.value)
 
 
@@ -529,6 +529,12 @@ def test_template_type_error(db):
     with db.cursor as cursor:
         with pytest.raises(TypeError):
             cursor.query("SELECT ${len(1)};", is_template=True).run()
+
+
+def test_template_positional_params(db):
+    with db.cursor as cursor:
+        with pytest.raises(TypeError, match="keyword parameters"):
+            cursor.query("SELECT ?;", 1, is_template=True).run()
 
 
 def test_dict_callback(dbdictcb, carrier):

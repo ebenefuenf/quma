@@ -1,17 +1,38 @@
+from __future__ import annotations
+
+from collections.abc import (
+    Iterator,
+    Sequence,
+)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Self,
+    overload,
+)
+
 from . import exc
+from .conn import Row
+
+if TYPE_CHECKING:
+    from .cursor import Cursor
+    from .script import (
+        PrepareParams,
+        Script,
+    )
 
 
 class ManyResult:
-    def __init__(self, query):
+    def __init__(self, query: Query) -> None:
         self.query = query
         self.cursor = query.cursor
         self._has_been_executed = False
 
-    def _run(self):
+    def _run(self) -> None:
         self.query.run()
         self._has_been_executed = True
 
-    def get(self, size=None):
+    def get(self, size: int | None = None) -> Sequence[Row]:
         """Call the :func:`fetchmany` method of the raw cursor.
 
         :param size: The number of rows to be returned. If not
@@ -29,16 +50,23 @@ class Query:
     i. e. call a :class:`Script` object.
     """
 
-    def __init__(self, script, cursor, args, kwargs, prepare_params):
+    def __init__(
+        self,
+        script: Script,
+        cursor: Cursor,
+        args: Sequence[Any],
+        kwargs: dict[str, Any],
+        prepare_params: PrepareParams | None,
+    ) -> None:
         self.script = script
         self.cursor = cursor
         self.args = args
         self.kwargs = kwargs
         self.prepare_params = prepare_params
         self._has_been_executed = False
-        self._result_cache = None
+        self._result_cache: Sequence[Row] | None = None
 
-    def run(self):
+    def run(self) -> Self:
         """Execute the query using the DBAPI driver."""
         self.script.execute(
             self.cursor, list(self.args), self.kwargs, self.prepare_params
@@ -47,7 +75,7 @@ class Query:
         self._result_cache = None
         return self
 
-    def _fetch(self):
+    def _fetch(self) -> Sequence[Row]:
         if not self._has_been_executed:
             self.run()
         if self._result_cache is None:
@@ -57,44 +85,50 @@ class Query:
                 raise e.error from e
         return self._result_cache
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         return getattr(self.cursor, key)
 
-    def __getitem__(self, index):
+    @overload
+    def __getitem__(self, index: int) -> Row: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> Sequence[Row]: ...
+
+    def __getitem__(self, index: int | slice) -> Row | Sequence[Row]:
         return self._fetch()[index]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Row]:
         yield from self._fetch()
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return len(self._fetch()) > 0
 
-    def _len(self):
+    def _len(self) -> int:
         self.run()
         if self.cursor.has_rowcount:
             return self.cursor.rowcount
         else:
             return len(self._fetch())
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._len()
 
-    def count(self):
+    def count(self) -> int:
         """Return the length of the result."""
         return self._len()
 
-    def all(self):
+    def all(self) -> Sequence[Row]:
         """Return a list of all results"""
         return self._fetch()
 
-    def one(self):
+    def one(self) -> Row:
         """Get exactly one row and check if only one exists,
         otherwise raise an error.
         """
         if not self._has_been_executed:
             self.run()
 
-        def check_rowcount(rowcount):
+        def check_rowcount(rowcount: int) -> None:
             if rowcount == 0:
                 raise exc.DoesNotExistError()
             if rowcount > 1:
@@ -109,14 +143,14 @@ class Query:
             check_rowcount(len(result))
         return result[0]
 
-    def value(self, key=0):
+    def value(self, key: int | str = 0) -> Any:
         """Call :func:`one` and return the first column by default.
 
         :param key: Return the value at ``key``'s position instead
             of the first column."""
         return self.one()[key]
 
-    def first(self):
+    def first(self) -> Row | None:
         """Get exactly one row and return None if there is no
         row present in the result."""
         try:
@@ -124,17 +158,17 @@ class Query:
         except IndexError:
             return None
 
-    def exists(self):
+    def exists(self) -> bool:
         """Return if the query's result has rows."""
         return self._len() > 0
 
-    def many(self):
+    def many(self) -> ManyResult:
         """Return a ManyResult object initialized with
         this query object.
         """
         return ManyResult(self)
 
-    def unbunch(self, size=None):
+    def unbunch(self, size: int | None = None) -> Iterator[Row]:
         """Return a generator that simplifies the use of fetchmany.
 
         :param size: The number of rows to be fetched per

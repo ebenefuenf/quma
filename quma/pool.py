@@ -2,27 +2,37 @@
 # pool module and is copyrighted by Michael Bayer under the terms of the
 # MIT license. https://www.sqlalchemy.org/
 
+from __future__ import annotations
+
 import threading
 from queue import (
     Empty,
     Full,
 )
 from queue import Queue as BaseQueue
+from typing import Any
+from urllib.parse import ParseResult
 
+from .conn import (
+    Connection,
+    Params,
+    RawConnection,
+    RawCursor,
+)
 from .exc import (
     OperationalError,
     TimeoutError,
 )
 
 
-class Queue(BaseQueue):
+class Queue(BaseQueue[RawConnection]):
     """
     Create a queue object with a given maximum size.
 
     If maxsize is <= 0, the queue size is infinite.
     """
 
-    def __init__(self, maxsize=0):
+    def __init__(self, maxsize: int = 0) -> None:
         """Overrides BaseQueue.__init__ to use a RLock instead of Lock"""
 
         # Call parent init to ensure all attributes are initialized
@@ -38,11 +48,13 @@ class Queue(BaseQueue):
 class Pool:
     """A queuing pool of connections"""
 
-    def __init__(self, conn_class, url, **kwargs):
-        size = kwargs.pop("size", 5)
-        self._MAX = kwargs.pop("overflow", 10)
+    def __init__(
+        self, conn_class: type[Connection], url: ParseResult, **kwargs: Any
+    ) -> None:
+        size: int = kwargs.pop("size", 5)
+        self._MAX: int = kwargs.pop("overflow", 10)
         self._overflow = 0 - size
-        self._timeout = kwargs.pop("timeout", None)
+        self._timeout: float | None = kwargs.pop("timeout", None)
         self._overflow_lock = threading.Lock()
         self._pool = Queue(maxsize=size)
         self._pessimistic = kwargs.get("pessimistic", False)
@@ -67,7 +79,7 @@ class Pool:
             self._overflow -= 1
             return True
 
-    def put(self, conn):
+    def put(self, conn: RawConnection) -> None:
         # Always rollback possibly open transaction so that as the
         # connection is set up to be used again, it’s in a “clean”
         # state with no references held to the previous series of
@@ -82,7 +94,7 @@ class Pool:
             finally:
                 self._dec_overflow()
 
-    def get(self, autocommit=False):
+    def get(self, autocommit: bool = False) -> RawConnection:
         use_overflow = self._MAX > -1
 
         try:
@@ -119,17 +131,17 @@ class Pool:
         # Another thread took the last overflow slot in the meantime.
         return self.get(autocommit=autocommit)
 
-    def cursor(self, conn):
+    def cursor(self, conn: RawConnection) -> RawCursor:
         return conn.cursor()
 
-    def get_cursor_attr(self, cursor, key):
+    def get_cursor_attr(self, cursor: RawCursor, key: str) -> Any:
         return self._conn.get_cursor_attr(cursor, key)
 
     @property
-    def has_rowcount(self):
+    def has_rowcount(self) -> bool:
         return self._conn.has_rowcount
 
-    def close(self):
+    def close(self) -> None:
         while True:
             try:
                 conn = self._pool.get(False)
@@ -139,7 +151,7 @@ class Pool:
 
         self._overflow = 0 - self.size
 
-    def status(self):
+    def status(self) -> str:
         return (
             f"Pool size: {self.size} Connections in pool: {self.checkedin} "
             f"Current Overflow: {self.overflow} Current Checked out "
@@ -147,20 +159,20 @@ class Pool:
         )
 
     @property
-    def size(self):
+    def size(self) -> int:
         return self._pool.maxsize
 
     @property
-    def checkedin(self):
+    def checkedin(self) -> int:
         return self._pool.qsize()
 
     @property
-    def overflow(self):
+    def overflow(self) -> int:
         return self._overflow
 
     @property
-    def checkedout(self):
+    def checkedout(self) -> int:
         return self._pool.maxsize - self._pool.qsize() + self._overflow
 
-    def mogrify(self, cursor, content, params):
+    def mogrify(self, cursor: RawCursor, content: str, params: Params) -> str:
         return self._conn.mogrify(cursor, content, params)

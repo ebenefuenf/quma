@@ -1,10 +1,48 @@
+from __future__ import annotations
+
+from typing import (
+    Any,
+    Protocol,
+)
+from urllib.parse import ParseResult
+
 from . import exc
+
+# DB-API connections, cursors and rows differ from driver to driver.
+RawConnection = Any
+RawCursor = Any
+Row = Any
+Params = dict[str, Any] | list[Any]
+
+
+class ConnectionLike(Protocol):
+    """The interface :class:`quma.Database` uses to get connections:
+    implemented by the provider connections and the connection pool."""
+
+    @property
+    def has_rowcount(self) -> bool: ...
+
+    def get(self, autocommit: bool = False) -> RawConnection: ...
+
+    def put(self, conn: RawConnection) -> None: ...
+
+    def close(self) -> None: ...
+
+    def cursor(self, conn: RawConnection) -> RawCursor: ...
+
+    def get_cursor_attr(self, cursor: RawCursor, key: str) -> Any: ...
+
+    def mogrify(
+        self, cursor: RawCursor, content: str, params: Params
+    ) -> str: ...
 
 
 class Connection:
     """Abstract base class for DBMS specific connection objects"""
 
-    def __init__(self, url, kwargs):
+    conn: RawConnection
+
+    def __init__(self, url: ParseResult, kwargs: dict[str, Any]) -> None:
         # kwargs are the **kwargs passed to the specific provider
         # sub class. They must be passed as regular dict to be
         # able to pop some values which should not be passed
@@ -13,33 +51,38 @@ class Connection:
         self.username = url.username
         self.password = url.password
         self.url = url
-        self.factory = None
-        self.changeling = kwargs.pop("changeling", False)
-        self.persist = kwargs.pop("persist", False)
-        self.pessimistic = kwargs.pop("pessimistic", False)
+        self.factory: Any = None
+        self.changeling: bool = kwargs.pop("changeling", False)
+        self.persist: bool = kwargs.pop("persist", False)
+        self.pessimistic: bool = kwargs.pop("pessimistic", False)
         self.has_rowcount = True
         self.dbapi_kwargs = kwargs
 
-    def _init_conn(self):
+    def _init_conn(self) -> None:
         if self.persist:
             self.conn = self.create_conn(**self.dbapi_kwargs)
 
-    def cursor(self, conn):
+    def cursor(self, conn: RawConnection) -> RawCursor:
         return conn.cursor()
 
-    def get_cursor_attr(self, cursor, key):
+    def get_cursor_attr(self, cursor: RawCursor, key: str) -> Any:
         return getattr(cursor, key)
 
-    def create_conn(self):
+    def create_conn(self, **kwargs: Any) -> RawConnection:
         raise NotImplementedError
 
-    def enable_autocommit_if(self, autocommit, conn):
+    def enable_autocommit_if(
+        self, autocommit: bool, conn: RawConnection
+    ) -> RawConnection:
         raise NotImplementedError
 
-    def disable_autocommit(self, conn):
+    def disable_autocommit(self, conn: RawConnection) -> RawConnection:
         raise NotImplementedError
 
-    def get(self, autocommit=False):
+    def mogrify(self, cursor: RawCursor, content: str, params: Params) -> str:
+        return content
+
+    def get(self, autocommit: bool = False) -> RawConnection:
         if self.persist:
             if self.pessimistic:
                 try:
@@ -52,13 +95,13 @@ class Connection:
             autocommit, self.create_conn(**self.dbapi_kwargs)
         )
 
-    def put(self, conn):
+    def put(self, conn: RawConnection) -> None:
         conn.rollback()
         self.disable_autocommit(conn)
         if not self.persist:
             conn.close()
 
-    def close(self, conn=None):
+    def close(self, conn: RawConnection | None = None) -> None:
         if conn:
             conn.close()
             return
@@ -66,10 +109,10 @@ class Connection:
             self.conn.close()
             del self.conn
 
-    def _check(self, conn):
+    def _check(self, conn: RawConnection) -> None:
         raise NotImplementedError
 
-    def check(self, conn=None):
+    def check(self, conn: RawConnection | None = None) -> None:
         if conn:
             self._check(conn)
             return

@@ -1,12 +1,22 @@
+from __future__ import annotations
+
 import types
 from functools import partial
 from itertools import chain
 from pathlib import Path
+from typing import (
+    TYPE_CHECKING,
+    Any,
+)
 
 from .script import (
     CursorScript,
     Script,
 )
+
+if TYPE_CHECKING:
+    from .cursor import Cursor
+    from .database import Database
 
 
 def get_namespace(self, attr):
@@ -23,17 +33,19 @@ def get_namespace(self, attr):
 
 
 class Namespace:
-    def __init__(self, db, sqldir, shadow=None):
+    def __init__(
+        self, db: Database, sqldir: Path, shadow: Namespace | None = None
+    ) -> None:
         self.db = db
         self.sqldir = sqldir
         self.cache = db.cache
         self.echo = db.echo
         self.shadow = shadow
-        self._scripts = {}
+        self._scripts: dict[str, Script] = {}
         if db.cache:
             self._collect_scripts(sqldir)
 
-    def _collect_scripts(self, sqldir):
+    def _collect_scripts(self, sqldir: Path) -> None:
         sqlfiles = chain(
             sqldir.glob(f"*.{self.db.file_ext}"),
             sqldir.glob(f"*.{self.db.tmpl_ext}"),
@@ -58,7 +70,7 @@ class Namespace:
                     prepare_params=self.db.prepare_params,
                 )
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Any:
         if self.cache:
             try:
                 return self._scripts[attr]
@@ -82,11 +94,11 @@ class Namespace:
 
 
 class CursorNamespace:
-    def __init__(self, namespace, cursor):
+    def __init__(self, namespace: Any, cursor: Cursor) -> None:
         self.namespace = namespace
         self.cursor = cursor
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Any:
         attr_obj = getattr(self.namespace, attr)
         if isinstance(attr_obj, Script):
             return CursorScript(attr_obj, self.cursor)
@@ -94,6 +106,6 @@ class CursorNamespace:
             return partial(attr_obj, self.cursor)
         return attr_obj
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         # This should be a custom root method or a root level script.
         return self.namespace(self.cursor, *args, **kwargs)
