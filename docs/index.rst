@@ -48,4 +48,4 @@ License
 
 quma is released under the MIT license.
 
-Copyright © 2018-2024 ebene fünf GmbH. All rights reserved.
+Copyright © 2018-present ebene fünf GmbH. All rights reserved.
