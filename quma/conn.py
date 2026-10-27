@@ -63,8 +63,7 @@ class Connection(object):
             return
         if not self.persist:
             raise exc.APIError(
-                "Don't call the close() method of "
-                "non-persistent connections."
+                "Don't call the close() method of non-persistent connections."
             )
         if self.conn:
             self.conn.close()
