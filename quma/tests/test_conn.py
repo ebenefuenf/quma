@@ -316,6 +316,43 @@ def test_mysql_pessimistic_failure():
     pessimistic_failure(util.MYSQL_POOL_URI)
 
 
+def persistent_replaces_closed(uri):
+    conn = connect_single(uri, persist=True, pessimistic=True)
+    cn1 = conn.get()
+    conn.put(cn1)
+    cn1.close()
+    cn2 = conn.get()
+    assert cn2 is not cn1
+    conn.put(cn2)
+    assert conn.get() is cn2
+    conn.put(cn2)
+    conn.close()
+
+
+@pytest.mark.mysql
+def test_mysql_persistent_replaces_closed():
+    persistent_replaces_closed(util.MYSQL_URI)
+
+
+def pool_replaces_closed(uri):
+    conn = connect_pool(uri, size=1, overflow=0, pessimistic=True)
+    cn1 = conn.get()
+    conn.put(cn1)
+    cn1.close()
+    cn2 = conn.get()
+    assert cn2 is not cn1
+    conn.put(cn2)
+    assert conn.checkedout == 0
+    assert conn.get() is cn2
+    conn.put(cn2)
+    conn.close()
+
+
+@pytest.mark.mysql
+def test_mysql_pool_replaces_closed():
+    pool_replaces_closed(util.MYSQL_POOL_URI)
+
+
 def finite_pool(uri):
     conn = connect(uri, size=1, overflow=4, timeout=0.05)
     conns = queue.Queue()

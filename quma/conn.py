@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import (
     Any,
     Protocol,
@@ -88,7 +89,7 @@ class Connection:
                 try:
                     self.check()
                 except exc.OperationalError:
-                    self.conn.close()
+                    self.discard(self.conn)
                     self.conn = self.create_conn(**self.dbapi_kwargs)
             return self.enable_autocommit_if(autocommit, self.conn)
         return self.enable_autocommit_if(
@@ -108,6 +109,12 @@ class Connection:
         if getattr(self, "conn", None):
             self.conn.close()
             del self.conn
+
+    def discard(self, conn: RawConnection) -> None:
+        # Closing a broken connection can fail, MySQLdb raises if it is
+        # already closed. That must not prevent replacing it.
+        with suppress(Exception):
+            conn.close()
 
     def _check(self, conn: RawConnection) -> None:
         raise NotImplementedError

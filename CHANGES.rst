@@ -26,6 +26,9 @@ Unreleased
   transaction open.
 - Fix a connection pool returning ``None`` instead of a connection when
   another thread took the last overflow slot at the same time.
+- Fix a pool with ``pessimistic=True`` failing to replace a MySQL
+  connection that was already closed. The checkout raised and the pool
+  lost the connection's slot.
 - Fix ``with db.cursor() as cur`` opening a second connection and never
   returning the first. The ``with`` block now uses the connection opened
   by the call, including its ``autocommit`` setting.

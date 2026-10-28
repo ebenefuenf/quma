@@ -104,7 +104,7 @@ class Pool:
                 try:
                     self._conn.check(conn)
                 except OperationalError:
-                    self._conn.close(conn)
+                    self._conn.discard(conn)
                     return self._conn.get(autocommit=autocommit)
             return self._conn.enable_autocommit_if(autocommit, conn)
         except Empty:
