@@ -106,7 +106,11 @@ class Pool:
                     self._conn.check(conn)
                 except OperationalError:
                     self._conn.discard(conn)
-                    return self._conn.get(autocommit=autocommit)
+                    try:
+                        return self._conn.get(autocommit=autocommit)
+                    except Exception:
+                        self._dec_overflow()
+                        raise
             return self._conn.enable_autocommit_if(autocommit, conn)
         except Empty:
             # Don't do things inside of "except Empty", because when we say

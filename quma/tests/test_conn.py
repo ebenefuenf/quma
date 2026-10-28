@@ -377,6 +377,29 @@ def test_pool_discards_broken_connection():
     conn.close()
 
 
+def test_pool_failed_replacement(monkeypatch):
+    conn = connect_pool(
+        f"sqlite+pool:///{util.SQLITE_FILE}",
+        size=1,
+        overflow=0,
+        timeout=0.01,
+        pessimistic=True,
+    )
+    cn1 = conn.get()
+    conn.put(cn1)
+    cn1.close()
+    monkeypatch.setattr(
+        conn._conn, "create_conn", Mock(side_effect=exc.ConnectionError)
+    )
+    with pytest.raises(exc.ConnectionError):
+        conn.get()
+    monkeypatch.undo()
+    assert conn.checkedout == 0
+    cn2 = conn.get()
+    conn.put(cn2)
+    conn.close()
+
+
 def lost_connection(db, killer, pid_sql, kill_sql, error):
     with pytest.raises(error):
         with db.cursor as cur:
