@@ -29,6 +29,9 @@ Unreleased
 - Fix a pool with ``pessimistic=True`` failing to replace a MySQL
   connection that was already closed. The checkout raised and the pool
   lost the connection's slot.
+- Fix ``pessimistic=True`` never replacing a closed psycopg2 connection,
+  for example one that lost the server connection during a query. A
+  persistent connection kept failing until the application restarted.
 - Fix ``with db.cursor() as cur`` opening a second connection and never
   returning the first. The ``with`` block now uses the connection opened
   by the call, including its ``autocommit`` setting.

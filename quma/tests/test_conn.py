@@ -329,6 +329,11 @@ def persistent_replaces_closed(uri):
     conn.close()
 
 
+@pytest.mark.postgres
+def test_postgres_persistent_replaces_closed(pgdriver):
+    persistent_replaces_closed(pgdriver.uri)
+
+
 @pytest.mark.mysql
 def test_mysql_persistent_replaces_closed():
     persistent_replaces_closed(util.MYSQL_URI)
@@ -346,6 +351,11 @@ def pool_replaces_closed(uri):
     assert conn.get() is cn2
     conn.put(cn2)
     conn.close()
+
+
+@pytest.mark.postgres
+def test_postgres_pool_replaces_closed(pgdriver):
+    pool_replaces_closed(pgdriver.pool_uri)
 
 
 @pytest.mark.mysql

@@ -138,6 +138,9 @@ class Connection(conn.Connection):
         return cursor.mogrify(content, params).decode("utf-8")
 
     def _check(self, conn):
+        # psycopg2 raises InterfaceError, not OperationalError, if closed.
+        if conn.closed:
+            raise exc.OperationalError
         idle = conn.get_transaction_status() == TRANSACTION_STATUS_IDLE
         try:
             cur = conn.cursor()
