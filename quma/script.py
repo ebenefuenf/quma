@@ -15,7 +15,7 @@ from .conn import Params
 from .query import Query
 
 if TYPE_CHECKING:
-    from .cursor import Cursor
+    from .cursor import BaseCursor
 
 try:
     from mako.lookup import TemplateLookup
@@ -47,7 +47,7 @@ class Script:
 
     def __call__(
         self,
-        cursor: Cursor,
+        cursor: BaseCursor,
         *args: Any,
         prepare_params: PrepareParams | None = None,
         **kwargs: Any,
@@ -91,7 +91,7 @@ class Script:
 
     def prepare(
         self,
-        cursor: Cursor,
+        cursor: BaseCursor,
         args: list[Any],
         kwargs: dict[str, Any],
         prepare_params: PrepareParams | None = None,
@@ -109,7 +109,7 @@ class Script:
 
 
 class CursorScript:
-    def __init__(self, script: Script, cursor: Cursor) -> None:
+    def __init__(self, script: Script, cursor: BaseCursor) -> None:
         self.script = script
         self.cursor = cursor
 

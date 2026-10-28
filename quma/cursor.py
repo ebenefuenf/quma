@@ -44,7 +44,7 @@ class RawCursorWrapper:
         return self.conn.get_cursor_attr(self.cursor, key)
 
 
-class Cursor:
+class BaseCursor:
     def __init__(
         self,
         db: Database,
@@ -63,79 +63,39 @@ class Cursor:
         self.contextcommit = contextcommit
         self._opened_by_call = False
 
-    def __enter__(self) -> Self:
-        # `with db.cursor() as cur` uses the connection opened by the call.
-        if self._opened_by_call:
-            self._opened_by_call = False
-            return self
-        return self.create_cursor()
+    def _autocommit(self, autocommit: bool) -> bool:
+        if isinstance(autocommit, bool) and autocommit:
+            return True
+        return self.autocommit
 
-    def __exit__(self, *args: object) -> None:
-        if self.raw_conn is None:
-            return
-        if self.contextcommit:
-            self.commit()
-        if self.conn:
-            self.put()
+    def _carried_raw_conn(self) -> RawConnection | None:
+        if self.carrier and self.carrier.conn:
+            return self.carrier.conn.raw_conn
+        return None
 
-    def __call__(self, autocommit: bool = False) -> Self:
-        self.create_cursor(autocommit=autocommit)
-        self._opened_by_call = True
-        return self
+    def _attach(self, conn: ConnectionLike, raw_conn: RawConnection) -> None:
+        if self.carrier and not self.carrier.conn:
+            self.carrier.add_conn(CarriedConnection(conn, raw_conn))
+        self.raw_conn = raw_conn
+        self.raw_cursor = RawCursorWrapper(conn, conn.cursor(raw_conn))
 
-    def create_cursor(self, autocommit: bool = False) -> Self:
-        autocommit = (
-            True
-            if isinstance(autocommit, bool) and autocommit
-            else self.autocommit
-        )
-        conn = self._conn()
-        if self.carrier:
-            if self.carrier.conn:
-                self.raw_conn = self.carrier.conn.raw_conn
-            else:
-                raw_conn = conn.get(autocommit=autocommit)
-                self.carrier.add_conn(CarriedConnection(conn, raw_conn))
-                self.raw_conn = raw_conn
-        else:
-            self.raw_conn = conn.get(autocommit=autocommit)
-        self.raw_cursor = RawCursorWrapper(conn, conn.cursor(self.raw_conn))
-        return self
-
-    def put(self, force: bool = False) -> None:
-        """
-        Ensures that not only the cursor is closed but also
-        the connection if necessary.
-
-        If the connection is bound to the carrier it
-        needs to be returned manually.
-
-        If :param:`force` is set to True return is anyway
-        """
-        if self.raw_conn is None or self.raw_cursor is None:
-            return
-        self.raw_cursor.close()
-
+    def _detach(
+        self, force: bool
+    ) -> tuple[ConnectionLike, RawConnection] | None:
+        """Return the connection to put back, or None if there is none."""
         if self.carrier and self.carrier.conn:
             if not force:
-                return
+                return None
             carried = self.carrier.detach()
             self.carrier = None
-            if carried is not None:
-                carried.conn.put(carried.raw_conn)
+            detached = (
+                None if carried is None else (carried.conn, carried.raw_conn)
+            )
         else:
-            self._conn().put(self.raw_conn)
+            detached = (self._conn(), self.raw_conn)
         self.raw_conn = None
         self._opened_by_call = False
-
-    def close(self) -> None:
-        self.put(force=True)
-
-    def commit(self) -> None:
-        self._raw_conn().commit()
-
-    def rollback(self) -> None:
-        self._raw_conn().rollback()
+        return detached
 
     def _conn(self) -> ConnectionLike:
         if self.conn is None:
@@ -147,24 +107,14 @@ class Cursor:
             raise exc.APIError("The cursor has no open connection.")
         return self.raw_conn
 
-    def query(
-        self,
-        content: str,
-        *args: Any,
-        is_template: bool = False,
-        **kwargs: Any,
-    ) -> Query:
-        """
-        Creates an ad hoc Query object based on content.
-        """
-        script = Script(
+    def _script(self, content: str, is_template: bool) -> Script:
+        return Script(
             content,
             self.db.echo,
             is_template,
             self.db.sqldirs,
             self.db.prepare_params,
         )
-        return Query(script, self, args, kwargs, self.db.prepare_params)
 
     def get_conn_attr(self, attr: str) -> Any:
         return getattr(self.raw_conn, attr)
@@ -187,3 +137,73 @@ class Cursor:
                 "Namespace, Root method, or cursor "
                 f'attribute "{attr}" not found.'
             ) from e
+
+
+class Cursor(BaseCursor):
+    def __enter__(self) -> Self:
+        # `with db.cursor() as cur` uses the connection opened by the call.
+        if self._opened_by_call:
+            self._opened_by_call = False
+            return self
+        return self.create_cursor()
+
+    def __exit__(self, *args: object) -> None:
+        if self.raw_conn is None:
+            return
+        if self.contextcommit:
+            self.commit()
+        if self.conn:
+            self.put()
+
+    def __call__(self, autocommit: bool = False) -> Self:
+        self.create_cursor(autocommit=autocommit)
+        self._opened_by_call = True
+        return self
+
+    def create_cursor(self, autocommit: bool = False) -> Self:
+        conn = self._conn()
+        raw_conn = self._carried_raw_conn()
+        if raw_conn is None:
+            raw_conn = conn.get(autocommit=self._autocommit(autocommit))
+        self._attach(conn, raw_conn)
+        return self
+
+    def put(self, force: bool = False) -> None:
+        """
+        Ensures that not only the cursor is closed but also
+        the connection if necessary.
+
+        If the connection is bound to the carrier it
+        needs to be returned manually.
+
+        If :param:`force` is set to True return is anyway
+        """
+        if self.raw_conn is None or self.raw_cursor is None:
+            return
+        self.raw_cursor.close()
+        detached = self._detach(force)
+        if detached is not None:
+            conn, raw_conn = detached
+            conn.put(raw_conn)
+
+    def close(self) -> None:
+        self.put(force=True)
+
+    def commit(self) -> None:
+        self._raw_conn().commit()
+
+    def rollback(self) -> None:
+        self._raw_conn().rollback()
+
+    def query(
+        self,
+        content: str,
+        *args: Any,
+        is_template: bool = False,
+        **kwargs: Any,
+    ) -> Query:
+        """
+        Creates an ad hoc Query object based on content.
+        """
+        script = self._script(content, is_template)
+        return Query(script, self, args, kwargs, self.db.prepare_params)

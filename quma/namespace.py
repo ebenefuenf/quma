@@ -15,7 +15,7 @@ from .script import (
 )
 
 if TYPE_CHECKING:
-    from .cursor import Cursor
+    from .cursor import BaseCursor
     from .database import Database
 
 
@@ -94,7 +94,7 @@ class Namespace:
 
 
 class CursorNamespace:
-    def __init__(self, namespace: Any, cursor: Cursor) -> None:
+    def __init__(self, namespace: Any, cursor: BaseCursor) -> None:
         self.namespace = namespace
         self.cursor = cursor
 

@@ -22,7 +22,7 @@ from .mapping import (
 )
 
 if TYPE_CHECKING:
-    from .cursor import Cursor
+    from .cursor import BaseCursor
     from .script import (
         PrepareParams,
         Script,
@@ -90,7 +90,7 @@ class BaseQuery:
     def __init__(
         self,
         script: Script,
-        cursor: Cursor,
+        cursor: BaseCursor,
         args: Sequence[Any],
         kwargs: dict[str, Any],
         prepare_params: PrepareParams | None,
