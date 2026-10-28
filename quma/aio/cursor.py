@@ -45,6 +45,7 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
             autocommit=autocommit,
         )
         self._busy = False
+        self._open = False
         self._call_autocommit = False
 
     def __call__(self, autocommit: bool = False) -> Self:
@@ -56,9 +57,7 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         return self._open_by_call().__await__()
 
     async def _open_by_call(self) -> Self:
-        if self._opened_by_call:
-            raise exc.APIError("The cursor is already open.")
-        await self._open()
+        await self._open_cursor()
         self._opened_by_call = True
         return self
 
@@ -67,7 +66,7 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         if self._opened_by_call:
             self._opened_by_call = False
             return self
-        return await self._open()
+        return await self._open_cursor()
 
     async def __aexit__(
         self, exc_type: type[BaseException] | None, *args: object
@@ -86,7 +85,9 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
             if self.conn:
                 await self.put()
 
-    async def _open(self) -> Self:
+    async def _open_cursor(self) -> Self:
+        if self._open:
+            raise exc.APIError("The cursor is already open.")
         autocommit, self._call_autocommit = self._call_autocommit, False
         return await self.create_cursor(autocommit=autocommit)
 
@@ -95,7 +96,13 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         raw_conn = self._carried_raw_conn()
         if raw_conn is None:
             raw_conn = await conn.get(autocommit=self._autocommit(autocommit))
+            carried = self._carried_raw_conn()
+            if carried is not None:
+                # Another task gave the carrier a connection meanwhile.
+                await conn.put(raw_conn)
+                raw_conn = carried
         self._attach(conn, raw_conn)
+        self._open = True
         return self
 
     async def put(self, force: bool = False) -> None:
@@ -105,6 +112,7 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         """
         if self.raw_conn is None or self.raw_cursor is None:
             return
+        self._open = False
         try:
             await self.raw_cursor.close()
         finally:
@@ -117,9 +125,11 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         await self.put(force=True)
 
     async def commit(self) -> None:
+        self._check_idle()
         await self._raw_conn().commit()
 
     async def rollback(self) -> None:
+        self._check_idle()
         await self._raw_conn().rollback()
 
     async def execute(self, *args: Any, **kwargs: Any) -> Any:
@@ -137,17 +147,20 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
     async def _io(self, name: str, *args: Any, **kwargs: Any) -> Any:
         if self.raw_cursor is None:
             raise exc.APIError("The cursor has no open connection.")
+        self._check_idle()
+        self._busy = True
+        try:
+            return await getattr(self.raw_cursor, name)(*args, **kwargs)
+        finally:
+            self._busy = False
+
+    def _check_idle(self) -> None:
         # Two tasks on one DB-API cursor would read each other's results.
         if self._busy:
             raise exc.APIError(
                 "The cursor is busy with another query. "
                 "Open one cursor per task."
             )
-        self._busy = True
-        try:
-            return await getattr(self.raw_cursor, name)(*args, **kwargs)
-        finally:
-            self._busy = False
 
     def query(
         self,

@@ -173,6 +173,7 @@ class AsyncConnection(BaseConnection):
         # can't await.
         self.conn: RawConnection | None = None
         self._lock = asyncio.Lock()
+        self._closed = False
 
     async def create_conn(self, **kwargs: Any) -> RawConnection:
         raise NotImplementedError
@@ -205,6 +206,8 @@ class AsyncConnection(BaseConnection):
 
     async def _persistent(self) -> RawConnection:
         async with self._lock:
+            if self._closed:
+                raise exc.APIError("The connection is closed.")
             if self.conn is None:
                 self.conn = await self.create_conn(**self.dbapi_kwargs)
             elif self.pessimistic:
@@ -242,9 +245,12 @@ class AsyncConnection(BaseConnection):
         if conn is not None:
             await conn.close()
             return
-        if self.conn is not None:
-            await self.conn.close()
-            self.conn = None
+        # Waits for a persistent connection that is being opened.
+        async with self._lock:
+            self._closed = self.persist
+            if self.conn is not None:
+                await self.conn.close()
+                self.conn = None
 
     async def discard(self, conn: RawConnection) -> None:
         with suppress(Exception):

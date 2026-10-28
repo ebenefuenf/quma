@@ -61,6 +61,17 @@ async def test_persistent_opens_once_for_concurrent_tasks():
     await conn.close()
 
 
+async def test_close_waits_for_persistent_connection_being_opened():
+    conn = AsyncConnection(URL, persist=True)
+    getting = asyncio.create_task(conn.get())
+    await asyncio.sleep(0)
+    await conn.close()
+    raw = await getting
+    assert raw.closed
+    with pytest.raises(exc.APIError, match="closed"):
+        await conn.get()
+
+
 async def test_open():
     conn = AsyncConnection(URL, persist=True)
     await conn.open()

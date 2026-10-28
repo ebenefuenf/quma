@@ -281,6 +281,46 @@ async def test_carrier(adb):
     assert not adb.heap.heap
 
 
+async def test_tasks_on_one_carrier_share_its_connection(pyformat_sqldirs):
+    db = AsyncDatabase(
+        POOL_URI, pyformat_sqldirs, size=2, overflow=0, timeout=1
+    )
+    carrier = SimpleNamespace()
+
+    async def backend_pid():
+        async with db(carrier).cursor as cur:
+            return (await cur.query("SELECT pg_backend_pid()").one())[0]
+
+    first, second = await asyncio.gather(backend_pid(), backend_pid())
+    assert first == second
+    await db.release(carrier)
+    assert isinstance(db.conn, AsyncPool)
+    assert db.conn.checkedout == 0
+    await db.close()
+
+
+async def test_open_cursor_cannot_be_opened_again(apooldb):
+    async with apooldb.cursor as cur:
+        with pytest.raises(exc.APIError, match="already open"):
+            await cur
+        with pytest.raises(exc.APIError, match="already open"):
+            async with cur:
+                pass
+    assert isinstance(apooldb.conn, AsyncPool)
+    assert apooldb.conn.checkedout == 0
+    async with cur:
+        assert await cur.users.all().count() == 7
+
+
+async def test_busy_cursor_refuses_commit(apooldb):
+    async with apooldb.cursor as cur:
+        query = asyncio.create_task(cur.query("SELECT pg_sleep(0.05)").run())
+        await asyncio.sleep(0.01)
+        with pytest.raises(exc.APIError, match="busy"):
+            await cur.commit()
+        await query
+
+
 async def test_one_task_per_cursor(apooldb):
     async with apooldb.cursor as cur:
         with pytest.raises(exc.APIError, match="busy"):
