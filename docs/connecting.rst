@@ -54,6 +54,8 @@ The scheme of the URL names the package of the database driver:
 * ``psycopg2://``: `psycopg2 <https://www.psycopg.org/docs/>`_ (PostgreSQL)
 * ``mysqlclient://``: `mysqlclient <https://github.com/PyMySQL/mysqlclient>`_
   (MySQL/MariaDB)
+* ``asyncmy://``: `asyncmy <https://github.com/long2ice/asyncmy>`_
+  (MySQL/MariaDB), for the :doc:`async API <async>` only
 
 Append ``+pool`` to the scheme to use a :doc:`connection pool <pool>`, e.g.
 ``psycopg+pool://``.

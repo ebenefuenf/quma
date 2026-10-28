@@ -39,8 +39,11 @@ the matching driver:
 
     # MySQL/MariaDB
     pip install quma mysqlclient
+    # MySQL/MariaDB, async API only
+    pip install quma asyncmy
 
-The :doc:`async API <async>` needs psycopg 3.
+The :doc:`async API <async>` needs psycopg 3 or, for MySQL/MariaDB,
+asyncmy.
 
 Templates for dynamic SQL
 -------------------------

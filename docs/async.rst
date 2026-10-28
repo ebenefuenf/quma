@@ -5,8 +5,10 @@ Async
 quma has an async API for asyncio applications, for example with
 `Starlette <https://www.starlette.io>`_, `FastAPI <https://fastapi.tiangolo.com>`_
 or `Litestar <https://litestar.dev>`_. It works with psycopg 3
-(``psycopg://`` and ``psycopg+pool://``); psycopg2, mysqlclient and
-sqlite3 have no asyncio support.
+(``psycopg://`` and ``psycopg+pool://``) and, for MySQL and MariaDB,
+`asyncmy <https://github.com/long2ice/asyncmy>`_ (``asyncmy://`` and
+``asyncmy+pool://``). psycopg2, mysqlclient and sqlite3 have no asyncio
+support.
 
 Every call that talks to the database is awaited. Everything else works
 as in sync code: SQL directories, namespaces, templates, parameters,
@@ -179,6 +181,9 @@ the running query on the server. quma returns the connection to the
 pool, or discards it if its state is unknown, so a cancelled task never
 loses a pool slot.
 
+asyncmy can't cancel a query on the server. quma closes the connection,
+but MySQL runs the query until it finishes.
+
 
 Frameworks
 ----------
@@ -327,10 +332,11 @@ Sync and async in one application
 
 An application that needs both creates a :class:`Database` and an
 :class:`AsyncDatabase` from the same URL and SQL directories. psycopg 3
-serves both.
+serves both. For MySQL and MariaDB, the sync database uses
+``mysqlclient://`` and the async one ``asyncmy://``.
 
-* Each database has its own pool, and their sizes add up against
-  PostgreSQL's ``max_connections``.
+* Each database has its own pool, and their sizes add up against the
+  server's ``max_connections``.
 * A sync and an async cursor never share a connection or a transaction.
 * Use the sync database only where code runs in a thread: ``def``
   endpoints in Starlette and FastAPI run in a thread pool, Litestar runs

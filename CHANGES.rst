@@ -7,7 +7,9 @@ Unreleased
 
 - Add an async API for asyncio applications: ``AsyncDatabase``,
   ``AsyncCursor`` and ``AsyncQuery``, with psycopg 3 (``psycopg://`` and
-  ``psycopg+pool://``). Calls that talk to the database are awaited;
+  ``psycopg+pool://``) and, for MySQL and MariaDB, asyncmy
+  (``asyncmy://`` and ``asyncmy+pool://``, extra ``asyncmy``). Calls that
+  talk to the database are awaited;
   SQL directories, namespaces, templates, rows and mapping work as in
   sync code. See the new docs page "Async", which also shows how to use
   it with Starlette, FastAPI and Litestar.
