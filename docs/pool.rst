@@ -11,11 +11,11 @@ Setup a pool:
 .. code-block:: python
 
     # PostgreSQL pool (keeps 5 connections open and allows 10 more)
-    db = Database('postgresql+pool://username:password@/db_name', sqldir,
+    db = Database('psycopg+pool://username:password@/db_name', sqldir,
                   size=5, overflow=10)
 
     # MySQL/MariaDB pool 
-    db = Database('mysql+pool://username:password@/db_name', sqldir,
+    db = Database('mysqlclient+pool://username:password@/db_name', sqldir,
                   size=5, overflow=10)
 
 For a description of the parameters see :doc:`Connecting <connecting>`.

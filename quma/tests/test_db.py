@@ -42,10 +42,10 @@ def test_failing_init(db):
 
 def test_failing_connect():
     with pytest.raises(ValueError) as e:
-        database.connect("sqlite+wrong-scheme:///:memory:")
+        database.connect("sqlite3+wrong-scheme:///:memory:")
     assert str(e.value).startswith("Wrong scheme")
     with pytest.raises(ValueError) as e:
-        database.connect("sqlite:///")
+        database.connect("sqlite3:///")
     assert str(e.value).startswith("Required database path")
     with pytest.raises(ValueError) as e:
         database.connect("unknown://user@host/db")
@@ -854,10 +854,10 @@ def test_caching(db, dbcache):
 
 
 def test_close(qmark_sqldirs):
-    from ..provider import sqlite
+    from ..provider.sqlite3 import Connection
 
     db = Database(util.SQLITE_MEMORY, qmark_sqldirs, persist=True)
-    assert type(db.conn) is sqlite.Connection
+    assert type(db.conn) is Connection
     db.close()
     assert db.conn is None
     db.close()

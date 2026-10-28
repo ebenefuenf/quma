@@ -170,18 +170,6 @@ def test_postgres_persistent(pgdriver):
     persistent(pgdriver.uri, pgdriver.connection)
 
 
-@pytest.mark.postgres
-@pytest.mark.parametrize("scheme", ["postgresql", "postgresql+pool"])
-def test_postgresql_scheme_uses_psycopg2(scheme):
-    from psycopg2.extensions import connection
-
-    conn = connect(util.pg_uri(scheme))
-    raw_conn = conn.get()
-    assert type(raw_conn) is connection
-    conn.put(raw_conn)
-    conn.close()
-
-
 @pytest.mark.mysql
 def test_mysql_persistent():
     from MySQLdb.connections import Connection
@@ -247,7 +235,7 @@ def pessimistic_failure(uri):
 
 def test_pool_overflow_race(monkeypatch):
     conn = connect_pool(
-        f"sqlite+pool:///{util.SQLITE_FILE}", size=1, overflow=0, timeout=0.01
+        f"sqlite3+pool:///{util.SQLITE_FILE}", size=1, overflow=0, timeout=0.01
     )
 
     def lose_race():
@@ -365,7 +353,7 @@ def test_mysql_pool_replaces_closed():
 
 def test_pool_discards_broken_connection():
     conn = connect_pool(
-        f"sqlite+pool:///{util.SQLITE_FILE}", size=1, overflow=0, timeout=0.01
+        f"sqlite3+pool:///{util.SQLITE_FILE}", size=1, overflow=0, timeout=0.01
     )
     cn1 = conn.get()
     cn1.close()
@@ -379,7 +367,7 @@ def test_pool_discards_broken_connection():
 
 def test_pool_failed_replacement(monkeypatch):
     conn = connect_pool(
-        f"sqlite+pool:///{util.SQLITE_FILE}",
+        f"sqlite3+pool:///{util.SQLITE_FILE}",
         size=1,
         overflow=0,
         timeout=0.01,
@@ -566,13 +554,15 @@ def test_mysql_failing_check():
 
 def test_sqlite_failing_connection():
     with pytest.raises(exc.ConnectionError):
-        connect("sqlite:/// \n//\r /").get()
+        connect("sqlite3:/// \n//\r /").get()
 
 
 @pytest.mark.mysql
 def test_mysql_failing_connection():
     with pytest.raises(exc.ConnectionError):
-        connect("mysql://wrong_user_n4me:wrong_p4$$wrd@/wrng_db_n4me").get()
+        connect(
+            "mysqlclient://wrong_user_n4me:wrong_p4$$wrd@/wrng_db_n4me"
+        ).get()
 
 
 @pytest.mark.postgres

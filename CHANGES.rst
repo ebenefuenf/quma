@@ -5,6 +5,10 @@ quma Changelog
 Unreleased
 ----------
 
+- The scheme of a database URL names the driver package:
+  ``psycopg2://``, ``psycopg://`` (psycopg 3), ``mysqlclient://`` and
+  ``sqlite3://``, each also with ``+pool``. The schemes
+  ``postgresql://``, ``mysql://`` and ``sqlite://`` were removed.
 - Add type annotations for the public API and ship them (``py.typed``).
   Namespaces, scripts and rows are dynamic and typed as ``Any``.
 - ``Database()`` declares its own options as keyword arguments. All
@@ -54,8 +58,6 @@ Unreleased
 - Add support for psycopg 3 with the ``psycopg://`` scheme.
 - An unknown URL scheme raises ``ValueError`` listing the supported
   schemes instead of ``ModuleNotFoundError``.
-- Add the ``psycopg2://`` scheme for PostgreSQL. ``postgresql://``
-  remains an alias for it.
 - Add support for Python 3.14 and 3.15.
 - Remove support for Python 3.10.
 - Remove support for PyPy.

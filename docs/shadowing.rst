@@ -40,7 +40,7 @@ When you initialize quma with both directories like this:
 
     from quma import Database
 
-    db = Database('sqlite:///:memory:', [
+    db = Database('sqlite3:///:memory:', [
         '/path/to/sql/scripts/first',
         '/path/to/sql/scripts/second',
     ])

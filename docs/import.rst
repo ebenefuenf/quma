@@ -45,7 +45,7 @@ Create the instance in your main module:
 
     import my_db_module
 
-    my_db_module.connect('sqlite:///:memory:')
+    my_db_module.connect('sqlite3:///:memory:')
 
 Now you can import the class ``my_db_module.db`` from everywhere
 and use it the same way as a usual instance of ``quma.Database``.

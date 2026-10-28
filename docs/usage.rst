@@ -49,7 +49,7 @@ of paths to your SQL scripts.
 .. code-block:: python
 
     from quma import Database
-    db = Database('sqlite:///:memory:', '/path/to/sql-scripts')
+    db = Database('sqlite3:///:memory:', '/path/to/sql-scripts')
 
 **Note**: :class:`Database` instances are threadsafe. 
 
@@ -150,7 +150,7 @@ context manager ends. So you don't need to call ``cur.commit()``.
 
 .. code-block:: python
 
-    db = Database('sqlite:///:memory:', contextcommit=True)
+    db = Database('sqlite3:///:memory:', contextcommit=True)
 
     with db.cursor as cur:
         cur.users.remove(id=13).run()

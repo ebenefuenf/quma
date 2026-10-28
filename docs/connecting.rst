@@ -22,9 +22,9 @@ Connection Examples
     ]
 
     # SQLite
-    db = Database('sqlite:////path/to/db.sqlite', sqldirs)
+    db = Database('sqlite3:////path/to/db.sqlite', sqldirs)
     # SQLite in memory db
-    db = Database('sqlite:///:memory:', sqldirs)
+    db = Database('sqlite3:///:memory:', sqldirs)
 
     # PostgreSQL with psycopg 3, localhost
     db = Database('psycopg://username:password@/db_name', sqldirs)
@@ -34,25 +34,35 @@ Connection Examples
     db = Database('psycopg2://username:password@/db_name', sqldirs)
 
     # MySQL/MariaDB localhost
-    db = Database('mysql://username:password@/db_name', sqldirs)
+    db = Database('mysqlclient://username:password@/db_name', sqldirs)
     # MySQL/MariaDB network server
-    db = Database('mysql://username:password@192.168.1.1:5432/db_name', sqldirs)
+    db = Database('mysqlclient://username:password@192.168.1.1:3306/db_name', sqldirs)
 
     # You can pass driver specific parameters e. g. MySQL's charset
-    db = Database('mysql://username:password@192.168.1.1:5432/db_name', 
+    db = Database('mysqlclient://username:password@192.168.1.1:3306/db_name', 
                   sqldirs, 
                   charset='utf8')
+
+Drivers
+-------
+
+The scheme of the URL names the package of the database driver:
+
+* ``sqlite3://``: Python's built-in :mod:`sqlite3` module
+* ``psycopg://``: `psycopg 3 <https://www.psycopg.org/psycopg3/>`_
+  (PostgreSQL)
+* ``psycopg2://``: `psycopg2 <https://www.psycopg.org/docs/>`_ (PostgreSQL)
+* ``mysqlclient://``: `mysqlclient <https://github.com/PyMySQL/mysqlclient>`_
+  (MySQL/MariaDB)
+
+Append ``+pool`` to the scheme to use a :doc:`connection pool <pool>`, e.g.
+``psycopg+pool://``.
 
 PostgreSQL drivers
 ------------------
 
-For PostgreSQL the scheme names the driver: ``psycopg://`` uses
-`psycopg 3 <https://www.psycopg.org/psycopg3/>`_ and ``psycopg2://`` uses
-`psycopg2 <https://www.psycopg.org/docs/>`_. ``postgresql://`` is an alias
-for ``psycopg2://``.
-
-quma aims to behave the same with both drivers, so the same SQL scripts work
-with either of them:
+quma aims to behave the same with psycopg 3 and psycopg2, so the same SQL
+scripts work with either of them:
 
 * psycopg 3 uses client-side parameter binding like psycopg2
   (:class:`psycopg.ClientCursor`).

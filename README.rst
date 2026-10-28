@@ -51,7 +51,7 @@ You can access these scripts after connecting to the database:
 
     from quma import Database
 
-    db = Database('sqlite:///:memory:', '/path/to/sql/scripts')
+    db = Database('sqlite3:///:memory:', '/path/to/sql/scripts')
 
     db.execute('CREATE TABLE users ...')
 

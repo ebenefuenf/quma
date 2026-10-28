@@ -14,7 +14,7 @@ A good example is the request object in web applications:
     from pyramid.view import view_config
     from quma import Database
 
-    db = Database('sqlite:////path/to/db.sqlite', sqldir)
+    db = Database('sqlite3:////path/to/db.sqlite', sqldir)
 
 
     def do_more(request, user_id):

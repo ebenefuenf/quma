@@ -13,7 +13,7 @@ sql_path = os.path.join(here, "../quma/tests/fixtures/scripts/qmark")
 
 def get_db():
     db = quma.Database(
-        "sqlite:///:memory:",
+        "sqlite3:///:memory:",
         sql_path,
         persist=True,
         changeling=True,
