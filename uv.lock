@@ -684,12 +684,14 @@ templates = [
     { name = "mako" },
 ]
 test = [
+    { name = "anyio" },
     { name = "pytest" },
     { name = "pytest-cov" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "anyio", marker = "extra == 'test'" },
     { name = "mako", marker = "extra == 'templates'" },
     { name = "mysqlclient", marker = "extra == 'mysqlclient'" },
     { name = "psycopg", marker = "extra == 'psycopg'" },

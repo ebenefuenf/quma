@@ -24,7 +24,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-cov"]
+test = ["pytest", "pytest-cov", "anyio"]
 docs = ["sphinx", "sphinx-autobuild"]
 dev = ["ruff", "ty==0.0.92"]
 templates = ["mako"]

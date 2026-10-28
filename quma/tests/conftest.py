@@ -285,3 +285,9 @@ def mypooldb_dict(pyformat_sqldirs):
 @pytest.fixture
 def carrier():
     return SimpleNamespace(name="User 1", email="user.1@example.com")
+
+
+@pytest.fixture
+def anyio_backend():
+    # psycopg's async API runs on asyncio only.
+    return "asyncio"
