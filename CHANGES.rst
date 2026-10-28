@@ -9,6 +9,8 @@ Unreleased
   ``psycopg2://``, ``psycopg://`` (psycopg 3), ``mysqlclient://`` and
   ``sqlite3://``, each also with ``+pool``. The schemes
   ``postgresql://``, ``mysql://`` and ``sqlite://`` were removed.
+- The extras ``postgres`` and ``mysql`` were renamed to ``psycopg2`` and
+  ``mysqlclient``. ``psycopg`` installs psycopg 3.
 - Add type annotations for the public API and ship them (``py.typed``).
   Namespaces, scripts and rows are dynamic and typed as ``Any``.
 - ``Database()`` declares its own options as keyword arguments. All

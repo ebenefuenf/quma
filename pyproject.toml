@@ -28,9 +28,9 @@ test = ["pytest", "pytest-cov"]
 docs = ["sphinx", "sphinx-autobuild"]
 dev = ["ruff", "ty==0.0.92"]
 templates = ["mako"]
-postgres = ["psycopg2"]
+psycopg2 = ["psycopg2"]
 psycopg = ["psycopg"]
-mysql = ["mysqlclient"]
+mysqlclient = ["mysqlclient"]
 
 [project.urls]
 Homepage = "https://github.com/ebenefuenf/quma"

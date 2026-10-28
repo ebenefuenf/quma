@@ -671,14 +671,14 @@ docs = [
     { name = "sphinx", version = "9.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "sphinx-autobuild" },
 ]
-mysql = [
+mysqlclient = [
     { name = "mysqlclient" },
-]
-postgres = [
-    { name = "psycopg2" },
 ]
 psycopg = [
     { name = "psycopg" },
+]
+psycopg2 = [
+    { name = "psycopg2" },
 ]
 templates = [
     { name = "mako" },
@@ -691,9 +691,9 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "mako", marker = "extra == 'templates'" },
-    { name = "mysqlclient", marker = "extra == 'mysql'" },
+    { name = "mysqlclient", marker = "extra == 'mysqlclient'" },
     { name = "psycopg", marker = "extra == 'psycopg'" },
-    { name = "psycopg2", marker = "extra == 'postgres'" },
+    { name = "psycopg2", marker = "extra == 'psycopg2'" },
     { name = "pytest", marker = "extra == 'test'" },
     { name = "pytest-cov", marker = "extra == 'test'" },
     { name = "ruff", marker = "extra == 'dev'" },
@@ -701,7 +701,7 @@ requires-dist = [
     { name = "sphinx-autobuild", marker = "extra == 'docs'" },
     { name = "ty", marker = "extra == 'dev'", specifier = "==0.0.92" },
 ]
-provides-extras = ["dev", "docs", "mysql", "postgres", "psycopg", "templates", "test"]
+provides-extras = ["dev", "docs", "mysqlclient", "psycopg", "psycopg2", "templates", "test"]
 
 [[package]]
 name = "requests"
