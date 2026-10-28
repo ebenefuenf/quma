@@ -10,8 +10,12 @@ from collections.abc import (
 )
 from importlib import import_module
 from pathlib import Path
+from types import ModuleType
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import (
+    ParseResult,
+    urlparse,
+)
 
 from . import (
     exc,
@@ -100,7 +104,85 @@ class DatabaseCallWrapper:
         )
 
 
-class Database:
+class BaseDatabase:
+    DoesNotExistError = exc.DoesNotExistError
+    MultipleRowsError = exc.MultipleRowsError
+
+    def __init__(
+        self,
+        sqldirs: SqlDirs,
+        *,
+        file_ext: str,
+        tmpl_ext: str,
+        script_factory: Callable[..., Script],
+        prepare_params: PrepareParams | None,
+        contextcommit: bool,
+        echo: bool,
+        cache: bool,
+    ) -> None:
+        if isinstance(sqldirs, os.PathLike):
+            sqldirs = os.fspath(sqldirs)
+        self.sqldirs = sqldirs
+        self.file_ext = file_ext
+        self.tmpl_ext = tmpl_ext
+        self.script_factory = script_factory
+        self.prepare_params = prepare_params
+        self.contextcommit = contextcommit
+        self.echo = echo
+        self.cache = cache
+
+        self.heap = CarrierHeap()
+        self.namespaces: dict[str, Namespace] = {}
+
+        if isinstance(sqldirs, str):
+            self.register_namespace(sqldirs)
+        else:
+            for sqldir in sqldirs:
+                self.register_namespace(sqldir)
+
+    def register_namespace(self, sqldir: StrPath) -> None:
+        def instantiate(ns, ns_class, path):
+            if ns in self.namespaces:
+                # pass the old namespace to the new instance
+                shadow = self.namespaces[ns]
+                self.namespaces[ns] = ns_class(self, path, shadow=shadow)
+            else:
+                self.namespaces[ns] = ns_class(self, path)
+
+        def register(path, ns):
+            ns_class = Namespace
+            mod_path = path / "__init__.py"
+            if mod_path.is_file():
+                spec = importlib.util.spec_from_file_location(
+                    f"quma.mapping.{ns}", mod_path
+                )
+                assert spec is not None and spec.loader is not None
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                if ns == "__root__":
+                    class_name = "Root"
+                else:
+                    # snake_case to CamelCase
+                    class_name = "".join([s.title() for s in ns.split("_")])
+                ns_class = getattr(module, class_name, Namespace)
+                if hasattr(ns_class, "alias"):
+                    instantiate(ns_class.alias, ns_class, path)
+            instantiate(ns, ns_class, path)
+
+        register(Path(sqldir), "__root__")
+        for path in Path(sqldir).iterdir():
+            if path.is_dir() and path.name != "__pycache__":
+                register(path, path.name)
+
+    def __getattr__(self, attr: str) -> Any:
+        try:
+            return get_namespace(self, attr)
+        except AttributeError as e:
+            msg = f'Namespace or Root method "{attr}" not found.'
+            raise AttributeError(msg) from e
+
+
+class Database(BaseDatabase):
     """
     The database object acts as the central object of the
     library.
@@ -148,9 +230,6 @@ class Database:
         up on returning a connection. Defaults to None.
     """
 
-    DoesNotExistError = exc.DoesNotExistError
-    MultipleRowsError = exc.MultipleRowsError
-
     def __init__(
         self,
         dburi: str,
@@ -167,28 +246,18 @@ class Database:
     ) -> None:
         if args:
             raise ValueError("Max number of arguments is two")
-        if isinstance(sqldirs, os.PathLike):
-            sqldirs = os.fspath(sqldirs)
-        self.sqldirs = sqldirs
-        self.file_ext = file_ext
-        self.tmpl_ext = tmpl_ext
-        self.script_factory = script_factory
-        self.prepare_params = prepare_params
-        self.contextcommit = contextcommit
-        self.echo = echo
-        self.cache = cache
-
         # The remaining kwargs are passed to the DBAPI connect call
         self.conn: ConnectionLike | None = connect(dburi, **kwargs)
-
-        self.heap = CarrierHeap()
-        self.namespaces: dict[str, Namespace] = {}
-
-        if isinstance(sqldirs, str):
-            self.register_namespace(sqldirs)
-        else:
-            for sqldir in sqldirs:
-                self.register_namespace(sqldir)
+        super().__init__(
+            sqldirs,
+            file_ext=file_ext,
+            tmpl_ext=tmpl_ext,
+            script_factory=script_factory,
+            prepare_params=prepare_params,
+            contextcommit=contextcommit,
+            echo=echo,
+            cache=cache,
+        )
 
     def __call__(
         self, carrier: object | None = None, autocommit: bool = False
@@ -196,40 +265,6 @@ class Database:
         return DatabaseCallWrapper(
             self, carrier=carrier, autocommit=autocommit
         )
-
-    def register_namespace(self, sqldir: StrPath) -> None:
-        def instantiate(ns, ns_class, path):
-            if ns in self.namespaces:
-                # pass the old namespace to the new instance
-                shadow = self.namespaces[ns]
-                self.namespaces[ns] = ns_class(self, path, shadow=shadow)
-            else:
-                self.namespaces[ns] = ns_class(self, path)
-
-        def register(path, ns):
-            ns_class = Namespace
-            mod_path = path / "__init__.py"
-            if mod_path.is_file():
-                spec = importlib.util.spec_from_file_location(
-                    f"quma.mapping.{ns}", mod_path
-                )
-                assert spec is not None and spec.loader is not None
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-                if ns == "__root__":
-                    class_name = "Root"
-                else:
-                    # snake_case to CamelCase
-                    class_name = "".join([s.title() for s in ns.split("_")])
-                ns_class = getattr(module, class_name, Namespace)
-                if hasattr(ns_class, "alias"):
-                    instantiate(ns_class.alias, ns_class, path)
-            instantiate(ns, ns_class, path)
-
-        register(Path(sqldir), "__root__")
-        for path in Path(sqldir).iterdir():
-            if path.is_dir() and path.name != "__pycache__":
-                register(path, path.name)
 
     def execute(self, query: str, **kwargs: Any) -> Sequence[Row] | None:
         """Execute the statements in ``query`` and commit
@@ -278,22 +313,23 @@ class Database:
         """Open a connection and return a cursor."""
         return Cursor(self, self.namespaces, self.contextcommit)
 
-    def __getattr__(self, attr: str) -> Any:
-        try:
-            return get_namespace(self, attr)
-        except AttributeError as e:
-            msg = f'Namespace or Root method "{attr}" not found.'
-            raise AttributeError(msg) from e
-
 
 def connect(dburi: str, **kwargs: Any) -> ConnectionLike:
     """
     Create and return a Connection or Pool object specified
     via ``dburi`` (a string in the form of an URL)
     """
+    module, url, pooled = resolve(dburi)
+    if pooled:
+        return pool.Pool(module.Connection, url, **kwargs)
+    return module.Connection(url, **kwargs)
+
+
+def resolve(dburi: str) -> tuple[ModuleType, ParseResult, bool]:
+    """Return the provider module for ``dburi``, the parsed URL and
+    whether the URL asks for a pool."""
     url = urlparse(dburi)
-    scheme = url.scheme.split("+")
-    module_name = scheme[0]
+    module_name, *options = url.scheme.split("+")
     drivers = sorted(m.name for m in pkgutil.iter_modules(provider.__path__))
     if module_name not in drivers:
         schemes = ", ".join(f"{driver}://" for driver in drivers)
@@ -301,13 +337,9 @@ def connect(dburi: str, **kwargs: Any) -> ConnectionLike:
             f'Unknown driver "{module_name}". Use one of: {schemes}'
         )
     module = import_module(f"quma.provider.{module_name}")
-    try:
-        if scheme[1].lower() == "pool":
-            return pool.Pool(module.Connection, url, **kwargs)
-        else:
-            raise ValueError(
-                'Wrong scheme. Only "provider://" or '
-                '"provider+pool://" are allowed'
-            )
-    except IndexError:
-        return module.Connection(url, **kwargs)
+    if options and options[0].lower() != "pool":
+        raise ValueError(
+            'Wrong scheme. Only "provider://" or '
+            '"provider+pool://" are allowed'
+        )
+    return module, url, bool(options)

@@ -16,7 +16,7 @@ from .script import (
 
 if TYPE_CHECKING:
     from .cursor import BaseCursor
-    from .database import Database
+    from .database import BaseDatabase
 
 
 def get_namespace(self, attr):
@@ -34,7 +34,7 @@ def get_namespace(self, attr):
 
 class Namespace:
     def __init__(
-        self, db: Database, sqldir: Path, shadow: Namespace | None = None
+        self, db: BaseDatabase, sqldir: Path, shadow: Namespace | None = None
     ) -> None:
         self.db = db
         self.sqldir = sqldir
