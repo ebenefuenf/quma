@@ -24,7 +24,15 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-cov", "anyio"]
+test = [
+    "pytest",
+    "pytest-cov",
+    "anyio",
+    "httpx2",
+    "starlette",
+    "fastapi>=0.121",
+    "litestar",
+]
 docs = ["sphinx", "sphinx-autobuild"]
 dev = ["ruff", "ty==0.0.92"]
 templates = ["mako"]
