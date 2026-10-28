@@ -15,6 +15,8 @@ from typing import (
 from .conn import Params
 
 if TYPE_CHECKING:
+    from .aio.cursor import AsyncCursor
+    from .aio.query import AsyncQuery
     from .cursor import (
         BaseCursor,
         Cursor,
@@ -60,6 +62,15 @@ class Script:
         prepare_params: PrepareParams | None = None,
         **kwargs: Any,
     ) -> Query: ...
+
+    @overload
+    def __call__(
+        self,
+        cursor: AsyncCursor,
+        *args: Any,
+        prepare_params: PrepareParams | None = None,
+        **kwargs: Any,
+    ) -> AsyncQuery: ...
 
     @overload
     def __call__(
@@ -129,6 +140,13 @@ class Script:
         content, params = self.prepare(cursor, args, kwargs, prepare_params)
         try:
             cursor.execute(content, params)
+        finally:
+            self.echo and self.mogrify(cursor, content, params)
+
+    async def aexecute(self, cursor, args, kwargs, prepare_params=None):
+        content, params = self.prepare(cursor, args, kwargs, prepare_params)
+        try:
+            await cursor.execute(content, params)
         finally:
             self.echo and self.mogrify(cursor, content, params)
 

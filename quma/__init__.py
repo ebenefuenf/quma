@@ -1,3 +1,9 @@
+from .aio import (
+    AsyncCursor,
+    AsyncDatabase,
+    connect_async,
+)
+from .cursor import Cursor
 from .database import (  # noqa: F401
     Database,
     connect,
@@ -17,10 +23,14 @@ from .mapping import FromRow
 from .namespace import Namespace
 
 __all__ = [
+    "AsyncCursor",
+    "AsyncDatabase",
+    "Cursor",
     "Database",
     "FromRow",
     "Namespace",
     "connect",
+    "connect_async",
     "APIError",
     "ConnectionError",
     "DoesNotExistError",

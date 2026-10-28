@@ -86,9 +86,12 @@ class CarrierHeap:
         return None if carrier is None else carrier.conn
 
 
-class DatabaseCallWrapper:
+class BaseCallWrapper:
     def __init__(
-        self, database: Database, carrier: object | None, autocommit: bool
+        self,
+        database: BaseDatabase[Any],
+        carrier: object | None,
+        autocommit: bool,
     ) -> None:
         self.database = database
         if carrier is None:
@@ -97,6 +100,8 @@ class DatabaseCallWrapper:
             self.carrier = database.heap.get(carrier)
         self.autocommit = autocommit
 
+
+class DatabaseCallWrapper(BaseCallWrapper):
     @property
     def cursor(self) -> Cursor:
         return Cursor(
@@ -170,7 +175,7 @@ class BaseDatabase(Generic[ConnT]):
                 else:
                     # snake_case to CamelCase
                     class_name = "".join([s.title() for s in ns.split("_")])
-                ns_class = getattr(module, class_name, Namespace)
+                ns_class = self._namespace_class(module, class_name)
                 if hasattr(ns_class, "alias"):
                     instantiate(ns_class.alias, ns_class, path)
             instantiate(ns, ns_class, path)
@@ -179,6 +184,11 @@ class BaseDatabase(Generic[ConnT]):
         for path in Path(sqldir).iterdir():
             if path.is_dir() and path.name != "__pycache__":
                 register(path, path.name)
+
+    def _namespace_class(
+        self, module: ModuleType, class_name: str
+    ) -> type[Namespace]:
+        return getattr(module, class_name, Namespace)
 
     def __getattr__(self, attr: str) -> Any:
         try:
