@@ -89,11 +89,19 @@ class Script:
             )
         return self.content, params
 
-    def execute(self, cursor, args, kwargs, prepare_params=None):
+    def prepare(
+        self,
+        cursor: Cursor,
+        args: list[Any],
+        kwargs: dict[str, Any],
+        prepare_params: PrepareParams | None = None,
+    ) -> tuple[str, Params]:
         if args:
-            content, params = self._prepare(cursor, args, prepare_params)
-        else:
-            content, params = self._prepare(cursor, kwargs, prepare_params)
+            return self._prepare(cursor, args, prepare_params)
+        return self._prepare(cursor, kwargs, prepare_params)
+
+    def execute(self, cursor, args, kwargs, prepare_params=None):
+        content, params = self.prepare(cursor, args, kwargs, prepare_params)
         try:
             cursor.execute(content, params)
         finally:
