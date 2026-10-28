@@ -494,6 +494,13 @@ def test_rollback(dbfile):
     rollback(dbfile)
 
 
+def test_script_with_dbapi_cursor(db):
+    raw_cursor = db.conn.conn.cursor()
+    rows = db.users.all(raw_cursor).all()
+    assert len(rows) == 7
+    raw_cursor.close()
+
+
 def test_overwrite_script_class(pyformat_sqldirs):
     class MyScript(script.Script):
         def the_test(self):

@@ -88,7 +88,13 @@ class Script:
         prepare_params: PrepareParams | None = None,
         **kwargs: Any,
     ) -> BaseQuery:
-        return cursor._query(self, args, kwargs, prepare_params)
+        create = getattr(cursor, "_query", None)
+        if create is None:
+            # A DB-API cursor instead of a quma cursor, which worked before.
+            from .query import Query
+
+            return Query(self, cursor, args, kwargs, prepare_params)
+        return create(self, args, kwargs, prepare_params)
 
     def __str__(self) -> str:
         return self.content
