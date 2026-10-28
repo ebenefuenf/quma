@@ -25,10 +25,10 @@ project = "quma"
 copyright = "2018-present, ebene fünf GmbH"
 author = "ebene fünf GmbH"
 
-# The short X.Y version
-version = ""
 # The full version, including alpha/beta/rc tags
 release = quma.__version__
+# The short X.Y version
+version = ".".join(release.split(".")[:2])
 
 
 # -- General configuration ---------------------------------------------------
