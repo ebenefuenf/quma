@@ -84,8 +84,9 @@ class Pool:
         # connection is set up to be used again, it’s in a “clean”
         # state with no references held to the previous series of
         # operations.
-        conn.rollback()
-        self._conn.disable_autocommit(conn)
+        if not self._conn.reset(conn):
+            self._dec_overflow()
+            return
         try:
             self._pool.put(conn, False)
         except Full:

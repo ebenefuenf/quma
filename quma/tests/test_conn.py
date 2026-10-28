@@ -363,6 +363,66 @@ def test_mysql_pool_replaces_closed():
     pool_replaces_closed(util.MYSQL_POOL_URI)
 
 
+def test_pool_discards_broken_connection():
+    conn = connect_pool(
+        f"sqlite+pool:///{util.SQLITE_FILE}", size=1, overflow=0, timeout=0.01
+    )
+    cn1 = conn.get()
+    cn1.close()
+    conn.put(cn1)
+    assert conn.checkedout == 0
+    cn2 = conn.get()
+    assert cn2 is not cn1
+    conn.put(cn2)
+    conn.close()
+
+
+def lost_connection(db, killer, pid_sql, kill_sql, error):
+    with pytest.raises(error):
+        with db.cursor as cur:
+            cur.execute(pid_sql)
+            killer.execute(kill_sql.format(pid=cur.fetchone()[0]))
+            cur.execute("SELECT 1")
+    with db.cursor as cur:
+        cur.execute("SELECT 1")
+        assert cur.fetchone()[0] == 1
+    db.close()
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize("pooled", [True, False])
+def test_postgres_lost_connection(pgdriver, pooled):
+    if pooled:
+        db = Database(pgdriver.pool_uri, size=1, overflow=0, timeout=0.1)
+    else:
+        db = Database(pgdriver.uri, persist=True, pessimistic=True)
+    lost_connection(
+        db,
+        Database(pgdriver.uri),
+        "SELECT pg_backend_pid()",
+        "SELECT pg_terminate_backend({pid}, 5000)",
+        pgdriver.dbapi.OperationalError,
+    )
+
+
+@pytest.mark.mysql
+@pytest.mark.parametrize("pooled", [True, False])
+def test_mysql_lost_connection(pooled):
+    import MySQLdb
+
+    if pooled:
+        db = Database(util.MYSQL_POOL_URI, size=1, overflow=0, timeout=0.1)
+    else:
+        db = Database(util.MYSQL_URI, persist=True, pessimistic=True)
+    lost_connection(
+        db,
+        Database(util.MYSQL_URI),
+        "SELECT CONNECTION_ID()",
+        "KILL {pid}",
+        MySQLdb.OperationalError,
+    )
+
+
 def finite_pool(uri):
     conn = connect(uri, size=1, overflow=4, timeout=0.05)
     conns = queue.Queue()

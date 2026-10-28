@@ -96,10 +96,20 @@ class Connection:
             autocommit, self.create_conn(**self.dbapi_kwargs)
         )
 
+    def reset(self, conn: RawConnection) -> bool:
+        """Return False if ``conn`` is broken and has been discarded."""
+        try:
+            conn.rollback()
+            self.disable_autocommit(conn)
+        except Exception:
+            # Closing ends the transaction too. Raising would hide the
+            # error that broke the connection.
+            self.discard(conn)
+            return False
+        return True
+
     def put(self, conn: RawConnection) -> None:
-        conn.rollback()
-        self.disable_autocommit(conn)
-        if not self.persist:
+        if self.reset(conn) and not self.persist:
             conn.close()
 
     def close(self, conn: RawConnection | None = None) -> None:

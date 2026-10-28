@@ -26,6 +26,11 @@ Unreleased
   transaction open.
 - Fix a connection pool returning ``None`` instead of a connection when
   another thread took the last overflow slot at the same time.
+- Fix a pool losing a slot for every connection that broke while in
+  use, for example during a database restart. Once all slots were lost,
+  checkouts timed out or waited forever. Returning a broken connection
+  now discards it instead of raising, which also no longer hides the
+  error that broke it behind psycopg2's ``InterfaceError``.
 - Fix a pool with ``pessimistic=True`` failing to replace a MySQL
   connection that was already closed. The checkout raised and the pool
   lost the connection's slot.
