@@ -2,8 +2,10 @@
 quma Changelog
 ===============
 
-Unreleased
-----------
+Version 0.4.0
+-------------
+
+Released on October 28th 2026
 
 - Map rows to objects: ``one()``, ``first()``, ``all()``, ``unbunch()``
   and ``ManyResult.get()`` accept a target and return instances of it.
