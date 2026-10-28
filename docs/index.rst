@@ -6,7 +6,8 @@ It maps object methods to SQL script files and supports **SQLite**, **PostgreSQL
 **MySQL** and **MariaDB**.
 
 It also provides a simple connection pool and templating for dynamic SQL like
-conditional WHEREs.
+conditional WHEREs, and an async API for asyncio applications such as
+Starlette, FastAPI or Litestar (PostgreSQL with psycopg 3).
 
 Motivation
 ----------
@@ -30,6 +31,8 @@ Learn more
 * In :doc:`Connecting <connecting>` you learn how to connect to SQLite,
   PostgreSQL and MySQL/MariaDB databases.
 * :doc:`Connection pool <pool>`.
+* :doc:`Async <async>` shows the async API and how to use it with
+  Starlette, FastAPI and Litestar.
 * Learn what a :doc:`changling cursor <changeling>` is and how it enables
   you to access result data in three different ways.
 * Database management systems have different ways of parameter binding.

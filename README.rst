@@ -9,7 +9,8 @@ It maps object methods to SQL script files and supports **SQLite**, **PostgreSQL
 **MySQL** and **MariaDB**.
 
 It also provides a simple connection pool and templating for dynamic SQL like
-conditional WHEREs.
+conditional WHEREs, and an async API for asyncio applications such as
+Starlette, FastAPI or Litestar (PostgreSQL with psycopg 3).
 
 Motivation
 ----------

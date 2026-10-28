@@ -10,6 +10,7 @@
    Mapping rows to objects <mapping>
    connecting
    pool
+   async
    carrier
    changeling
    Passing parameters <parameters>
