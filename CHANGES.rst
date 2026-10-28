@@ -2,8 +2,10 @@
 quma Changelog
 ===============
 
-Unreleased
-----------
+Version 0.3.0
+-------------
+
+Released on October 28th 2026
 
 - The scheme of a database URL names the driver package:
   ``psycopg2://``, ``psycopg://`` (psycopg 3), ``mysqlclient://`` and
