@@ -29,6 +29,23 @@ if TYPE_CHECKING:
     )
 
 
+def map_rows(
+    target: Target[Any] | None,
+    description: Sequence[Sequence[Any]] | None,
+    rows: Sequence[Row],
+) -> Sequence[Any]:
+    if target is None:
+        return rows
+    return mapping.map_rows(target, description, rows)
+
+
+def check_rowcount(rowcount: int) -> None:
+    if rowcount == 0:
+        raise exc.DoesNotExistError()
+    if rowcount > 1:
+        raise exc.MultipleRowsError()
+
+
 class ManyResult:
     def __init__(self, query: Query) -> None:
         self.query = query
@@ -66,17 +83,10 @@ class ManyResult:
         if not self._has_been_executed:
             self._run()
         rows = self.cursor.fetchmany(size)
-        if target is None:
-            return rows
-        return mapping.map_rows(target, self.cursor.description, rows)
+        return map_rows(target, self.cursor.description, rows)
 
 
-class Query:
-    """
-    The query object is the value you get when you run a query,
-    i. e. call a :class:`Script` object.
-    """
-
+class BaseQuery:
     def __init__(
         self,
         script: Script,
@@ -93,6 +103,16 @@ class Query:
         self._has_been_executed = False
         self._result_cache: Sequence[Row] | None = None
         self._description: Sequence[Sequence[Any]] | None = None
+
+    def __getattr__(self, key: str) -> Any:
+        return getattr(self.cursor, key)
+
+
+class Query(BaseQuery):
+    """
+    The query object is the value you get when you run a query,
+    i. e. call a :class:`Script` object.
+    """
 
     def run(self) -> Self:
         """Execute the query using the DBAPI driver."""
@@ -113,12 +133,6 @@ class Query:
                 raise e.error from e
             self._description = self.cursor.description
         return self._result_cache
-
-    def _map(self, target: Target[Any], rows: Sequence[Row]) -> list[Any]:
-        return mapping.map_rows(target, self._description, rows)
-
-    def __getattr__(self, key: str) -> Any:
-        return getattr(self.cursor, key)
 
     @overload
     def __getitem__(self, index: int) -> Row: ...
@@ -165,9 +179,7 @@ class Query:
             (see :doc:`mapping`).
         """
         rows = self._fetch()
-        if target is None:
-            return rows
-        return self._map(target, rows)
+        return map_rows(target, self._description, rows)
 
     @overload
     def one(self) -> Row: ...
@@ -187,23 +199,14 @@ class Query:
         """
         if not self._has_been_executed:
             self.run()
-
-        def check_rowcount(rowcount: int) -> None:
-            if rowcount == 0:
-                raise exc.DoesNotExistError()
-            if rowcount > 1:
-                raise exc.MultipleRowsError()
-
         # SQLite does not support rowcount
         if self.cursor.has_rowcount:
             check_rowcount(self.cursor.rowcount)
-            result = self._fetch()
+            rows = self._fetch()
         else:
-            result = self._fetch()
-            check_rowcount(len(result))
-        if target is None:
-            return result[0]
-        return self._map(target, result[:1])[0]
+            rows = self._fetch()
+            check_rowcount(len(rows))
+        return map_rows(target, self._description, rows[:1])[0]
 
     def value(self, key: int | str = 0) -> Any:
         """Call :func:`one` and return the first column by default.
@@ -231,9 +234,7 @@ class Query:
         rows = self._fetch()[:1]
         if not rows:
             return None
-        if target is None:
-            return rows[0]
-        return self._map(target, rows)[0]
+        return map_rows(target, self._description, rows)[0]
 
     def exists(self) -> bool:
         """Return if the query's result has rows."""
@@ -276,6 +277,4 @@ class Query:
             results = self.cursor.fetchmany(size)
             if not results:
                 break
-            if target is not None:
-                results = mapping.map_rows(target, description, results)
-            yield from results
+            yield from map_rows(target, description, results)
