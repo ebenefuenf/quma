@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import pkgutil
 import threading
 from collections.abc import (
     Callable,
@@ -15,6 +16,7 @@ from urllib.parse import urlparse
 from . import (
     exc,
     pool,
+    provider,
 )
 from .conn import (
     ConnectionLike,
@@ -296,6 +298,12 @@ def connect(dburi: str, **kwargs: Any) -> ConnectionLike:
     url = urlparse(dburi)
     scheme = url.scheme.split("+")
     module_name = scheme[0]
+    drivers = sorted(m.name for m in pkgutil.iter_modules(provider.__path__))
+    if module_name not in drivers:
+        schemes = ", ".join(f"{driver}://" for driver in drivers)
+        raise ValueError(
+            f'Unknown driver "{module_name}". Use one of: {schemes}'
+        )
     module = import_module(f"quma.provider.{module_name}")
     try:
         if scheme[1].lower() == "pool":

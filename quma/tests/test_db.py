@@ -47,6 +47,10 @@ def test_failing_connect():
     with pytest.raises(ValueError) as e:
         database.connect("sqlite:///")
     assert str(e.value).startswith("Required database path")
+    with pytest.raises(ValueError) as e:
+        database.connect("unknown://user@host/db")
+    assert str(e.value).startswith('Unknown driver "unknown". Use one of:')
+    assert "psycopg2://" in str(e.value)
 
 
 def test_namespace(db):

@@ -52,6 +52,8 @@ Unreleased
 - ``Database.close()`` no longer raises ``APIError`` for connections that
   are neither persistent nor pooled, and can be called more than once.
 - Add support for psycopg 3 with the ``psycopg://`` scheme.
+- An unknown URL scheme raises ``ValueError`` listing the supported
+  schemes instead of ``ModuleNotFoundError``.
 - Add the ``psycopg2://`` scheme for PostgreSQL. ``postgresql://``
   remains an alias for it.
 - Add support for Python 3.14 and 3.15.
