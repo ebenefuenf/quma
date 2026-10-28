@@ -2,6 +2,13 @@
 quma Changelog
 ===============
 
+Unreleased
+----------
+
+- With ``contextcommit``, a cursor's ``with`` block now rolls back when it
+  raises. Before, quma committed the statements that ran before the
+  error.
+
 Version 0.4.0
 -------------
 

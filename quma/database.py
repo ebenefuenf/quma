@@ -200,8 +200,9 @@ class Database(BaseDatabase):
         test that the database connection is still viable. Defaults to
         ``False``.
     :param contextcommit: If ``True`` and a context manager is used quma will
-        automatically commit all changes when the context manager exits.
-        Defaults to ``False``.
+        automatically commit all changes when the context manager exits,
+        or roll them back if it exits with an exception. Defaults to
+        ``False``.
     :param prepare_params: A callback function which will be called before
         every query to prepare the params which will be passed to the query.
         Defaults to None.

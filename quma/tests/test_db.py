@@ -373,6 +373,37 @@ def test_contextcommit(dbcommit):
         assert user.email == "test.user@example.com"
 
 
+def add_test_user(db, cursor):
+    db.user.add(
+        cursor,
+        id=8,
+        name="Test User",
+        email="test.user@example.com",
+        city="Test City",
+    ).run()
+
+
+def test_contextcommit_rolls_back_on_error(dbcommit):
+    with pytest.raises(ValueError), dbcommit.cursor as cursor:
+        add_test_user(dbcommit, cursor)
+        raise ValueError
+    with dbcommit.cursor as cursor:
+        assert not dbcommit.user.by_name(cursor, name="Test User").exists()
+
+
+def test_contextcommit_rolls_back_carried_connection_on_error(dbcommit):
+    carrier = type("Carrier", (), {})
+    with pytest.raises(ValueError), dbcommit(carrier).cursor as cursor:
+        add_test_user(dbcommit, cursor)
+        raise ValueError
+    # Commits the carried connection's transaction on exit.
+    with dbcommit(carrier).cursor:
+        pass
+    dbcommit.release(carrier)
+    with dbcommit.cursor as cursor:
+        assert not dbcommit.user.by_name(cursor, name="Test User").exists()
+
+
 def autocommit(uri, sqldirs, insert_error, select_error):
     dbs = []
 

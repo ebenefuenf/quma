@@ -146,7 +146,8 @@ the :meth:`commit()` and :meth:`rollback()` methods of the cursor.
 
 If *db* is initialized with the flag ``contextcommit`` set to ``True``
 and a context manager is used, quma will automatically commit when the
-context manager ends. So you don't need to call ``cur.commit()``.
+context manager ends. So you don't need to call ``cur.commit()``. If the
+block raises an exception, quma rolls back instead.
 
 .. code-block:: python
 

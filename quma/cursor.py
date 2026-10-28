@@ -147,11 +147,17 @@ class Cursor(BaseCursor):
             return self
         return self.create_cursor()
 
-    def __exit__(self, *args: object) -> None:
+    def __exit__(
+        self, exc_type: type[BaseException] | None, *args: object
+    ) -> None:
         if self.raw_conn is None:
             return
         if self.contextcommit:
-            self.commit()
+            if exc_type is None:
+                self.commit()
+            else:
+                # put() keeps a carried connection and its transaction open.
+                self.rollback()
         if self.conn:
             self.put()
 
