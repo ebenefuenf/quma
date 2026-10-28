@@ -90,7 +90,7 @@ class BaseQuery:
     def __init__(
         self,
         script: Script,
-        cursor: BaseCursor,
+        cursor: BaseCursor[Any],
         args: Sequence[Any],
         kwargs: dict[str, Any],
         prepare_params: PrepareParams | None,

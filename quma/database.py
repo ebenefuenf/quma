@@ -11,7 +11,10 @@ from collections.abc import (
 from importlib import import_module
 from pathlib import Path
 from types import ModuleType
-from typing import Any
+from typing import (
+    Any,
+    Generic,
+)
 from urllib.parse import (
     ParseResult,
     urlparse,
@@ -24,6 +27,7 @@ from . import (
 )
 from .conn import (
     ConnectionLike,
+    ConnT,
     Row,
 )
 from .cursor import (
@@ -47,12 +51,12 @@ class Carrier:
         self.obj = obj
         self.heap = heap
         self.oid = id(obj)
-        self.conn: CarriedConnection | None = None
+        self.conn: CarriedConnection[Any] | None = None
 
-    def add_conn(self, conn: CarriedConnection) -> None:
+    def add_conn(self, conn: CarriedConnection[Any]) -> None:
         self.conn = conn
 
-    def detach(self) -> CarriedConnection | None:
+    def detach(self) -> CarriedConnection[Any] | None:
         return self.heap.pop(self.oid)
 
     def __getattr__(self, attr: str) -> Any:
@@ -76,7 +80,7 @@ class CarrierHeap:
                 carrier = self.add(obj)
             return carrier
 
-    def pop(self, oid: int) -> CarriedConnection | None:
+    def pop(self, oid: int) -> CarriedConnection[Any] | None:
         with self.lock:
             carrier = self.heap.pop(oid, None)
         return None if carrier is None else carrier.conn
@@ -104,7 +108,9 @@ class DatabaseCallWrapper:
         )
 
 
-class BaseDatabase:
+class BaseDatabase(Generic[ConnT]):
+    conn: ConnT | None
+
     DoesNotExistError = exc.DoesNotExistError
     MultipleRowsError = exc.MultipleRowsError
 
@@ -182,7 +188,7 @@ class BaseDatabase:
             raise AttributeError(msg) from e
 
 
-class Database(BaseDatabase):
+class Database(BaseDatabase[ConnectionLike]):
     """
     The database object acts as the central object of the
     library.
@@ -248,7 +254,7 @@ class Database(BaseDatabase):
         if args:
             raise ValueError("Max number of arguments is two")
         # The remaining kwargs are passed to the DBAPI connect call
-        self.conn: ConnectionLike | None = connect(dburi, **kwargs)
+        self.conn = connect(dburi, **kwargs)
         super().__init__(
             sqldirs,
             file_ext=file_ext,

@@ -4,6 +4,7 @@ from contextlib import suppress
 from typing import (
     Any,
     Protocol,
+    TypeVar,
 )
 from urllib.parse import ParseResult
 
@@ -16,18 +17,12 @@ Row = Any
 Params = dict[str, Any] | list[Any]
 
 
-class ConnectionLike(Protocol):
-    """The interface :class:`quma.Database` uses to get connections:
-    implemented by the provider connections and the connection pool."""
+class BaseConnectionLike(Protocol):
+    """The part of the connection interface that does no I/O, shared by
+    :class:`ConnectionLike` and :class:`AsyncConnectionLike`."""
 
     @property
     def has_rowcount(self) -> bool: ...
-
-    def get(self, autocommit: bool = False) -> RawConnection: ...
-
-    def put(self, conn: RawConnection) -> None: ...
-
-    def close(self) -> None: ...
 
     def cursor(self, conn: RawConnection) -> RawCursor: ...
 
@@ -36,6 +31,33 @@ class ConnectionLike(Protocol):
     def mogrify(
         self, cursor: RawCursor, content: str, params: Params
     ) -> str: ...
+
+
+class ConnectionLike(BaseConnectionLike, Protocol):
+    """The interface :class:`quma.Database` uses to get connections:
+    implemented by the provider connections and the connection pool."""
+
+    def get(self, autocommit: bool = False) -> RawConnection: ...
+
+    def put(self, conn: RawConnection) -> None: ...
+
+    def close(self) -> None: ...
+
+
+class AsyncConnectionLike(BaseConnectionLike, Protocol):
+    """The interface :class:`quma.AsyncDatabase` uses to get connections:
+    implemented by the async provider connections and the async pool."""
+
+    async def open(self) -> None: ...
+
+    async def get(self, autocommit: bool = False) -> RawConnection: ...
+
+    async def put(self, conn: RawConnection) -> None: ...
+
+    async def close(self) -> None: ...
+
+
+ConnT = TypeVar("ConnT", bound=BaseConnectionLike)
 
 
 class Connection:

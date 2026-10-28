@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from contextlib import suppress
 from typing import (
     TYPE_CHECKING,
     Any,
+    Generic,
     Self,
 )
 
 from . import exc
 from .conn import (
+    BaseConnectionLike,
     ConnectionLike,
+    ConnT,
     Params,
     RawConnection,
     RawCursor,
@@ -19,24 +23,32 @@ from .namespace import (
     Namespace,
     get_namespace,
 )
-from .query import Query
-from .script import Script
+from .query import (
+    BaseQuery,
+    Query,
+)
+from .script import (
+    PrepareParams,
+    Script,
+)
 
 if TYPE_CHECKING:
     from .database import (
+        BaseDatabase,
         Carrier,
-        Database,
     )
 
 
-class CarriedConnection:
-    def __init__(self, conn: ConnectionLike, raw_conn: RawConnection) -> None:
+class CarriedConnection(Generic[ConnT]):
+    def __init__(self, conn: ConnT, raw_conn: RawConnection) -> None:
         self.conn = conn
         self.raw_conn = raw_conn
 
 
 class RawCursorWrapper:
-    def __init__(self, conn: ConnectionLike, raw_cursor: RawCursor) -> None:
+    def __init__(
+        self, conn: BaseConnectionLike, raw_cursor: RawCursor
+    ) -> None:
         self.conn = conn
         self.cursor = raw_cursor
         self.has_rowcount = conn.has_rowcount
@@ -45,10 +57,10 @@ class RawCursorWrapper:
         return self.conn.get_cursor_attr(self.cursor, key)
 
 
-class BaseCursor:
+class BaseCursor(Generic[ConnT]):
     def __init__(
         self,
-        db: Database,
+        db: BaseDatabase[ConnT],
         namespaces: dict[str, Namespace],
         contextcommit: bool,
         carrier: Carrier | None = None,
@@ -74,15 +86,13 @@ class BaseCursor:
             return self.carrier.conn.raw_conn
         return None
 
-    def _attach(self, conn: ConnectionLike, raw_conn: RawConnection) -> None:
+    def _attach(self, conn: ConnT, raw_conn: RawConnection) -> None:
         if self.carrier and not self.carrier.conn:
             self.carrier.add_conn(CarriedConnection(conn, raw_conn))
         self.raw_conn = raw_conn
         self.raw_cursor = RawCursorWrapper(conn, conn.cursor(raw_conn))
 
-    def _detach(
-        self, force: bool
-    ) -> tuple[ConnectionLike, RawConnection] | None:
+    def _detach(self, force: bool) -> tuple[ConnT, RawConnection] | None:
         """Return the connection to put back, or None if there is none."""
         if self.carrier and self.carrier.conn:
             if not force:
@@ -98,7 +108,7 @@ class BaseCursor:
         self._opened_by_call = False
         return detached
 
-    def _conn(self) -> ConnectionLike:
+    def _conn(self) -> ConnT:
         if self.conn is None:
             raise exc.APIError("The database is closed.")
         return self.conn
@@ -107,6 +117,15 @@ class BaseCursor:
         if self.raw_conn is None:
             raise exc.APIError("The cursor has no open connection.")
         return self.raw_conn
+
+    def _query(
+        self,
+        script: Script,
+        args: Sequence[Any],
+        kwargs: dict[str, Any],
+        prepare_params: PrepareParams | None,
+    ) -> BaseQuery:
+        raise NotImplementedError
 
     def _script(self, content: str, is_template: bool) -> Script:
         return Script(
@@ -140,7 +159,7 @@ class BaseCursor:
             ) from e
 
 
-class Cursor(BaseCursor):
+class Cursor(BaseCursor[ConnectionLike]):
     def __enter__(self) -> Self:
         # `with db.cursor() as cur` uses the connection opened by the call.
         if self._opened_by_call:
@@ -216,4 +235,13 @@ class Cursor(BaseCursor):
         Creates an ad hoc Query object based on content.
         """
         script = self._script(content, is_template)
-        return Query(script, self, args, kwargs, self.db.prepare_params)
+        return self._query(script, args, kwargs, self.db.prepare_params)
+
+    def _query(
+        self,
+        script: Script,
+        args: Sequence[Any],
+        kwargs: dict[str, Any],
+        prepare_params: PrepareParams | None,
+    ) -> Query:
+        return Query(script, self, args, kwargs, prepare_params)

@@ -34,7 +34,10 @@ def get_namespace(self, attr):
 
 class Namespace:
     def __init__(
-        self, db: BaseDatabase, sqldir: Path, shadow: Namespace | None = None
+        self,
+        db: BaseDatabase[Any],
+        sqldir: Path,
+        shadow: Namespace | None = None,
     ) -> None:
         self.db = db
         self.sqldir = sqldir
@@ -94,7 +97,7 @@ class Namespace:
 
 
 class CursorNamespace:
-    def __init__(self, namespace: Any, cursor: BaseCursor) -> None:
+    def __init__(self, namespace: Any, cursor: BaseCursor[Any]) -> None:
         self.namespace = namespace
         self.cursor = cursor
 

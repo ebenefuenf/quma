@@ -9,13 +9,20 @@ from collections.abc import (
 from typing import (
     TYPE_CHECKING,
     Any,
+    overload,
 )
 
 from .conn import Params
-from .query import Query
 
 if TYPE_CHECKING:
-    from .cursor import BaseCursor
+    from .cursor import (
+        BaseCursor,
+        Cursor,
+    )
+    from .query import (
+        BaseQuery,
+        Query,
+    )
 
 try:
     from mako.lookup import TemplateLookup
@@ -45,14 +52,32 @@ class Script:
         self.sqldirs = sqldirs
         self.params = None
 
+    @overload
     def __call__(
         self,
-        cursor: BaseCursor,
+        cursor: Cursor,
         *args: Any,
         prepare_params: PrepareParams | None = None,
         **kwargs: Any,
-    ) -> Query:
-        return Query(self, cursor, args, kwargs, prepare_params)
+    ) -> Query: ...
+
+    @overload
+    def __call__(
+        self,
+        cursor: BaseCursor[Any],
+        *args: Any,
+        prepare_params: PrepareParams | None = None,
+        **kwargs: Any,
+    ) -> BaseQuery: ...
+
+    def __call__(
+        self,
+        cursor: BaseCursor[Any],
+        *args: Any,
+        prepare_params: PrepareParams | None = None,
+        **kwargs: Any,
+    ) -> BaseQuery:
+        return cursor._query(self, args, kwargs, prepare_params)
 
     def __str__(self) -> str:
         return self.content
@@ -91,7 +116,7 @@ class Script:
 
     def prepare(
         self,
-        cursor: BaseCursor,
+        cursor: BaseCursor[Any],
         args: list[Any],
         kwargs: dict[str, Any],
         prepare_params: PrepareParams | None = None,
@@ -109,11 +134,11 @@ class Script:
 
 
 class CursorScript:
-    def __init__(self, script: Script, cursor: BaseCursor) -> None:
+    def __init__(self, script: Script, cursor: BaseCursor[Any]) -> None:
         self.script = script
         self.cursor = cursor
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Query:
+    def __call__(self, *args: Any, **kwargs: Any) -> BaseQuery:
         return self.script(self.cursor, *args, **kwargs)
 
     def __str__(self) -> str:
