@@ -7,7 +7,8 @@ Unreleased
 
 - With ``contextcommit``, a cursor's ``with`` block now rolls back when it
   raises. Before, quma committed the statements that ran before the
-  error.
+  error. If the block raises to signal success, such as a redirect, call
+  ``cur.commit()`` before raising.
 
 Version 0.4.0
 -------------

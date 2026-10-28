@@ -158,6 +158,17 @@ block raises an exception, quma rolls back instead.
         cur.users.rename(id=14, name='New Name').run()
         # no need to call cur.commit()
 
+**Note**: quma also rolls back when the block raises an exception that
+signals success, such as a redirect raised as Pyramid's ``HTTPFound``.
+Commit before raising it:
+
+.. code-block:: python
+
+    with db.cursor as cur:
+        cur.users.rename(id=14, name='New Name').run()
+        cur.commit()
+        raise HTTPFound(location='/users/14')
+
 **Note**: If you are using MySQL or SQLite some statements will automatically
 cause a commit. See the `MySQL docs <http://https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html>`_
 and `SQLite docs <https://docs.python.org/3/library/sqlite3.html#controlling-transactions>`_
