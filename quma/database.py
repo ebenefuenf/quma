@@ -48,8 +48,8 @@ class Carrier:
     def add_conn(self, conn: CarriedConnection) -> None:
         self.conn = conn
 
-    def release(self) -> None:
-        self.heap.release(self.oid)
+    def detach(self) -> CarriedConnection | None:
+        return self.heap.pop(self.oid)
 
     def __getattr__(self, attr: str) -> Any:
         return getattr(self.obj, attr)
@@ -72,16 +72,10 @@ class CarrierHeap:
                 carrier = self.add(obj)
             return carrier
 
-    def release(self, oid: int) -> None:
+    def pop(self, oid: int) -> CarriedConnection | None:
         with self.lock:
-            try:
-                carrier = self.heap[oid]
-                carried_conn = carrier.conn
-                if carried_conn is not None:
-                    carried_conn.conn.put(carried_conn.raw_conn)
-                del self.heap[oid]
-            except KeyError:
-                pass
+            carrier = self.heap.pop(oid, None)
+        return None if carrier is None else carrier.conn
 
 
 class DatabaseCallWrapper:
@@ -275,7 +269,9 @@ class Database:
         :param carrier: An object holding a quma connection. See
             :doc:`Reusing connections <carrier>`
         """
-        self.heap.release(id(carrier))
+        carried = self.heap.pop(id(carrier))
+        if carried is not None:
+            carried.conn.put(carried.raw_conn)
 
     @property
     def cursor(self) -> Cursor:

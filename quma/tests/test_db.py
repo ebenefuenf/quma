@@ -133,7 +133,7 @@ def test_release_carrier_without_conn():
     heap = database.CarrierHeap()
     obj = object()
     heap.get(obj)
-    heap.release(id(obj))
+    assert heap.pop(id(obj)) is None
     assert id(obj) not in heap.heap
 
 

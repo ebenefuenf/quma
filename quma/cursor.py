@@ -119,8 +119,10 @@ class Cursor:
         if self.carrier and self.carrier.conn:
             if not force:
                 return
-            self.carrier.release()
+            carried = self.carrier.detach()
             self.carrier = None
+            if carried is not None:
+                carried.conn.put(carried.raw_conn)
         else:
             self._conn().put(self.raw_conn)
         self.raw_conn = None
