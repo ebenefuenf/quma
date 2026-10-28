@@ -6,6 +6,7 @@ import pytest
 
 from .. import Database
 from ..exc import FetchError
+from ..pool import Pool
 from . import util
 
 
@@ -27,6 +28,21 @@ def test_cursor(pgdb, pgpooldb):
 
     for db in (pgdb, pgpooldb):
         the_cursor(db)
+
+
+@pytest.mark.postgres
+def test_failed_contextcommit_returns_connection(pgdriver):
+    db = Database(pgdriver.pool_uri, size=1, contextcommit=True)
+    with pytest.raises(pgdriver.dbapi.IntegrityError), db.cursor as cur:
+        cur.execute(
+            "CREATE TEMP TABLE deferred "
+            "(id integer UNIQUE DEFERRABLE INITIALLY DEFERRED)"
+        )
+        # The duplicate only fails when the block commits on exit.
+        cur.execute("INSERT INTO deferred VALUES (1), (1)")
+    assert isinstance(db.conn, Pool)
+    assert db.conn.checkedout == 0
+    db.close()
 
 
 @pytest.mark.postgres

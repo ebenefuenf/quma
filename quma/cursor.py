@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -152,14 +153,17 @@ class Cursor(BaseCursor):
     ) -> None:
         if self.raw_conn is None:
             return
-        if self.contextcommit:
-            if exc_type is None:
+        try:
+            if self.contextcommit and exc_type is None:
                 self.commit()
-            else:
+            elif self.contextcommit:
                 # put() keeps a carried connection and its transaction open.
-                self.rollback()
-        if self.conn:
-            self.put()
+                # A failing rollback must not hide the block's exception.
+                with suppress(Exception):
+                    self.rollback()
+        finally:
+            if self.conn:
+                self.put()
 
     def __call__(self, autocommit: bool = False) -> Self:
         self.create_cursor(autocommit=autocommit)

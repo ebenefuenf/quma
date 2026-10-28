@@ -401,12 +401,24 @@ def lost_connection(db, killer, pid_sql, kill_sql, error):
 
 
 @pytest.mark.postgres
+@pytest.mark.parametrize("contextcommit", [False, True])
 @pytest.mark.parametrize("pooled", [True, False])
-def test_postgres_lost_connection(pgdriver, pooled):
+def test_postgres_lost_connection(pgdriver, pooled, contextcommit):
     if pooled:
-        db = Database(pgdriver.pool_uri, size=1, overflow=0, timeout=0.1)
+        db = Database(
+            pgdriver.pool_uri,
+            size=1,
+            overflow=0,
+            timeout=0.1,
+            contextcommit=contextcommit,
+        )
     else:
-        db = Database(pgdriver.uri, persist=True, pessimistic=True)
+        db = Database(
+            pgdriver.uri,
+            persist=True,
+            pessimistic=True,
+            contextcommit=contextcommit,
+        )
     lost_connection(
         db,
         Database(pgdriver.uri),
@@ -417,14 +429,26 @@ def test_postgres_lost_connection(pgdriver, pooled):
 
 
 @pytest.mark.mysql
+@pytest.mark.parametrize("contextcommit", [False, True])
 @pytest.mark.parametrize("pooled", [True, False])
-def test_mysql_lost_connection(pooled):
+def test_mysql_lost_connection(pooled, contextcommit):
     import MySQLdb
 
     if pooled:
-        db = Database(util.MYSQL_POOL_URI, size=1, overflow=0, timeout=0.1)
+        db = Database(
+            util.MYSQL_POOL_URI,
+            size=1,
+            overflow=0,
+            timeout=0.1,
+            contextcommit=contextcommit,
+        )
     else:
-        db = Database(util.MYSQL_URI, persist=True, pessimistic=True)
+        db = Database(
+            util.MYSQL_URI,
+            persist=True,
+            pessimistic=True,
+            contextcommit=contextcommit,
+        )
     lost_connection(
         db,
         Database(util.MYSQL_URI),

@@ -9,6 +9,9 @@ Unreleased
   raises. Before, quma committed the statements that ran before the
   error. If the block raises to signal success, such as a redirect, call
   ``cur.commit()`` before raising.
+- A cursor's ``with`` block returns its connection to the pool even if
+  the commit at its end fails. If the rollback after an error fails, for
+  example on a lost connection, the block's own exception is raised.
 
 Version 0.4.0
 -------------
