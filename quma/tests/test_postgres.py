@@ -342,6 +342,14 @@ def test_unbunch(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_mapping(pgdb, pgdb_persist, pgpooldb):
+    from .test_mapping import map_all
+
+    for db in (pgdb, pgdb_persist, pgpooldb):
+        map_all(db)
+
+
+@pytest.mark.postgres
 def test_execute(pgdriver, pgdb, pgpooldb):
     from .test_db import execute
 

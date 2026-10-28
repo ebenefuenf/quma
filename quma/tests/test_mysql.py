@@ -226,6 +226,14 @@ def test_unbunch(mydb, mypooldb):
 
 
 @pytest.mark.mysql
+def test_mapping(mydb, mydb_dict, mypooldb):
+    from .test_mapping import map_all
+
+    for db in (mydb, mydb_dict, mypooldb):
+        map_all(db)
+
+
+@pytest.mark.mysql
 def test_execute(mydb, mypooldb_dict):
     from .test_db import execute
 

@@ -11,8 +11,15 @@ from typing import (
     overload,
 )
 
-from . import exc
+from . import (
+    exc,
+    mapping,
+)
 from .conn import Row
+from .mapping import (
+    T,
+    Target,
+)
 
 if TYPE_CHECKING:
     from .cursor import Cursor
@@ -32,16 +39,36 @@ class ManyResult:
         self.query.run()
         self._has_been_executed = True
 
-    def get(self, size: int | None = None) -> Sequence[Row]:
+    @overload
+    def get(self, size: int | None = None) -> Sequence[Row]: ...
+
+    @overload
+    def get(
+        self, size: int | None = None, target: type[dict[Any, Any]] = ...
+    ) -> list[dict[str, Any]]: ...
+
+    @overload
+    def get(
+        self, size: int | None = None, target: Target[T] = ...
+    ) -> list[T]: ...
+
+    def get(
+        self, size: int | None = None, target: Target[Any] | None = None
+    ) -> Sequence[Any]:
         """Call the :func:`fetchmany` method of the raw cursor.
 
         :param size: The number of rows to be returned. If not
             given use the default value of the driver.
+        :param target: Map the rows to instances of this class
+            (see :doc:`mapping`).
         """
         size = self.cursor.arraysize if size is None else size
         if not self._has_been_executed:
             self._run()
-        return self.cursor.fetchmany(size)
+        rows = self.cursor.fetchmany(size)
+        if target is None:
+            return rows
+        return mapping.map_rows(target, self.cursor.description, rows)
 
 
 class Query:
@@ -65,6 +92,7 @@ class Query:
         self.prepare_params = prepare_params
         self._has_been_executed = False
         self._result_cache: Sequence[Row] | None = None
+        self._description: Sequence[Sequence[Any]] | None = None
 
     def run(self) -> Self:
         """Execute the query using the DBAPI driver."""
@@ -83,7 +111,11 @@ class Query:
                 self._result_cache = self.cursor.fetchall()
             except exc.FetchError as e:
                 raise e.error from e
+            self._description = self.cursor.description
         return self._result_cache
+
+    def _map(self, target: Target[Any], rows: Sequence[Row]) -> list[Any]:
+        return mapping.map_rows(target, self._description, rows)
 
     def __getattr__(self, key: str) -> Any:
         return getattr(self.cursor, key)
@@ -117,13 +149,41 @@ class Query:
         """Return the length of the result."""
         return self._len()
 
-    def all(self) -> Sequence[Row]:
-        """Return a list of all results"""
-        return self._fetch()
+    @overload
+    def all(self) -> Sequence[Row]: ...
 
-    def one(self) -> Row:
+    @overload
+    def all(self, target: type[dict[Any, Any]]) -> list[dict[str, Any]]: ...
+
+    @overload
+    def all(self, target: Target[T]) -> list[T]: ...
+
+    def all(self, target: Target[Any] | None = None) -> Sequence[Any]:
+        """Return a list of all results
+
+        :param target: Map the rows to instances of this class
+            (see :doc:`mapping`).
+        """
+        rows = self._fetch()
+        if target is None:
+            return rows
+        return self._map(target, rows)
+
+    @overload
+    def one(self) -> Row: ...
+
+    @overload
+    def one(self, target: type[dict[Any, Any]]) -> dict[str, Any]: ...
+
+    @overload
+    def one(self, target: Target[T]) -> T: ...
+
+    def one(self, target: Target[Any] | None = None) -> Any:
         """Get exactly one row and check if only one exists,
         otherwise raise an error.
+
+        :param target: Map the row to an instance of this class
+            (see :doc:`mapping`).
         """
         if not self._has_been_executed:
             self.run()
@@ -141,7 +201,9 @@ class Query:
         else:
             result = self._fetch()
             check_rowcount(len(result))
-        return result[0]
+        if target is None:
+            return result[0]
+        return self._map(target, result[:1])[0]
 
     def value(self, key: int | str = 0) -> Any:
         """Call :func:`one` and return the first column by default.
@@ -150,13 +212,28 @@ class Query:
             of the first column."""
         return self.one()[key]
 
-    def first(self) -> Row | None:
+    @overload
+    def first(self) -> Row | None: ...
+
+    @overload
+    def first(self, target: type[dict[Any, Any]]) -> dict[str, Any] | None: ...
+
+    @overload
+    def first(self, target: Target[T]) -> T | None: ...
+
+    def first(self, target: Target[Any] | None = None) -> Any:
         """Get exactly one row and return None if there is no
-        row present in the result."""
-        try:
-            return self._fetch()[0]
-        except IndexError:
+        row present in the result.
+
+        :param target: Map the row to an instance of this class
+            (see :doc:`mapping`).
+        """
+        rows = self._fetch()[:1]
+        if not rows:
             return None
+        if target is None:
+            return rows[0]
+        return self._map(target, rows)[0]
 
     def exists(self) -> bool:
         """Return if the query's result has rows."""
@@ -168,17 +245,37 @@ class Query:
         """
         return ManyResult(self)
 
-    def unbunch(self, size: int | None = None) -> Iterator[Row]:
+    @overload
+    def unbunch(self, size: int | None = None) -> Iterator[Row]: ...
+
+    @overload
+    def unbunch(
+        self, size: int | None = None, target: type[dict[Any, Any]] = ...
+    ) -> Iterator[dict[str, Any]]: ...
+
+    @overload
+    def unbunch(
+        self, size: int | None = None, target: Target[T] = ...
+    ) -> Iterator[T]: ...
+
+    def unbunch(
+        self, size: int | None = None, target: Target[Any] | None = None
+    ) -> Iterator[Any]:
         """Return a generator that simplifies the use of fetchmany.
 
         :param size: The number of rows to be fetched per
             fetchmany call. If not given use the default value
             of the driver.
+        :param target: Map the rows to instances of this class
+            (see :doc:`mapping`).
         """
         size = self.cursor.arraysize if size is None else size
         self.run()
+        description = self.cursor.description
         while True:
             results = self.cursor.fetchmany(size)
             if not results:
                 break
+            if target is not None:
+                results = mapping.map_rows(target, description, results)
             yield from results

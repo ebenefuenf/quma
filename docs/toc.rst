@@ -7,6 +7,7 @@
    install
    usage
    query
+   Mapping rows to objects <mapping>
    connecting
    pool
    carrier

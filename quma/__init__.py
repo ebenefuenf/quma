@@ -7,20 +7,26 @@ from .exc import (  # noqa: F401
     ConnectionError,
     DoesNotExistError,
     FetchError,
+    MappingError,
+    MissingColumnError,
     MultipleRowsError,
     OperationalError,
     TimeoutError,
 )
+from .mapping import FromRow
 from .namespace import Namespace
 
 __all__ = [
     "Database",
+    "FromRow",
     "Namespace",
     "connect",
     "APIError",
     "ConnectionError",
     "DoesNotExistError",
     "FetchError",
+    "MappingError",
+    "MissingColumnError",
     "MultipleRowsError",
     "OperationalError",
     "TimeoutError",

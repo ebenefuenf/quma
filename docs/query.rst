@@ -32,6 +32,10 @@ You can either iterate directly over the query object or call its
 When calling :meth:`all()` **MySQL** and **MariaDB** will return a tuple, **PostgreSQL**
 and **SQLite** will return a list.
 
+To get instances of your own classes or dicts instead of rows, pass the
+class to :meth:`all()`, :meth:`one()` and the other fetch methods. See
+:doc:`mapping`.
+
 
 Getting a single row
 --------------------

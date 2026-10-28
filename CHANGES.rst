@@ -2,6 +2,16 @@
 quma Changelog
 ===============
 
+Unreleased
+----------
+
+- Map rows to objects: ``one()``, ``first()``, ``all()``, ``unbunch()``
+  and ``ManyResult.get()`` accept a target and return instances of it.
+  Targets are classes, whose constructor parameters are filled from the
+  columns of the same name, ``dict``, ``TypedDict``, classes with a
+  ``from_row()`` classmethod, and resolvers returning the class per row.
+  New exceptions ``MappingError`` and ``MissingColumnError``.
+
 Version 0.3.0
 -------------
 
