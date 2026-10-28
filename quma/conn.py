@@ -186,6 +186,9 @@ class AsyncConnection(BaseConnection):
     async def disable_autocommit(self, conn: RawConnection) -> RawConnection:
         raise NotImplementedError
 
+    async def close_conn(self, conn: RawConnection) -> None:
+        await conn.close()
+
     async def open(self) -> None:
         if self.persist:
             await self._persistent()
@@ -239,22 +242,22 @@ class AsyncConnection(BaseConnection):
         if not await self.reset(conn):
             self._forget(conn)
         elif not self.persist:
-            await conn.close()
+            await self.close_conn(conn)
 
     async def close(self, conn: RawConnection | None = None) -> None:
         if conn is not None:
-            await conn.close()
+            await self.close_conn(conn)
             return
         # Waits for a persistent connection that is being opened.
         async with self._lock:
             self._closed = self.persist
             if self.conn is not None:
-                await self.conn.close()
+                await self.close_conn(self.conn)
                 self.conn = None
 
     async def discard(self, conn: RawConnection) -> None:
         with suppress(Exception):
-            await conn.close()
+            await self.close_conn(conn)
 
     def _forget(self, conn: RawConnection) -> None:
         # The next get() opens a new persistent connection.

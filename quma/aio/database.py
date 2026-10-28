@@ -174,7 +174,8 @@ def connect_async(dburi: str, **kwargs: Any) -> AsyncConnectionLike:
     if conn_class is None:
         name = module.__name__.rsplit(".", 1)[-1]
         raise ValueError(
-            f'The driver "{name}" has no async support. Use psycopg://'
+            f'The driver "{name}" has no async support. '
+            "Use psycopg:// or asyncmy://"
         )
     if pooled:
         return AsyncPool(conn_class, url, **kwargs)

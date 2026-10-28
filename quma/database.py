@@ -337,9 +337,15 @@ def connect(dburi: str, **kwargs: Any) -> ConnectionLike:
     via ``dburi`` (a string in the form of an URL)
     """
     module, url, pooled = resolve(dburi)
+    conn_class = getattr(module, "Connection", None)
+    if conn_class is None:
+        name = module.__name__.rsplit(".", 1)[-1]
+        raise ValueError(
+            f'The driver "{name}" is async only. Use quma.AsyncDatabase'
+        )
     if pooled:
-        return pool.Pool(module.Connection, url, **kwargs)
-    return module.Connection(url, **kwargs)
+        return pool.Pool(conn_class, url, **kwargs)
+    return conn_class(url, **kwargs)
 
 
 def resolve(dburi: str) -> tuple[ModuleType, ParseResult, bool]:
