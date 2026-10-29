@@ -169,6 +169,27 @@ async def test_queries_keep_their_own_result(adb):
             await double.one()
 
 
+async def test_result_replaced_by_another_statement(adb):
+    replaced = "no longer holds its result"
+    async with adb.cursor as cur:
+        users = await cur.users.all().run()
+        await cur.query("SELECT 1").run()
+        with pytest.raises(exc.APIError, match=replaced):
+            await users.all()
+        assert len(await (await users.run()).all()) == 7
+        bunches = cur.users.all().unbunch(2)
+        await anext(bunches)
+        await anext(bunches)
+        await cur.execute("SELECT 1")
+        with pytest.raises(exc.APIError, match=replaced):
+            await anext(bunches)
+        many = cur.users.all().many()
+        await many.get(2)
+        await cur.query("SELECT 1").run()
+        with pytest.raises(exc.APIError, match=replaced):
+            await many.get(2)
+
+
 async def test_sync_dunders_raise(adb):
     async with adb.cursor as cur:
         query = cur.users.all()

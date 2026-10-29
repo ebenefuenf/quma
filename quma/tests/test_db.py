@@ -993,6 +993,32 @@ def test_count_runs_query_once(db):
         assert cur.query("SELECT count(*) FROM example").value() == 1
 
 
+def test_result_replaced_by_another_statement(db):
+    replaced = "no longer holds its result"
+    with db.cursor as cur:
+        users = cur.users.all().run()
+        cur.query("SELECT 1").run()
+        with pytest.raises(exc.APIError, match=replaced):
+            users.all()
+        assert len(users.run().all()) == 7
+        assert len(users.all()) == 7
+        bunches = cur.users.all().unbunch(2)
+        next(bunches)
+        next(bunches)
+        cur.execute("SELECT 1")
+        with pytest.raises(exc.APIError, match=replaced):
+            next(bunches)
+        many = cur.users.all().many()
+        many.get(2)
+        cur.query("SELECT 1").run()
+        with pytest.raises(exc.APIError, match=replaced):
+            many.get(2)
+        fetched = cur.users.all()
+        assert len(fetched.all()) == 7
+        cur.query("SELECT 1").run()
+        assert len(fetched.all()) == 7
+
+
 def test_cursor_query(db):
     with db.cursor as cur:
         sql = "SELECT name, city FROM users WHERE email = ? AND 1 = ?;"

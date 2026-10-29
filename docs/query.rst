@@ -321,6 +321,16 @@ to call :meth:`run()` manually.
         # fetch and cache the new result of the re-executed query
         all_users.all()
 
+.. Note::
+
+    A DB-API cursor holds the result of its latest statement only. If a
+    query has run but not fetched its rows, for example after
+    :meth:`count()` or :meth:`exists()` on PostgreSQL or MySQL, and
+    another statement runs on the same cursor, the query can't fetch them
+    anymore. quma raises :class:`quma.APIError` instead of returning the
+    other statement's rows. Fetch the rows first, or call :meth:`run()`
+    again.
+
 
 Accessing the underlying cursor
 -------------------------------

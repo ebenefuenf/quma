@@ -82,6 +82,7 @@ class ManyResult:
         size = self.cursor.arraysize if size is None else size
         if not self._has_been_executed:
             self._run()
+        self.query._check_result()
         rows = self.cursor.fetchmany(size)
         return map_rows(target, self.cursor.description, rows)
 
@@ -105,6 +106,24 @@ class BaseQuery:
         self._description: Sequence[Sequence[Any]] | None = None
         # The cursor's rowcount changes with the next query run on it.
         self._rowcount = -1
+        self._execution: int | None = None
+
+    def _ran(self) -> None:
+        self._has_been_executed = True
+        self._result_cache = None
+        self._rowcount = self.cursor.rowcount
+        self._execution = getattr(self.cursor, "executions", None)
+
+    def _check_result(self) -> None:
+        # The driver cursor holds the result of its latest statement only.
+        if self._execution is None:
+            return
+        if getattr(self.cursor, "executions", None) != self._execution:
+            raise exc.APIError(
+                "Another statement ran on the cursor after this query, "
+                "so the cursor no longer holds its result. Fetch the "
+                "result first, or call run() again."
+            )
 
     def _cached_len(self) -> int | None:
         if self._result_cache is not None:
@@ -128,15 +147,14 @@ class Query(BaseQuery):
         self.script.execute(
             self.cursor, list(self.args), self.kwargs, self.prepare_params
         )
-        self._has_been_executed = True
-        self._result_cache = None
-        self._rowcount = self.cursor.rowcount
+        self._ran()
         return self
 
     def _fetch(self) -> Sequence[Row]:
         if not self._has_been_executed:
             self.run()
         if self._result_cache is None:
+            self._check_result()
             try:
                 self._result_cache = self.cursor.fetchall()
             except exc.FetchError as e:
@@ -281,6 +299,7 @@ class Query(BaseQuery):
         self.run()
         description = self.cursor.description
         while True:
+            self._check_result()
             results = self.cursor.fetchmany(size)
             if not results:
                 break

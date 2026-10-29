@@ -52,6 +52,21 @@ class RawCursorWrapper:
         self.conn = conn
         self.cursor = raw_cursor
         self.has_rowcount = conn.has_rowcount
+        # Tells a query whether the cursor still holds its result.
+        self.executions = 0
+
+    def execute(self, *args: Any, **kwargs: Any) -> Any:
+        return self._run("execute", args, kwargs)
+
+    def executemany(self, *args: Any, **kwargs: Any) -> Any:
+        return self._run("executemany", args, kwargs)
+
+    def callproc(self, *args: Any, **kwargs: Any) -> Any:
+        return self._run("callproc", args, kwargs)
+
+    def _run(self, name: str, args: Any, kwargs: Any) -> Any:
+        self.executions += 1
+        return self.conn.get_cursor_attr(self.cursor, name)(*args, **kwargs)
 
     def __getattr__(self, key: str) -> Any:
         return self.conn.get_cursor_attr(self.cursor, key)

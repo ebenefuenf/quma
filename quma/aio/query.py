@@ -57,6 +57,7 @@ class AsyncManyResult:
         if not self._has_been_executed:
             await self.query.run()
             self._has_been_executed = True
+        self.query._check_result()
         rows = await self.cursor.fetchmany(size)
         return map_rows(target, self.cursor.description, rows)
 
@@ -72,15 +73,14 @@ class AsyncQuery(BaseQuery):
         await self.script.aexecute(
             self.cursor, list(self.args), self.kwargs, self.prepare_params
         )
-        self._has_been_executed = True
-        self._result_cache = None
-        self._rowcount = self.cursor.rowcount
+        self._ran()
         return self
 
     async def _fetch(self) -> Sequence[Row]:
         if not self._has_been_executed:
             await self.run()
         if self._result_cache is None:
+            self._check_result()
             try:
                 self._result_cache = await self.cursor.fetchall()
             except exc.FetchError as e:
@@ -233,6 +233,7 @@ class AsyncQuery(BaseQuery):
         await self.run()
         description = self.cursor.description
         while True:
+            self._check_result()
             results = await self.cursor.fetchmany(size)
             if not results:
                 break

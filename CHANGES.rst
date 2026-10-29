@@ -59,6 +59,12 @@ Unreleased
 - Fix threads opening cursors on one carrier at the same time each
   taking a connection. All but one kept theirs out of the pool for good.
   They now wait for the carrier's connection.
+- A query that ran but hasn't fetched its rows now raises ``APIError``
+  when it fetches after another statement ran on the same cursor. Before,
+  it silently returned that statement's rows, for example after
+  ``count()`` or ``exists()`` on PostgreSQL or MySQL, or when other
+  statements ran between the batches of ``unbunch()`` or
+  ``many().get()``.
 
 Version 0.4.0
 -------------
