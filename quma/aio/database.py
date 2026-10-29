@@ -45,8 +45,9 @@ class AsyncDatabaseCallWrapper(BaseCallWrapper):
 class AsyncDatabase(BaseDatabase[AsyncConnectionLike]):
     """
     The async counterpart of :class:`quma.Database`, with the same
-    parameters. It works with drivers that support asyncio, currently
-    psycopg 3 (``psycopg://`` and ``psycopg+pool://``).
+    parameters. It works with drivers that support asyncio: psycopg 3
+    (``psycopg://`` and ``psycopg+pool://``) and asyncmy (``asyncmy://``
+    and ``asyncmy+pool://``).
 
     Creating it does no I/O: connections open on first use, including
     the persistent one. Call :meth:`open` to connect at startup, and
