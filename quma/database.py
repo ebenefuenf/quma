@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 import os
 import pkgutil
@@ -52,6 +53,8 @@ class Carrier:
         self.heap = heap
         self.oid = id(obj)
         self.conn: CarriedConnection[Any] | None = None
+        # Held by an async cursor while it gets the carrier's connection.
+        self.opening = asyncio.Lock()
 
     def add_conn(self, conn: CarriedConnection[Any]) -> None:
         self.conn = conn

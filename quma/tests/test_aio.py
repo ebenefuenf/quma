@@ -283,7 +283,7 @@ async def test_carrier(adb):
 
 async def test_tasks_on_one_carrier_share_its_connection(pyformat_sqldirs):
     db = AsyncDatabase(
-        POOL_URI, pyformat_sqldirs, size=2, overflow=0, timeout=1
+        POOL_URI, pyformat_sqldirs, size=1, overflow=0, timeout=1
     )
     carrier = SimpleNamespace()
 
