@@ -321,6 +321,30 @@ async def test_tasks_on_one_carrier_share_its_connection(pyformat_sqldirs):
     await db.close()
 
 
+async def test_release_ends_the_carrier(pyformat_sqldirs):
+    db = AsyncDatabase(POOL_URI, size=2, overflow=0, timeout=0.1)
+    request = SimpleNamespace()
+    wrapper = db(request)
+    stale = await wrapper.cursor()
+    released = stale.raw_conn
+    await db.release(request)
+    with pytest.raises(exc.APIError, match="no open connection"):
+        await stale.execute("SELECT 1")
+    async with db.cursor as other:
+        assert other.raw_conn is released
+        async with wrapper.cursor as cur:
+            assert cur.raw_conn is not released
+            carried = cur.raw_conn
+        await stale.close()
+        still_carried = db.heap.get(request).conn
+        assert still_carried is not None
+        assert still_carried.raw_conn is carried
+    await db.release(request)
+    assert isinstance(db.conn, AsyncPool)
+    assert db.conn.checkedout == 0
+    await db.close()
+
+
 async def test_open_cursor_cannot_be_opened_again(apooldb):
     async with apooldb.cursor as cur:
         with pytest.raises(exc.APIError, match="already open"):

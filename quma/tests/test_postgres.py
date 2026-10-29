@@ -76,6 +76,31 @@ def test_one_checks_its_own_result(pgdb):
 
 
 @pytest.mark.postgres
+def test_release_ends_the_carrier(pgdriver):
+    db = Database(pgdriver.pool_uri, size=2, overflow=0, timeout=0.1)
+    request = SimpleNamespace()
+    wrapper = db(request)
+    stale = wrapper.cursor()
+    released = stale.raw_conn
+    db.release(request)
+    with pytest.raises(pgdriver.dbapi.Error):
+        stale.execute("SELECT 1")
+    with db.cursor as other:
+        assert other.raw_conn is released
+        with wrapper.cursor as cur:
+            assert cur.raw_conn is not released
+            carried = cur.raw_conn
+        stale.close()
+        still_carried = db.heap.get(request).conn
+        assert still_carried is not None
+        assert still_carried.raw_conn is carried
+    db.release(request)
+    assert isinstance(db.conn, Pool)
+    assert db.conn.checkedout == 0
+    db.close()
+
+
+@pytest.mark.postgres
 def test_carrier(pgdb):
     from .test_db import carrier
 

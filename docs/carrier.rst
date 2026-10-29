@@ -48,3 +48,10 @@ If you are using a carrier and a :doc:`connection pool <pool>` it is absolutely
 necessary and you have to explicitly close the cursor or release the carrier. You can 
 do it using ``cur.close()`` or by passing the carrier to ``db.release(carrier)``,
 otherwise the connection would not be returned to the pool.
+
+Releasing the carrier, or closing one of its cursors with ``cur.close()``,
+ends it. Cursors that still use its connection,
+for example one opened with ``cur = db(request).cursor()`` and never
+closed, can't run queries anymore, because the connection may already
+serve another cursor. ``db(request)`` opens new cursors on a new carrier
+afterwards, even if you kept the object it returned.

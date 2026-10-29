@@ -48,6 +48,14 @@ Unreleased
   several rows.
 - Fix ``cache=True`` running the script of a shadowed SQL directory
   instead of the masking one when both have a script of the same name.
+- ``db.release(carrier)`` and ``cur.close()`` end the carrier. Before,
+  its other cursors could still run queries on the connection that went
+  back to the pool, and an object returned by ``db(carrier)`` and kept
+  across the release opened new cursors on it, so two cursors shared a
+  connection. Now those cursors can't run queries anymore, and
+  ``db(carrier)`` opens new cursors on a new carrier.
+- Fix closing a cursor of a released carrier returning the connection of
+  a newer carrier for the same object to the pool.
 
 Version 0.4.0
 -------------

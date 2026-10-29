@@ -154,7 +154,12 @@ class AsyncDatabase(BaseDatabase[AsyncConnectionLike]):
         :param carrier: An object holding a quma connection. See
             :doc:`Reusing connections <carrier>`
         """
-        carried = self.heap.pop(id(carrier))
+        found = self.heap.find(id(carrier))
+        if found is None:
+            return
+        # Waits for a running operation on the connection.
+        async with found.alock:
+            carried = found.end()
         if carried is not None:
             await carried.conn.put(carried.raw_conn)
 

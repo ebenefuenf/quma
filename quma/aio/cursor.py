@@ -153,6 +153,10 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
     async def close(self) -> None:
         await self.put(force=True)
 
+    def _lose_carried(self) -> None:
+        super()._lose_carried()
+        self._open = False
+
     async def commit(self) -> None:
         await self._guarded(lambda: self._raw_conn().commit())
 
@@ -204,6 +208,7 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
             return value
 
         def call(*args: Any, **kwargs: Any) -> Any:
+            self._cursor()
             self._check_idle()
             result = value(*args, **kwargs)
             if inspect.isawaitable(result):

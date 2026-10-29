@@ -206,6 +206,20 @@ async def test_close_waits_for_running_query(apooldb):
             assert await cur.users.all().count() == 7
 
 
+async def test_release_waits_for_running_query(apooldb):
+    request = SimpleNamespace()
+    async with asyncio.timeout(5):
+        cur = await apooldb(request).cursor()
+        running = asyncio.create_task(cur.query("SELECT SLEEP(0.1)").run())
+        await asyncio.sleep(0.02)
+        await apooldb.release(request)
+        await running
+        assert isinstance(apooldb.conn, AsyncPool)
+        assert apooldb.conn.checkedout == 0
+        async with apooldb.cursor as cur:
+            assert await cur.users.all().count() == 7
+
+
 async def test_persistent_connection(pyformat_sqldirs):
     db = AsyncDatabase(URI, pyformat_sqldirs, persist=True)
     async with db.cursor as cur:

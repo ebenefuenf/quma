@@ -13,6 +13,7 @@ from importlib import import_module
 from pathlib import Path
 from types import ModuleType
 from typing import (
+    TYPE_CHECKING,
     Any,
     Generic,
 )
@@ -20,6 +21,7 @@ from urllib.parse import (
     ParseResult,
     urlparse,
 )
+from weakref import WeakSet
 
 from . import (
     exc,
@@ -46,6 +48,9 @@ from .script import (
     StrPath,
 )
 
+if TYPE_CHECKING:
+    from .cursor import BaseCursor
+
 
 class Carrier:
     def __init__(self, heap: CarrierHeap, obj: object) -> None:
@@ -53,6 +58,7 @@ class Carrier:
         self.heap = heap
         self.oid = id(obj)
         self.conn: CarriedConnection[Any] | None = None
+        self.cursors: WeakSet[BaseCursor[Any]] = WeakSet()
         # Held by an async cursor while it gets or uses the carrier's
         # connection.
         self.alock = asyncio.Lock()
@@ -60,8 +66,14 @@ class Carrier:
     def add_conn(self, conn: CarriedConnection[Any]) -> None:
         self.conn = conn
 
-    def detach(self) -> CarriedConnection[Any] | None:
-        return self.heap.pop(self.oid)
+    def end(self) -> CarriedConnection[Any] | None:
+        """Remove the carrier from the heap and return its connection.
+        The cursors that used it lose it."""
+        self.heap.discard(self)
+        carried, self.conn = self.conn, None
+        for cursor in list(self.cursors):
+            cursor._lose_carried()
+        return carried
 
     def __getattr__(self, attr: str) -> Any:
         return getattr(self.obj, attr)
@@ -84,10 +96,19 @@ class CarrierHeap:
                 carrier = self.add(obj)
             return carrier
 
-    def pop(self, oid: int) -> CarriedConnection[Any] | None:
+    def find(self, oid: int) -> Carrier | None:
         with self.lock:
-            carrier = self.heap.pop(oid, None)
-        return None if carrier is None else carrier.conn
+            return self.heap.get(oid)
+
+    def pop(self, oid: int) -> CarriedConnection[Any] | None:
+        carrier = self.find(oid)
+        return None if carrier is None else carrier.end()
+
+    def discard(self, carrier: Carrier) -> None:
+        # A carrier that ended earlier must not remove its successor.
+        with self.lock:
+            if self.heap.get(carrier.oid) is carrier:
+                del self.heap[carrier.oid]
 
 
 class BaseCallWrapper:
@@ -98,11 +119,15 @@ class BaseCallWrapper:
         autocommit: bool,
     ) -> None:
         self.database = database
-        if carrier is None:
-            self.carrier = None
-        else:
-            self.carrier = database.heap.get(carrier)
+        self.obj = carrier
         self.autocommit = autocommit
+
+    @property
+    def carrier(self) -> Carrier | None:
+        # Looked up for each cursor: release() ends the carrier.
+        if self.obj is None:
+            return None
+        return self.database.heap.get(self.obj)
 
 
 class DatabaseCallWrapper(BaseCallWrapper):

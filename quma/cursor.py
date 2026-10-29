@@ -88,8 +88,10 @@ class BaseCursor(Generic[ConnT]):
 
     def _attach(self, conn: ConnT, raw_conn: RawConnection) -> None:
         raw_cursor = conn.cursor(raw_conn)
-        if self.carrier and not self.carrier.conn:
-            self.carrier.add_conn(CarriedConnection(conn, raw_conn))
+        if self.carrier:
+            if not self.carrier.conn:
+                self.carrier.add_conn(CarriedConnection(conn, raw_conn))
+            self.carrier.cursors.add(self)
         self.raw_conn = raw_conn
         self.raw_cursor = RawCursorWrapper(conn, raw_cursor)
 
@@ -98,8 +100,7 @@ class BaseCursor(Generic[ConnT]):
         if self.carrier and self.carrier.conn:
             if not force:
                 return None
-            carried = self.carrier.detach()
-            self.carrier = None
+            carried = self.carrier.end()
             detached = (
                 None if carried is None else (carried.conn, carried.raw_conn)
             )
@@ -108,6 +109,11 @@ class BaseCursor(Generic[ConnT]):
         self.raw_conn = None
         self._opened_by_call = False
         return detached
+
+    def _lose_carried(self) -> None:
+        self.carrier = None
+        self.raw_conn = None
+        self._opened_by_call = False
 
     def _conn(self) -> ConnT:
         if self.conn is None:
@@ -231,6 +237,13 @@ class Cursor(BaseCursor[ConnectionLike]):
 
     def close(self) -> None:
         self.put(force=True)
+
+    def _lose_carried(self) -> None:
+        if self.raw_conn is not None and self.raw_cursor is not None:
+            # Queries would run on a connection back in the pool.
+            with suppress(Exception):
+                self.raw_cursor.close()
+        super()._lose_carried()
 
     def commit(self) -> None:
         self._raw_conn().commit()
