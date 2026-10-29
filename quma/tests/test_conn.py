@@ -1,6 +1,7 @@
 import queue
 import sqlite3
 import threading
+import time
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -234,20 +235,6 @@ def pessimistic_failure(uri):
     conn.close()
 
 
-def test_pool_overflow_race(monkeypatch):
-    conn = connect_pool(
-        f"sqlite3+pool:///{util.SQLITE_FILE}", size=1, overflow=0, timeout=0.01
-    )
-
-    def lose_race():
-        # Another thread takes the last connection first.
-        conn._overflow += 1
-
-    monkeypatch.setattr(conn, "_inc_overflow", lose_race)
-    with pytest.raises(exc.TimeoutError):
-        conn.get()
-
-
 def pool_reuse_autocommit(uri, pessimistic, is_autocommit):
     conn = connect(uri, size=1, pessimistic=pessimistic)
     for autocommit in (False, True, False):
@@ -405,6 +392,65 @@ def test_pool_failed_replacement(monkeypatch):
     cn2 = conn.get()
     conn.put(cn2)
     conn.close()
+
+
+def test_pool_waiter_wakes_when_broken_connection_is_discarded():
+    conn = connect_pool(
+        f"sqlite3+pool:///{util.SQLITE_FILE}",
+        size=1,
+        overflow=0,
+        timeout=5,
+        check_same_thread=False,
+    )
+    cn1 = conn.get()
+    results = queue.Queue()
+
+    def wait():
+        try:
+            results.put(conn.get())
+        except exc.TimeoutError as e:
+            results.put(e)
+
+    waiter = threading.Thread(target=wait)
+    waiter.start()
+    time.sleep(0.05)
+    cn1.close()
+    conn.put(cn1)
+    # Waking only at the timeout would be too late.
+    waiter.join(1)
+    assert not waiter.is_alive()
+    cn2 = results.get()
+    assert not isinstance(cn2, Exception)
+    assert cn2 is not cn1
+    conn.put(cn2)
+    assert conn.checkedout == 0
+    conn.close()
+
+
+def test_pool_failed_autocommit_frees_slot():
+    conn = connect_pool(
+        f"sqlite3+pool:///{util.SQLITE_FILE}", size=1, overflow=0, timeout=0.01
+    )
+    cn1 = conn.get()
+    conn.put(cn1)
+    cn1.close()
+    with pytest.raises(sqlite3.ProgrammingError):
+        conn.get(autocommit=True)
+    assert conn.checkedout == 0
+    cn2 = conn.get()
+    conn.put(cn2)
+    conn.close()
+
+
+def test_pool_closes_connections_returned_after_close():
+    conn = connect_pool(f"sqlite3+pool:///{util.SQLITE_FILE}", size=1)
+    cn = conn.get()
+    conn.close()
+    conn.put(cn)
+    assert conn.checkedin == 0
+    assert conn.checkedout == 0
+    with pytest.raises(sqlite3.ProgrammingError):
+        cn.execute("SELECT 1")
 
 
 def lost_connection(db, killer, pid_sql, kill_sql, error):

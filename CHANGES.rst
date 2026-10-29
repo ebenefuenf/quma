@@ -28,6 +28,15 @@ Unreleased
 - Fix a pool losing a slot when opening a cursor fails on a connection
   the server has closed, for example without ``pessimistic=True``. A
   carrier no longer keeps that connection either.
+- Fix threads waiting for a pool connection staying blocked when the
+  pool discarded a broken connection, for example after a database
+  restart. They woke only at the pool's timeout, or never without one.
+  Like the async pool, the pool now limits its connections with a
+  semaphore instead of a queue.
+- Fix a pool losing a slot when enabling autocommit on an idle
+  connection fails.
+- Fix connections returned to a pool after ``Database.close()`` staying
+  open in the closed pool. The pool now closes them.
 
 Version 0.4.0
 -------------

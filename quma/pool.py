@@ -5,11 +5,7 @@
 from __future__ import annotations
 
 import threading
-from queue import (
-    Empty,
-    Full,
-)
-from queue import Queue as BaseQueue
+from collections import deque
 from typing import Any
 from urllib.parse import ParseResult
 
@@ -25,113 +21,110 @@ from .exc import (
 )
 
 
-class Queue(BaseQueue[RawConnection]):
-    """
-    Create a queue object with a given maximum size.
-
-    If maxsize is <= 0, the queue size is infinite.
-    """
-
-    def __init__(self, maxsize: int = 0) -> None:
-        """Overrides BaseQueue.__init__ to use a RLock instead of Lock"""
-
-        # Call parent init to ensure all attributes are initialized
-        # (including is_shutdown in Python 3.13+)
-        super().__init__(maxsize)
-        # Override threading primitives to use RLock instead of Lock
-        self.mutex = threading.RLock()  # ty: ignore[invalid-assignment]
-        self.not_full = threading.Condition(self.mutex)
-        self.not_empty = threading.Condition(self.mutex)
-        self.all_tasks_done = threading.Condition(self.mutex)
-
-
 class Pool:
-    """A queuing pool of connections"""
+    """A pool of connections"""
 
     def __init__(
         self, conn_class: type[Connection], url: ParseResult, **kwargs: Any
     ) -> None:
-        size: int = kwargs.pop("size", 5)
-        self._MAX: int = kwargs.pop("overflow", 10)
-        self._overflow = 0 - size
+        self._size: int = kwargs.pop("size", 5)
+        self._max_overflow: int = kwargs.pop("overflow", 10)
         self._timeout: float | None = kwargs.pop("timeout", None)
-        self._overflow_lock = threading.Lock()
-        self._pool = Queue(maxsize=size)
         self._pessimistic = kwargs.get("pessimistic", False)
+        # A semaphore, not a full queue, limits the connections: a waiting
+        # thread also wakes when a broken connection was discarded.
+        self._slots = (
+            None
+            if self._max_overflow == -1
+            else threading.Semaphore(self._size + self._max_overflow)
+        )
+        self._lock = threading.Lock()
+        self._idle: deque[RawConnection] = deque()
+        self._opened = 0
+        self._closed = False
         self._conn = conn_class(url, **kwargs)
         if self._conn.persist:
             raise ValueError("Persistent connections are not allowed")
 
-    def _inc_overflow(self):
-        if self._MAX == -1:
-            self._overflow += 1
-            return True
-        with self._overflow_lock:
-            if self._overflow < self._MAX:
-                self._overflow += 1
-                return True
-
-    def _dec_overflow(self):
-        if self._MAX == -1:
-            self._overflow -= 1
-            return True
-        with self._overflow_lock:
-            self._overflow -= 1
-            return True
+    def get(self, autocommit: bool = False) -> RawConnection:
+        self._acquire()
+        try:
+            return self._checkout(autocommit)
+        except BaseException:
+            self._release()
+            raise
 
     def put(self, conn: RawConnection) -> None:
         # Always rollback possibly open transaction so that as the
         # connection is set up to be used again, it’s in a “clean”
         # state with no references held to the previous series of
         # operations.
-        if not self._conn.reset(conn):
-            self._dec_overflow()
+        try:
+            reusable = self._conn.reset(conn)
+        except BaseException:
+            self._drop(conn)
+            self._release()
+            raise
+        with self._lock:
+            keep = (
+                reusable and not self._closed and len(self._idle) < self._size
+            )
+            if keep:
+                self._idle.append(conn)
+            else:
+                self._opened -= 1
+        self._release()
+        if reusable and not keep:
+            self._conn.discard(conn)
+
+    def close(self) -> None:
+        with self._lock:
+            self._closed = True
+            idle, self._idle = self._idle, deque()
+            self._opened -= len(idle)
+        for conn in idle:
+            self._conn.discard(conn)
+
+    def _acquire(self) -> None:
+        if self._slots is None:
             return
-        try:
-            self._pool.put(conn, False)
-        except Full:
-            try:
-                self._conn.close(conn)
-            finally:
-                self._dec_overflow()
-
-    def get(self, autocommit: bool = False) -> RawConnection:
-        use_overflow = self._MAX > -1
-
-        try:
-            wait = use_overflow and self._overflow >= self._MAX
-            conn = self._pool.get(wait, self._timeout)
-            if self._pessimistic:
-                try:
-                    self._conn.check(conn)
-                except OperationalError:
-                    self._conn.discard(conn)
-                    try:
-                        return self._conn.get(autocommit=autocommit)
-                    except Exception:
-                        self._dec_overflow()
-                        raise
-            return self._conn.enable_autocommit_if(autocommit, conn)
-        except Empty:
-            # Don't do things inside of "except Empty", because when we say
-            # we timed out or can't connect and raise, Python 3 tells
-            # people the real error is queue.Empty which it isn't.
-            pass
-        if use_overflow and self._overflow >= self._MAX:
+        if not self._slots.acquire(timeout=self._timeout):
             raise TimeoutError(
-                f"QueuePool limit of size {self.size} overflow "
-                f"{self.overflow} reached, connection timed out, "
+                f"QueuePool limit of size {self._size} overflow "
+                f"{self._max_overflow} reached, connection timed out, "
                 f"timeout {self._timeout}"
             )
 
-        if self._inc_overflow() is True:
-            try:
-                return self._conn.get(autocommit=autocommit)
-            except Exception as e:
-                self._dec_overflow()
-                raise e
-        # Another thread took the last overflow slot in the meantime.
-        return self.get(autocommit=autocommit)
+    def _release(self) -> None:
+        if self._slots is not None:
+            self._slots.release()
+
+    def _checkout(self, autocommit: bool) -> RawConnection:
+        with self._lock:
+            conn = self._idle.popleft() if self._idle else None
+        if conn is None:
+            return self._new(autocommit)
+        try:
+            if self._pessimistic:
+                self._conn.check(conn)
+            return self._conn.enable_autocommit_if(autocommit, conn)
+        except OperationalError:
+            self._drop(conn)
+            return self._new(autocommit)
+        except BaseException:
+            self._drop(conn)
+            raise
+
+    def _new(self, autocommit: bool) -> RawConnection:
+        conn = self._conn.get(autocommit=autocommit)
+        with self._lock:
+            self._opened += 1
+        return conn
+
+    def _drop(self, conn: RawConnection) -> None:
+        with self._lock:
+            self._opened -= 1
+        self._conn.discard(conn)
 
     def cursor(self, conn: RawConnection) -> RawCursor:
         return conn.cursor()
@@ -143,16 +136,6 @@ class Pool:
     def has_rowcount(self) -> bool:
         return self._conn.has_rowcount
 
-    def close(self) -> None:
-        while True:
-            try:
-                conn = self._pool.get(False)
-                conn.close()
-            except Empty:
-                break
-
-        self._overflow = 0 - self.size
-
     def status(self) -> str:
         return (
             f"Pool size: {self.size} Connections in pool: {self.checkedin} "
@@ -162,19 +145,19 @@ class Pool:
 
     @property
     def size(self) -> int:
-        return self._pool.maxsize
+        return self._size
 
     @property
     def checkedin(self) -> int:
-        return self._pool.qsize()
+        return len(self._idle)
 
     @property
     def overflow(self) -> int:
-        return self._overflow
+        return self._opened - self._size
 
     @property
     def checkedout(self) -> int:
-        return self._pool.maxsize - self._pool.qsize() + self._overflow
+        return self._opened - len(self._idle)
 
     def mogrify(self, cursor: RawCursor, content: str, params: Params) -> str:
         return self._conn.mogrify(cursor, content, params)
