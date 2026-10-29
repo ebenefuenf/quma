@@ -46,6 +46,8 @@ Unreleased
   instead of its own. Once another query ran on the same cursor, it
   raised ``MultipleRowsError`` for a single row or returned the first of
   several rows.
+- Fix ``cache=True`` running the script of a shadowed SQL directory
+  instead of the masking one when both have a script of the same name.
 
 Version 0.4.0
 -------------

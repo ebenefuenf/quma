@@ -59,10 +59,13 @@ class Namespace:
             attr = filename.stem
             ext = filename.suffix
 
-            if hasattr(self, attr):
-                # We have real namespace method which shadows
-                # this file
+            if hasattr(type(self), attr) or attr in vars(self):
+                # A real namespace member shadows this file. Not
+                # hasattr(self): it finds scripts of shadowed directories.
                 attr = "_" + attr
+            if attr in self._scripts:
+                # A .sql file wins over a template, as without the cache.
+                continue
 
             with open(str(sqlfile)) as f:
                 self._scripts[attr] = self.db.script_factory(

@@ -876,6 +876,16 @@ def test_shadowing(db, dbshadow):
         assert address == "Masking Address"
 
 
+@pytest.mark.parametrize("cache", [False, True])
+def test_sql_file_wins_over_template(tmp_path, cache):
+    (tmp_path / "pick.sql").write_text("SELECT 'sql'")
+    (tmp_path / "pick.msql").write_text("SELECT 'template'")
+    db = Database(util.SQLITE_MEMORY, tmp_path, cache=cache)
+    with db.cursor as cur:
+        assert cur.pick().value() == "sql"
+    db.close()
+
+
 def test_caching(db, dbcache):
     with db.cursor as cursor:
         assert len(db.user._scripts) == 0

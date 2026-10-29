@@ -93,10 +93,14 @@ def dbcache(qmark_sqldirs):
     db.close()
 
 
-@pytest.fixture
-def dbshadow(qmark_shadow_sqldirs):
+@pytest.fixture(params=[False, True], ids=["nocache", "cache"])
+def dbshadow(request, qmark_shadow_sqldirs):
     db = Database(
-        util.SQLITE_MEMORY, qmark_shadow_sqldirs, persist=True, changeling=True
+        util.SQLITE_MEMORY,
+        qmark_shadow_sqldirs,
+        persist=True,
+        changeling=True,
+        cache=request.param,
     )
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
