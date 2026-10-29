@@ -56,6 +56,9 @@ Unreleased
   ``db(carrier)`` opens new cursors on a new carrier.
 - Fix closing a cursor of a released carrier returning the connection of
   a newer carrier for the same object to the pool.
+- Fix threads opening cursors on one carrier at the same time each
+  taking a connection. All but one kept theirs out of the pool for good.
+  They now wait for the carrier's connection.
 
 Version 0.4.0
 -------------

@@ -345,6 +345,18 @@ async def test_release_ends_the_carrier(pyformat_sqldirs):
     await db.close()
 
 
+async def test_cursor_opened_on_released_carrier_returns_its_connection(
+    apooldb,
+):
+    carrier = SimpleNamespace()
+    cursor = apooldb(carrier).cursor
+    await apooldb.release(carrier)
+    async with cursor as cur:
+        await cur.execute("SELECT 1")
+    assert isinstance(apooldb.conn, AsyncPool)
+    assert apooldb.conn.checkedout == 0
+
+
 async def test_open_cursor_cannot_be_opened_again(apooldb):
     async with apooldb.cursor as cur:
         with pytest.raises(exc.APIError, match="already open"):

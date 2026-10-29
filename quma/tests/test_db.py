@@ -12,6 +12,7 @@ from .. import (
     script,
 )
 from .. import cursor as cursor_
+from ..pool import Pool
 from . import util
 
 
@@ -127,6 +128,20 @@ def carrier(db):
 
 def test_carrier(dbfile):
     carrier(dbfile)
+
+
+def test_cursor_opened_on_released_carrier_returns_its_connection():
+    db = Database(
+        f"sqlite3+pool:///{util.SQLITE_FILE}", size=1, overflow=0, timeout=0.01
+    )
+    carrier = type("Carrier", (), {})
+    cursor = db(carrier).cursor
+    db.release(carrier)
+    with cursor as cur:
+        cur.execute("SELECT 1")
+    assert isinstance(db.conn, Pool)
+    assert db.conn.checkedout == 0
+    db.close()
 
 
 def test_release_carrier_without_conn():

@@ -1,4 +1,6 @@
 import pickle
+import queue
+import threading
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -95,6 +97,35 @@ def test_release_ends_the_carrier(pgdriver):
         assert still_carried is not None
         assert still_carried.raw_conn is carried
     db.release(request)
+    assert isinstance(db.conn, Pool)
+    assert db.conn.checkedout == 0
+    db.close()
+
+
+@pytest.mark.postgres
+def test_threads_on_one_carrier_share_its_connection(pgdriver):
+    db = Database(pgdriver.pool_uri, size=1, overflow=0, timeout=1)
+    carrier = SimpleNamespace()
+    start = threading.Barrier(4)
+    results = queue.Queue()
+
+    def open_cursor():
+        start.wait()
+        try:
+            with db(carrier).cursor as cur:
+                results.put(cur.raw_conn)
+        except Exception as e:
+            results.put(e)
+
+    threads = [threading.Thread(target=open_cursor) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    conns = [results.get() for _ in threads]
+    assert not [c for c in conns if isinstance(c, Exception)]
+    assert len({id(c) for c in conns}) == 1
+    db.release(carrier)
     assert isinstance(db.conn, Pool)
     assert db.conn.checkedout == 0
     db.close()

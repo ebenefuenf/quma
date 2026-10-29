@@ -59,6 +59,9 @@ class Carrier:
         self.oid = id(obj)
         self.conn: CarriedConnection[Any] | None = None
         self.cursors: WeakSet[BaseCursor[Any]] = WeakSet()
+        self.ended = False
+        # Held by a sync cursor while it gets the carrier's connection.
+        self.lock = threading.Lock()
         # Held by an async cursor while it gets or uses the carrier's
         # connection.
         self.alock = asyncio.Lock()
@@ -69,10 +72,12 @@ class Carrier:
     def end(self) -> CarriedConnection[Any] | None:
         """Remove the carrier from the heap and return its connection.
         The cursors that used it lose it."""
-        self.heap.discard(self)
-        carried, self.conn = self.conn, None
-        for cursor in list(self.cursors):
-            cursor._lose_carried()
+        with self.lock:
+            self.ended = True
+            self.heap.discard(self)
+            carried, self.conn = self.conn, None
+            for cursor in list(self.cursors):
+                cursor._lose_carried()
         return carried
 
     def __getattr__(self, attr: str) -> Any:

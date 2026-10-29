@@ -55,3 +55,8 @@ for example one opened with ``cur = db(request).cursor()`` and never
 closed, can't run queries anymore, because the connection may already
 serve another cursor. ``db(request)`` opens new cursors on a new carrier
 afterwards, even if you kept the object it returned.
+
+Cursors on one carrier share its connection and its transaction. Use a
+carrier from one thread at a time: mysqlclient and sqlite3 connections
+don't support queries from several threads. In async code, the cursors
+of concurrent tasks on one carrier take turns (see :doc:`Async <async>`).

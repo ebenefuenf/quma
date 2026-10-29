@@ -88,6 +88,9 @@ class BaseCursor(Generic[ConnT]):
 
     def _attach(self, conn: ConnT, raw_conn: RawConnection) -> None:
         raw_cursor = conn.cursor(raw_conn)
+        if self.carrier and self.carrier.ended:
+            # Released while this cursor opened: the connection is its own.
+            self.carrier = None
         if self.carrier:
             if not self.carrier.conn:
                 self.carrier.add_conn(CarriedConnection(conn, raw_conn))
@@ -203,17 +206,26 @@ class Cursor(BaseCursor[ConnectionLike]):
 
     def create_cursor(self, autocommit: bool = False) -> Self:
         conn = self._conn()
-        raw_conn = self._carried_raw_conn()
-        if raw_conn is not None:
-            self._attach(conn, raw_conn)
+        if self.carrier is None:
+            self._attach_new(conn, autocommit)
             return self
+        # Other threads on this carrier wait for its connection instead
+        # of opening another one.
+        with self.carrier.lock:
+            raw_conn = self._carried_raw_conn()
+            if raw_conn is None:
+                self._attach_new(conn, autocommit)
+            else:
+                self._attach(conn, raw_conn)
+        return self
+
+    def _attach_new(self, conn: ConnectionLike, autocommit: bool) -> None:
         raw_conn = conn.get(autocommit=self._autocommit(autocommit))
         try:
             self._attach(conn, raw_conn)
         except BaseException:
             conn.put(raw_conn)
             raise
-        return self
 
     def put(self, force: bool = False) -> None:
         """
