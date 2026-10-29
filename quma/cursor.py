@@ -119,6 +119,9 @@ class BaseCursor(Generic[ConnT]):
             raise exc.APIError("The cursor has no open connection.")
         return self.raw_conn
 
+    def _driver_attr(self, value: Any) -> Any:
+        return value
+
     def _query(
         self,
         script: Script,
@@ -148,9 +151,11 @@ class BaseCursor(Generic[ConnT]):
 
     def __getattr__(self, attr: str) -> Any:
         try:
-            return getattr(self.raw_cursor, attr)
+            value = getattr(self.raw_cursor, attr)
         except AttributeError:
             pass
+        else:
+            return self._driver_attr(value)
         try:
             return CursorNamespace(get_namespace(self, attr), self)
         except AttributeError as e:

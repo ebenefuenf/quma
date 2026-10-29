@@ -53,8 +53,9 @@ class Carrier:
         self.heap = heap
         self.oid = id(obj)
         self.conn: CarriedConnection[Any] | None = None
-        # Held by an async cursor while it gets the carrier's connection.
-        self.opening = asyncio.Lock()
+        # Held by an async cursor while it gets or uses the carrier's
+        # connection.
+        self.alock = asyncio.Lock()
 
     def add_conn(self, conn: CarriedConnection[Any]) -> None:
         self.conn = conn

@@ -173,6 +173,39 @@ async def test_carrier(apooldb):
     assert apooldb.conn.checkedout == 0
 
 
+async def test_tasks_on_one_carrier_take_turns(apooldb):
+    carrier = SimpleNamespace()
+
+    async def select(i):
+        async with apooldb(carrier).cursor as cur:
+            await cur.execute(f"SELECT {i}, SLEEP(0.02)")
+            return (await cur.fetchone())[0]
+
+    async with asyncio.timeout(5):
+        assert await asyncio.gather(*(select(i) for i in range(4))) == [
+            0,
+            1,
+            2,
+            3,
+        ]
+    await apooldb.release(carrier)
+    assert isinstance(apooldb.conn, AsyncPool)
+    assert apooldb.conn.checkedout == 0
+
+
+async def test_close_waits_for_running_query(apooldb):
+    async with asyncio.timeout(5):
+        cur = await apooldb.cursor()
+        running = asyncio.create_task(cur.query("SELECT SLEEP(0.1)").run())
+        await asyncio.sleep(0.02)
+        await cur.close()
+        await running
+        assert isinstance(apooldb.conn, AsyncPool)
+        assert apooldb.conn.checkedout == 0
+        async with apooldb.cursor as cur:
+            assert await cur.users.all().count() == 7
+
+
 async def test_persistent_connection(pyformat_sqldirs):
     db = AsyncDatabase(URI, pyformat_sqldirs, persist=True)
     async with db.cursor as cur:

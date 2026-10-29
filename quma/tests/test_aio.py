@@ -216,6 +216,8 @@ async def test_cursor_without_block(adb):
         await cur
     assert await cur.users.all().count() == 7
     await cur.close()
+    with pytest.raises(exc.APIError, match="no open connection"):
+        await cur.execute("SELECT 1")
     async with await adb.cursor() as cur:
         assert await cur.users.all().count() == 7
     assert cur.raw_conn is None
@@ -339,6 +341,38 @@ async def test_busy_cursor_refuses_commit(apooldb):
         with pytest.raises(exc.APIError, match="busy"):
             await cur.commit()
         await query
+
+
+async def test_busy_cursor_guards_driver_methods(apooldb):
+    async with apooldb.cursor as cur:
+        query = asyncio.create_task(cur.query("SELECT pg_sleep(0.05)").run())
+        await asyncio.sleep(0.01)
+        with pytest.raises(exc.APIError, match="busy"):
+            await cur.executemany("SELECT %s", [(1,), (2,)])
+        with pytest.raises(exc.APIError, match="busy"):
+            async with cur.copy("COPY users TO STDOUT"):
+                pass
+        with pytest.raises(exc.APIError, match="busy"):
+            async for _ in cur.stream("SELECT 1"):
+                pass
+        await query
+        await cur.executemany("SELECT %s", [(1,), (2,)])
+        sql = "COPY (SELECT name FROM users ORDER BY id) TO STDOUT"
+        async with cur.copy(sql) as copy:
+            rows = [row async for row in copy.rows()]
+        assert rows[0] == ("User 1",)
+        assert [row[0] async for row in cur.stream("SELECT 1")] == [1]
+
+
+async def test_close_waits_for_running_query(apooldb):
+    async with asyncio.timeout(5):
+        cur = await apooldb.cursor()
+        running = asyncio.create_task(cur.query("SELECT pg_sleep(0.1)").run())
+        await asyncio.sleep(0.02)
+        await cur.close()
+        await running
+        assert isinstance(apooldb.conn, AsyncPool)
+        assert apooldb.conn.checkedout == 0
 
 
 async def test_one_task_per_cursor(apooldb):

@@ -1,10 +1,21 @@
 from __future__ import annotations
 
+import asyncio
+import inspect
 from collections.abc import (
+    AsyncGenerator,
+    AsyncIterator,
+    Awaitable,
+    Callable,
     Generator,
     Sequence,
 )
-from contextlib import suppress
+from contextlib import (
+    AbstractAsyncContextManager,
+    asynccontextmanager,
+    nullcontext,
+    suppress,
+)
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -44,7 +55,9 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
             carrier=carrier,
             autocommit=autocommit,
         )
-        self._busy = False
+        # Held while an operation runs; two tasks on one DB-API cursor
+        # would read each other's results.
+        self._busy = asyncio.Lock()
         self._open = False
         self._call_autocommit = False
 
@@ -98,7 +111,7 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         else:
             # Other tasks on this carrier wait for its connection instead
             # of taking another pool slot.
-            async with self.carrier.opening:
+            async with self.carrier.alock:
                 raw_conn = self._carried_raw_conn()
                 if raw_conn is None:
                     await self._attach_new(conn, autocommit)
@@ -124,55 +137,100 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         """
         if self.raw_conn is None or self.raw_cursor is None:
             return
-        self._open = False
-        try:
-            await self.raw_cursor.close()
-        finally:
-            detached = self._detach(force)
-            if detached is not None:
-                conn, raw_conn = detached
-                await conn.put(raw_conn)
+        # Waits for a running operation instead of closing under it.
+        async with self._busy, self._shared():
+            if self.raw_conn is None:
+                return
+            self._open = False
+            try:
+                await self.raw_cursor.close()
+            finally:
+                detached = self._detach(force)
+                if detached is not None:
+                    conn, raw_conn = detached
+                    await conn.put(raw_conn)
 
     async def close(self) -> None:
         await self.put(force=True)
 
     async def commit(self) -> None:
-        self._check_idle()
-        await self._raw_conn().commit()
+        await self._guarded(lambda: self._raw_conn().commit())
 
     async def rollback(self) -> None:
-        self._check_idle()
-        await self._raw_conn().rollback()
+        await self._guarded(lambda: self._raw_conn().rollback())
 
     async def execute(self, *args: Any, **kwargs: Any) -> Any:
-        return await self._io("execute", *args, **kwargs)
+        return await self._guarded(
+            lambda: self._cursor().execute(*args, **kwargs)
+        )
 
     async def fetchone(self) -> Any:
-        return await self._io("fetchone")
+        return await self._guarded(lambda: self._cursor().fetchone())
 
     async def fetchmany(self, *args: Any, **kwargs: Any) -> Any:
-        return await self._io("fetchmany", *args, **kwargs)
+        return await self._guarded(
+            lambda: self._cursor().fetchmany(*args, **kwargs)
+        )
 
     async def fetchall(self) -> Any:
-        return await self._io("fetchall")
+        return await self._guarded(lambda: self._cursor().fetchall())
 
-    async def _io(self, name: str, *args: Any, **kwargs: Any) -> Any:
-        if self.raw_cursor is None:
+    def _cursor(self) -> Any:
+        if self.raw_conn is None or self.raw_cursor is None:
             raise exc.APIError("The cursor has no open connection.")
+        return self.raw_cursor
+
+    async def _guarded(self, call: Callable[[], Awaitable[Any]]) -> Any:
         self._check_idle()
-        self._busy = True
-        try:
-            return await getattr(self.raw_cursor, name)(*args, **kwargs)
-        finally:
-            self._busy = False
+        async with self._busy, self._shared():
+            return await call()
 
     def _check_idle(self) -> None:
-        # Two tasks on one DB-API cursor would read each other's results.
-        if self._busy:
+        if self._busy.locked():
             raise exc.APIError(
                 "The cursor is busy with another query. "
                 "Open one cursor per task."
             )
+
+    def _shared(self) -> AbstractAsyncContextManager[Any]:
+        # Cursors on one carrier share its connection, and asyncmy can't
+        # run two queries on a connection at once.
+        if self.carrier is None:
+            return nullcontext()
+        return self.carrier.alock
+
+    def _driver_attr(self, value: Any) -> Any:
+        if not callable(value):
+            return value
+
+        def call(*args: Any, **kwargs: Any) -> Any:
+            self._check_idle()
+            result = value(*args, **kwargs)
+            if inspect.isawaitable(result):
+                return self._guarded(lambda: result)
+            if hasattr(result, "__aenter__"):
+                return self._guarded_context(result)
+            if hasattr(result, "__anext__"):
+                return self._guarded_iter(result)
+            return result
+
+        return call
+
+    @asynccontextmanager
+    async def _guarded_context(
+        self, manager: AbstractAsyncContextManager[Any]
+    ) -> AsyncGenerator[Any, None]:
+        self._check_idle()
+        async with self._busy, self._shared(), manager as value:
+            yield value
+
+    async def _guarded_iter(
+        self, iterator: AsyncIterator[Any]
+    ) -> AsyncIterator[Any]:
+        self._check_idle()
+        async with self._busy, self._shared():
+            async for item in iterator:
+                yield item
 
     def query(
         self,
