@@ -23,5 +23,6 @@ lib/
 lib64/
 parts/
 sdist/
+memory/
 var/
 wheels/
