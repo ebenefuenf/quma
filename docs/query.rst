@@ -232,12 +232,9 @@ get the number.
     number_of_users = cur.users.all().count()
     number_of_users = db.users.all(cur).count()
 
-.. Note::
-
-    :func:`len()` or :meth:`count()` calls must occure before fetch calls like
-    :meth:`one()` or :meth:`all()`. This has to do with the internals of the DBAPI drivers.
-    A fetch would overwrite the value of ``rowcount`` which would return
-    ``-1`` afterwards.
+Like the other methods, :func:`len()`, :meth:`count()` and :meth:`exists()`
+run the query only if it has not run yet. Once its rows are fetched, they
+count those.
 
 
 Checking if a result exists

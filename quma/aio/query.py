@@ -74,6 +74,7 @@ class AsyncQuery(BaseQuery):
         )
         self._has_been_executed = True
         self._result_cache = None
+        self._rowcount = self.cursor.rowcount
         return self
 
     async def _fetch(self) -> Sequence[Row]:
@@ -88,10 +89,10 @@ class AsyncQuery(BaseQuery):
         return self._result_cache
 
     async def _len(self) -> int:
-        await self.run()
-        if self.cursor.has_rowcount:
-            return self.cursor.rowcount
-        return len(await self._fetch())
+        if not self._has_been_executed:
+            await self.run()
+        length = self._cached_len()
+        return len(await self._fetch()) if length is None else length
 
     # Python can't await in these, so they point to the async methods.
     def __len__(self) -> NoReturn:
@@ -157,12 +158,11 @@ class AsyncQuery(BaseQuery):
         """
         if not self._has_been_executed:
             await self.run()
-        if self.cursor.has_rowcount:
-            check_rowcount(self.cursor.rowcount)
-            rows = await self._fetch()
-        else:
-            rows = await self._fetch()
-            check_rowcount(len(rows))
+        if self._result_cache is None and self.cursor.has_rowcount:
+            # Fails before fetching a large result.
+            check_rowcount(self._rowcount)
+        rows = await self._fetch()
+        check_rowcount(len(rows))
         return map_rows(target, self._description, rows[:1])[0]
 
     async def value(self, key: int | str = 0) -> Any:

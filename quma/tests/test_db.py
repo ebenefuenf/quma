@@ -957,6 +957,17 @@ def test_execute(db):
     execute(db, sqlite3.OperationalError)
 
 
+def test_count_runs_query_once(db):
+    db.execute("CREATE TABLE example (n integer)")
+    with db.cursor as cur:
+        insert = cur.query("INSERT INTO example VALUES (1) RETURNING n")
+        assert insert.all()[0][0] == 1
+        assert insert.count() == 1
+        assert insert.exists()
+        assert len(insert) == 1
+        assert cur.query("SELECT count(*) FROM example").value() == 1
+
+
 def test_cursor_query(db):
     with db.cursor as cur:
         sql = "SELECT name, city FROM users WHERE email = ? AND 1 = ?;"

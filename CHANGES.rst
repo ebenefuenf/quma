@@ -37,6 +37,15 @@ Unreleased
   connection fails.
 - Fix connections returned to a pool after ``Database.close()`` staying
   open in the closed pool. The pool now closes them.
+- ``count()``, ``exists()`` and ``len()`` no longer re-execute a query
+  that has already run. They count its fetched rows or use the row count
+  of its run. Before, they ran it again, which repeated writes such as
+  ``INSERT ... RETURNING`` and dropped its cached rows. Call ``run()`` to
+  re-execute a query.
+- Fix ``one()`` checking the row count of the cursor's latest query
+  instead of its own. Once another query ran on the same cursor, it
+  raised ``MultipleRowsError`` for a single row or returned the first of
+  several rows.
 
 Version 0.4.0
 -------------

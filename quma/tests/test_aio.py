@@ -149,6 +149,26 @@ async def test_mapping(adb):
         assert isinstance((await many.get(2, User))[0], User)
 
 
+async def test_queries_keep_their_own_result(adb):
+    async with adb.cursor as cur:
+        insert = cur.query(
+            "INSERT INTO users VALUES "
+            "(8, 'User 8', 'user.8@example.com', 'City D') RETURNING id"
+        )
+        assert await insert.count() == 1
+        assert await insert.exists()
+        assert await insert.value() == 8
+        assert await cur.query("SELECT count(*) FROM users").value() == 8
+        single = cur.users.by_name(name="User 1")
+        assert (await single.one())[0] == "user.1@example.com"
+        double = cur.users.by_city(city="City A")
+        assert len(await double.all()) == 2
+        assert (await single.one())[0] == "user.1@example.com"
+        await cur.users.by_name(name="User 2").run()
+        with pytest.raises(exc.MultipleRowsError):
+            await double.one()
+
+
 async def test_sync_dunders_raise(adb):
     async with adb.cursor as cur:
         query = cur.users.all()

@@ -103,6 +103,15 @@ class BaseQuery:
         self._has_been_executed = False
         self._result_cache: Sequence[Row] | None = None
         self._description: Sequence[Sequence[Any]] | None = None
+        # The cursor's rowcount changes with the next query run on it.
+        self._rowcount = -1
+
+    def _cached_len(self) -> int | None:
+        if self._result_cache is not None:
+            return len(self._result_cache)
+        if self.cursor.has_rowcount:
+            return self._rowcount
+        return None
 
     def __getattr__(self, key: str) -> Any:
         return getattr(self.cursor, key)
@@ -121,6 +130,7 @@ class Query(BaseQuery):
         )
         self._has_been_executed = True
         self._result_cache = None
+        self._rowcount = self.cursor.rowcount
         return self
 
     def _fetch(self) -> Sequence[Row]:
@@ -150,11 +160,10 @@ class Query(BaseQuery):
         return len(self._fetch()) > 0
 
     def _len(self) -> int:
-        self.run()
-        if self.cursor.has_rowcount:
-            return self.cursor.rowcount
-        else:
-            return len(self._fetch())
+        if not self._has_been_executed:
+            self.run()
+        length = self._cached_len()
+        return len(self._fetch()) if length is None else length
 
     def __len__(self) -> int:
         return self._len()
@@ -199,13 +208,11 @@ class Query(BaseQuery):
         """
         if not self._has_been_executed:
             self.run()
-        # SQLite does not support rowcount
-        if self.cursor.has_rowcount:
-            check_rowcount(self.cursor.rowcount)
-            rows = self._fetch()
-        else:
-            rows = self._fetch()
-            check_rowcount(len(rows))
+        if self._result_cache is None and self.cursor.has_rowcount:
+            # Fails before fetching a large result.
+            check_rowcount(self._rowcount)
+        rows = self._fetch()
+        check_rowcount(len(rows))
         return map_rows(target, self._description, rows[:1])[0]
 
     def value(self, key: int | str = 0) -> Any:

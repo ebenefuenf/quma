@@ -45,6 +45,36 @@ def test_failed_contextcommit_returns_connection(pgdriver):
     db.close()
 
 
+INSERT_USER_8 = (
+    "INSERT INTO users VALUES "
+    "(8, 'User 8', 'user.8@example.com', 'City D') RETURNING id"
+)
+
+
+@pytest.mark.postgres
+def test_count_runs_query_once(pgdb):
+    with pgdb.cursor as cur:
+        insert = cur.query(INSERT_USER_8)
+        assert insert.count() == 1
+        assert insert.exists()
+        assert insert.value() == 8
+        assert insert.count() == 1
+        assert cur.query("SELECT count(*) FROM users").value() == 8
+
+
+@pytest.mark.postgres
+def test_one_checks_its_own_result(pgdb):
+    with pgdb.cursor as cur:
+        single = cur.users.by_name(name="User 1")
+        assert single.one()[0] == "user.1@example.com"
+        double = cur.users.by_city(city="City A")
+        assert len(double.all()) == 2
+        assert single.one()[0] == "user.1@example.com"
+        cur.users.by_name(name="User 2").run()
+        with pytest.raises(pgdb.MultipleRowsError):
+            double.one()
+
+
 @pytest.mark.postgres
 def test_carrier(pgdb):
     from .test_db import carrier
