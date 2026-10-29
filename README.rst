@@ -53,7 +53,9 @@ You can access these scripts after connecting to the database:
 
     from quma import Database
 
-    db = Database('sqlite3:///:memory:', '/path/to/sql/scripts')
+    # An in-memory database lives as long as its connection, so keep it.
+    db = Database('sqlite3:///:memory:', '/path/to/sql/scripts',
+                  persist=True, changeling=True)
 
     db.execute('CREATE TABLE users ...')
 
@@ -67,6 +69,8 @@ You can access these scripts after connecting to the database:
         cur.commit()
 
         admin = cur.get_admin().one()
+
+    db.close()
 
 License
 -------

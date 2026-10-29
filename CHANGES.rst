@@ -22,6 +22,12 @@ Unreleased
 - A cursor's ``with`` block returns its connection to the pool even if
   the commit at its end fails. If the rollback after an error fails, for
   example on a lost connection, the block's own exception is raised.
+- Fix a cursor keeping its connection out of the pool when closing the
+  driver cursor fails, for example when a later statement of a
+  multi-statement MySQL query fails.
+- Fix a pool losing a slot when opening a cursor fails on a connection
+  the server has closed, for example without ``pessimistic=True``. A
+  carrier no longer keeps that connection either.
 
 Version 0.4.0
 -------------

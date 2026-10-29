@@ -1,5 +1,6 @@
 import pytest
 
+from .. import Database
 from . import util
 
 MySQLdb = pytest.importorskip("MySQLdb")
@@ -286,6 +287,19 @@ def test_cursor_query(mydb, mypooldb):
         with db.cursor as cur:
             q = cur.query(sql, "user.1@example.com", 1)
             assert q.value() == "User 1"
+
+
+@pytest.mark.mysql
+def test_failing_later_statement_returns_connection():
+    db = Database(util.MYSQL_POOL_URI, size=1, overflow=0, timeout=0.1)
+    with pytest.raises(MySQLdb.ProgrammingError):
+        with db.cursor as cur:
+            cur.execute("SELECT 1; SELECT * FROM missing_table")
+            assert cur.fetchone()[0] == 1
+    with db.cursor as cur:
+        cur.execute("SELECT 1")
+        assert cur.fetchone()[0] == 1
+    db.close()
 
 
 @pytest.mark.mysql

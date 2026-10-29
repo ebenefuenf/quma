@@ -441,6 +441,24 @@ async def test_lost_connection(contextcommit):
     await killer.close()
 
 
+async def test_failed_cursor_returns_connection(apooldb):
+    psycopg = pytest.importorskip("psycopg")
+    async with apooldb.cursor as cur:
+        raw_conn = cur.raw_conn
+    assert raw_conn is not None
+    await raw_conn.close()
+    carrier = SimpleNamespace()
+    with pytest.raises(psycopg.Error):
+        async with apooldb(carrier).cursor:
+            pass
+    assert apooldb.heap.get(carrier).conn is None
+    assert isinstance(apooldb.conn, AsyncPool)
+    assert apooldb.conn.checkedout == 0
+    async with asyncio.timeout(1):
+        async with apooldb.cursor as cur:
+            assert await cur.users.all().count() == 7
+
+
 async def test_cancelled_query_returns_connection(apooldb):
     with pytest.raises(TimeoutError):
         async with asyncio.timeout(0.1):

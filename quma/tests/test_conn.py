@@ -1,6 +1,7 @@
 import queue
 import sqlite3
 import threading
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
@@ -349,6 +350,24 @@ def test_postgres_pool_replaces_closed(pgdriver):
 @pytest.mark.mysql
 def test_mysql_pool_replaces_closed():
     pool_replaces_closed(util.MYSQL_POOL_URI)
+
+
+@pytest.mark.postgres
+def test_postgres_failed_cursor_returns_connection(pgdriver):
+    db = Database(pgdriver.pool_uri, size=1, overflow=0, timeout=0.1)
+    with db.cursor as cur:
+        raw_conn = cur.raw_conn
+    assert raw_conn is not None
+    raw_conn.close()
+    carrier = SimpleNamespace()
+    with pytest.raises(pgdriver.dbapi.Error):
+        with db(carrier).cursor:
+            pass
+    assert db.heap.get(carrier).conn is None
+    with db.cursor as cur:
+        cur.execute("SELECT 1")
+        assert cur.fetchone()[0] == 1
+    db.close()
 
 
 def test_pool_discards_broken_connection():

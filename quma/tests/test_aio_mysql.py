@@ -194,6 +194,18 @@ async def test_execute(adb):
         await adb.execute("SELECT * FROM missing_table")
 
 
+async def test_failing_later_statement_returns_connection(apooldb):
+    with pytest.raises(asyncmy.errors.ProgrammingError):
+        async with apooldb.cursor as cur:
+            await cur.execute("SELECT 1; SELECT * FROM missing_table")
+            assert (await cur.fetchone())[0] == 1
+    assert isinstance(apooldb.conn, AsyncPool)
+    assert apooldb.conn.checkedout == 0
+    async with asyncio.timeout(1):
+        async with apooldb.cursor as cur:
+            assert await cur.users.all().count() == 7
+
+
 async def test_echo(pyformat_sqldirs, capsys):
     db = AsyncDatabase(URI, pyformat_sqldirs, echo=True)
     async with db.cursor as cur:

@@ -87,10 +87,11 @@ class BaseCursor(Generic[ConnT]):
         return None
 
     def _attach(self, conn: ConnT, raw_conn: RawConnection) -> None:
+        raw_cursor = conn.cursor(raw_conn)
         if self.carrier and not self.carrier.conn:
             self.carrier.add_conn(CarriedConnection(conn, raw_conn))
         self.raw_conn = raw_conn
-        self.raw_cursor = RawCursorWrapper(conn, conn.cursor(raw_conn))
+        self.raw_cursor = RawCursorWrapper(conn, raw_cursor)
 
     def _detach(self, force: bool) -> tuple[ConnT, RawConnection] | None:
         """Return the connection to put back, or None if there is none."""
@@ -192,9 +193,15 @@ class Cursor(BaseCursor[ConnectionLike]):
     def create_cursor(self, autocommit: bool = False) -> Self:
         conn = self._conn()
         raw_conn = self._carried_raw_conn()
-        if raw_conn is None:
-            raw_conn = conn.get(autocommit=self._autocommit(autocommit))
-        self._attach(conn, raw_conn)
+        if raw_conn is not None:
+            self._attach(conn, raw_conn)
+            return self
+        raw_conn = conn.get(autocommit=self._autocommit(autocommit))
+        try:
+            self._attach(conn, raw_conn)
+        except BaseException:
+            conn.put(raw_conn)
+            raise
         return self
 
     def put(self, force: bool = False) -> None:
@@ -209,11 +216,13 @@ class Cursor(BaseCursor[ConnectionLike]):
         """
         if self.raw_conn is None or self.raw_cursor is None:
             return
-        self.raw_cursor.close()
-        detached = self._detach(force)
-        if detached is not None:
-            conn, raw_conn = detached
-            conn.put(raw_conn)
+        try:
+            self.raw_cursor.close()
+        finally:
+            detached = self._detach(force)
+            if detached is not None:
+                conn, raw_conn = detached
+                conn.put(raw_conn)
 
     def close(self) -> None:
         self.put(force=True)

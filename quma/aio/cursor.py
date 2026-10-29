@@ -97,10 +97,17 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         if raw_conn is None:
             raw_conn = await conn.get(autocommit=self._autocommit(autocommit))
             carried = self._carried_raw_conn()
-            if carried is not None:
-                # Another task gave the carrier a connection meanwhile.
-                await conn.put(raw_conn)
-                raw_conn = carried
+            if carried is None:
+                try:
+                    self._attach(conn, raw_conn)
+                except BaseException:
+                    await conn.put(raw_conn)
+                    raise
+                self._open = True
+                return self
+            # Another task gave the carrier a connection meanwhile.
+            await conn.put(raw_conn)
+            raw_conn = carried
         self._attach(conn, raw_conn)
         self._open = True
         return self
