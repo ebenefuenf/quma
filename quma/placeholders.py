@@ -30,6 +30,9 @@ class Reading(NamedTuple):
     backslashes: bool = False
     # MySQL's ANSI_QUOTES: "..." is a name, not a string.
     ansi_quotes: bool = False
+    # The server runs versioned comments: /*!80000 ... */ runs on MySQL
+    # 8.0 and later, /*M! ... */ on MariaDB only.
+    versioned: bool = True
 
 
 # What makes a reading differ from the default, and what to write instead.
@@ -46,6 +49,11 @@ _CAUSES = {
         "the sql_mode ANSI_QUOTES",
         'Write "" for a double quote in a string instead of \\", or use '
         "single quotes.",
+    ),
+    ("mysql", "versioned"): (
+        "another server version or type",
+        "Keep placeholders out of versioned comments like /*!80000 ... */ "
+        "and /*M! ... */, and */ out of strings in them.",
     ),
 }
 
@@ -88,13 +96,18 @@ _COMMENT_MARK = re.compile(r"/\*|\*/")
 _DOUBLE_PLAIN = re.compile(r'(?:[^"]|"")*+(?:"|\Z)')
 _DOUBLE_ESCAPED = re.compile(r'(?:[^"\\]|\\[\s\S]|"")*+(?:"|\Z)')
 
+# The server runs /*! ... */ as SQL: a */ in a string or a line comment
+# doesn't end it. "--" starts a comment before ASCII whitespace or control
+# characters only.
 _MYSQL_TOKEN = re.compile(
     rf"""
-        (?P<run>[^'"`\#\-/:\\]++)
+        (?P<run>[^'"`\#\-/*:\\]++)
       | (?P<string>['"])
       | (?P<quoted>`(?:[^`]|``)*+(?:`|\Z))
-      | (?P<comment>\#[^\n]*+|--(?=\s|\Z)[^\n]*+)
+      | (?P<comment>\#[^\n]*+|--(?=[\x00-\x20\x7f]|\Z)[^\n]*+)
+      | (?P<executable>/\*(?:[Mm]!|!)\d*+)
       | (?P<block>/\*[\s\S]*?(?:\*/|\Z))
+      | (?P<end>\*/)
       | (?P<cast>::)
       | (?P<escape>\\:)
       | :(?P<name>{_NAME})
@@ -117,6 +130,8 @@ _SQLITE_TOKEN = re.compile(
     """,
     re.VERBOSE,
 )
+
+_VERSIONED = re.compile(r"/\*(?:!\d|[Mm]!)")
 
 _NATIVE = re.compile(r"%\([^()]*\)s|%%")
 
@@ -151,10 +166,15 @@ def _readings(sql: str, dialect: str) -> list[Reading]:
         if "\\" in sql:
             readings.append(Reading(backslashes=True))
     elif dialect == "mysql":
-        readings = [Reading(backslashes=True)]
+        quoting = [Reading(backslashes=True)]
         if "\\" in sql:
-            readings.append(Reading(backslashes=True, ansi_quotes=True))
-            readings.append(Reading())
+            quoting.append(Reading(backslashes=True, ansi_quotes=True))
+            quoting.append(Reading())
+        readings = list(quoting)
+        if _VERSIONED.search(sql):
+            readings += [
+                reading._replace(versioned=False) for reading in quoting
+            ]
     else:
         readings = [Reading()]
     return readings
@@ -243,6 +263,8 @@ def _mysql(sql: str, reading: Reading) -> Iterator[Token]:
         double = _DOUBLE_ESCAPED
     else:
         double = _DOUBLE_PLAIN
+    # Open /*! ... */ comments.
+    depth = 0
     pos = 0
     while pos < len(sql):
         match = _match(_MYSQL_TOKEN, sql, pos)
@@ -257,6 +279,14 @@ def _mysql(sql: str, reading: Reading) -> Iterator[Token]:
         if kind == "string":
             body = single if match[0] == "'" else double
             pos = _match(body, sql, pos).end()
+        elif kind == "executable":
+            if match[0] == "/*!" or reading.versioned:
+                depth += 1
+            else:
+                end = sql.find("*/", pos)
+                pos = len(sql) if end == -1 else end + 2
+        elif kind == "end" and depth:
+            depth -= 1
         yield sql[start:pos], None
 
 

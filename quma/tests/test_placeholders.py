@@ -135,6 +135,33 @@ def test_mysql_backslash_before_quote():
     assert convert(r"SELECT 'it\'s'", "mysql") == r"SELECT 'it\'s'"
 
 
+def test_mysql_executable_comments():
+    # The server runs /*! ... */ as SQL, with strings and comments.
+    sql = "SELECT /*! :a + */ 1, /*! '*/' /* :b */ -- :c */\n + :d */ ':e'"
+    assert convert(sql, "mysql") == (
+        "SELECT /*! %(a)s + */ 1, /*! '*/' /* :b */ -- :c */\n + %(d)s */ ':e'"
+    )
+    # Hints are comments.
+    assert convert("SELECT /*+ BKA(t) :a */ :b", "mysql") == (
+        "SELECT /*+ BKA(t) :a */ %(b)s"
+    )
+
+
+def test_mysql_versioned_comments():
+    # Whether the server runs them depends on its version and type.
+    for sql in ("/*!80000 :a */", "/*M! :a */", "/*!80000 '*/' */ :a"):
+        with pytest.raises(PlaceholderError, match="server version"):
+            convert(f"SELECT {sql}", "mysql")
+    sql = "SELECT /*!80000 1 + */ 2, /*M!100100 3 + */ 4, :a"
+    assert convert(sql, "mysql") == sql.replace(":a", "%(a)s")
+
+
+def test_mysql_line_comments():
+    # "--" needs ASCII whitespace or a control character after it.
+    sql = "SELECT 1 --\x01 :a\n, 2 --\x7f :b\n, 3 --\u00a0:c"
+    assert convert(sql, "mysql") == sql.replace(":c", "%(c)s")
+
+
 def test_ambiguous_line():
     sql = "SELECT\n  'a\\',\n  ':b'"
     with pytest.raises(PlaceholderError, match=r"Line 3 .*: ':b'\n"):

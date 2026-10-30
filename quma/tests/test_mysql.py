@@ -354,6 +354,17 @@ def test_execute_stays_native(mydb):
 
 
 @pytest.mark.mysql
+def test_executable_comments(mydb):
+    value = ", (SELECT 12345) AS c, "
+    with mydb.cursor as cur:
+        assert cur.query("SELECT /*! :x + */ 1", x=42).value() == 43
+        row = cur.query("SELECT /*! '*/' AS a, */ ':y' AS b", y=value).one()
+        assert tuple(row) == ("*/", ":y")
+        with pytest.raises(PlaceholderError, match="server version"):
+            cur.query("SELECT /*!50000 :x + */ 1", x=42).value()
+
+
+@pytest.mark.mysql
 def test_placeholders_and_quoting_settings(mydb):
     value = ", (SELECT 12345), "
     modes = ("", "NO_BACKSLASH_ESCAPES", "ANSI_QUOTES")

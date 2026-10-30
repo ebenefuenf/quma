@@ -139,6 +139,16 @@ async def test_literal_percent(adb):
         assert await cur.query(sql, city="City B").count() == 2
 
 
+async def test_executable_comments(adb):
+    value = ", (SELECT 12345) AS c, "
+    async with adb.cursor as cur:
+        assert await cur.query("SELECT /*! :x + */ 1", x=42).value() == 43
+        query = cur.query("SELECT /*! '*/' AS a, */ ':y' AS b", y=value)
+        assert tuple(await query.one()) == ("*/", ":y")
+        with pytest.raises(exc.PlaceholderError, match="server version"):
+            await cur.query("SELECT /*!50000 :x + */ 1", x=42).value()
+
+
 async def test_placeholders_and_quoting_settings(adb):
     value = ", (SELECT 12345), "
     async with adb.cursor as cur:
