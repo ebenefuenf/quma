@@ -101,7 +101,7 @@ upon success returns the value of the first column of the row (i. e.
 .. code-block:: sql
 
     -- sql/users/add.sql
-    INSERT INTO users (name, email) VALUES (%(name)s, %(email)s) RETURNING id;
+    INSERT INTO users (name, email) VALUES (:name, :email) RETURNING id;
 
 .. code-block:: python
 
@@ -263,8 +263,8 @@ To run an ad hoc query you can use the ``query`` method of the cursor:
 .. code-block:: python
 
     with db.cursor as cur:
-        sql = 'SELECT name, city FROM users WHERE email = ?;'
-        user = cur.query(sql, 'user.1@example.com').one()
+        sql = 'SELECT name, city FROM users WHERE email = :email;'
+        user = cur.query(sql, email='user.1@example.com').one()
 
 
 Prepared statements

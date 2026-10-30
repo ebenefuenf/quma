@@ -5,6 +5,16 @@ quma Changelog
 Unreleased
 ----------
 
+- **Breaking:** scripts and ``cursor.query()`` use ``:name`` placeholders
+  with every driver, and a ``%`` in them is a plain percent sign. quma
+  converts them to the driver's style, after rendering templates. This
+  fixes scripts with a literal ``%``, like ``LIKE 'A%'``, failing on
+  psycopg2, psycopg and mysqlclient. A script with ``%(name)s`` or
+  ``%%`` raises the new ``PlaceholderError``, positional parameters raise
+  ``TypeError``. To keep the old behavior, create ``Database`` or
+  ``AsyncDatabase`` with ``placeholders='native'``: the SQL then reaches
+  the driver unchanged, as before. ``cur.execute()`` and ``db.execute()``
+  pass the SQL unchanged in both modes. See "Passing Parameters".
 - Add an async API for asyncio applications: ``AsyncDatabase``,
   ``AsyncCursor`` and ``AsyncQuery``, with psycopg 3 (``psycopg://`` and
   ``psycopg+pool://``) and, for MySQL and MariaDB, asyncmy

@@ -46,8 +46,8 @@ the door to SQL injections. So never write queries like so:
     WHERE
         is_active = ${is_active};
 
-You should always use the parameter substitution mechanism of
-the underlying driver and restrict Mako features to control structures:
+You should always use placeholders (see :doc:`Parameters <parameters>`)
+and restrict Mako features to control structures:
 
 .. code-block:: sql
 
@@ -58,7 +58,7 @@ the underlying driver and restrict Mako features to control structures:
         users
     % endif
     WHERE
-        is_active = %(is_active)s;
+        is_active = :is_active;
 
 See:
 
@@ -66,39 +66,35 @@ See:
 * https://xkcd.com/327/ (You've seen this far too often? https://xkcd.com/1053/)
 
 
-The problem with the %
+Placeholders and the %
 ----------------------
 
-The Mako template engine uses the %-sign to indicate control structures
-like ``if`` and ``for``. Unfortunately `psycopg2` as well as `mysqlclient`
-use ``%s`` for query placeholders and the ``%(variable)s`` syntax for named
-placeholders. Mako does not allow the %-sign to be the first non whitespace
-character in a line. As per documentation Mako should allow to escape ``%`` 
-using ``%%``, but it seems it does not work. So you should simply avoid it 
-in template scripts.
+quma converts the ``:name`` placeholders after Mako has rendered the
+template, so a placeholder can also come from an expression or an included
+template:
 
-Wrong:
+.. code-block:: mako
 
-.. code-block:: sql
+    <%def name="by_id()">id = :id</%def>
+    SELECT name FROM users WHERE ${by_id()}
 
-    SELECT * FROM
-        users
-    WHERE
-        %(is_active)s = is_active;
-
-Correct:
+A ``%`` is a plain percent sign, like in other scripts, except as the first
+non-whitespace character of a line: Mako uses it for control structures like
+``if`` and ``for``. Write ``%%`` there for a literal ``%``:
 
 .. code-block:: sql
 
-    SELECT * FROM
-        users
-    WHERE
-        is_active = %(is_active)s;
+    SELECT
+        id
+        %% 2 AS odd,
+        name
+    FROM users
+    WHERE name LIKE 'A%'
 
-See: 
+With ``placeholders='native'``, templates use the driver's placeholders, and
+a ``%(name)s`` placeholder must not start a line.
 
-* https://docs.makotemplates.org/en/latest/syntax.html#control-structures
-* https://github.com/sqlalchemy/mako/issues/323
+See: https://docs.makotemplates.org/en/latest/syntax.html#control-structures
 
 Template files lookup
 ---------------------

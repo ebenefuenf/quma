@@ -55,7 +55,7 @@ column in SQL:
 
 .. code-block:: sql
 
-    SELECT id, email_address AS email FROM users WHERE id = %(id)s;
+    SELECT id, email_address AS email FROM users WHERE id = :id;
 
 
 Dicts and TypedDicts

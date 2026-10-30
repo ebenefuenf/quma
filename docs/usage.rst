@@ -217,6 +217,10 @@ use the :meth:`execute` method of the cursor:
         cur.execute('DELETE FROM users WHERE id = 13');
         cur.commit()
 
+Both pass the SQL to the driver unchanged, so they take the driver's
+placeholders. For ad hoc queries with ``:name`` placeholders use
+``cur.query()`` (see :doc:`Passing parameters <parameters>`).
+
 
 Accessing the DBAPI cursor and connection
 -----------------------------------------

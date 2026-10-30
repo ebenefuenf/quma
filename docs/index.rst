@@ -3,7 +3,8 @@ Welcome to quma's docs
 
 quma is a small SQL database library for **Python** 3.11 and higher.
 It maps object methods to SQL script files and supports **SQLite**, **PostgreSQL**,
-**MySQL** and **MariaDB**.
+**MySQL** and **MariaDB**. Scripts use the same ``:name`` placeholders with
+every driver.
 
 It also provides a simple connection pool and templating for dynamic SQL like
 conditional WHEREs, and an async API for asyncio applications such as
@@ -36,8 +37,8 @@ Learn more
   Starlette, FastAPI and Litestar.
 * Learn what a :doc:`changling cursor <changeling>` is and how it enables
   you to access result data in three different ways.
-* Database management systems have different ways of parameter binding.
-  :doc:`Passing parameters <parameters>` shows how it works in quma.
+* :doc:`Passing parameters <parameters>` shows the ``:name`` placeholders,
+  and how to use the driver's own placeholders instead.
 * SQL doesn't support every kind of dynamic queries. If you reach its limits
   you can circumvent this by using :doc:`Templates <templates>`.
 * If you pass more than one directory to the constructor, quma shadows

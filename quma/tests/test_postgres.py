@@ -546,10 +546,10 @@ def test_casts_and_strings(pgdb):
 @pytest.mark.postgres
 def test_template_placeholders(pgdb):
     pytest.importorskip("mako")
-    sql = "SELECT '${prefix}%' AS pattern, :name AS name"
+    sql = "SELECT 7\n%% 4 AS r, '${prefix}%' AS pattern, :name AS name"
     with pgdb.cursor as cur:
         row = cur.query(sql, is_template=True, prefix="U", name="x").one()
-        assert (row.pattern, row.name) == ("U%", "x")
+        assert (row.r, row.pattern, row.name) == (3, "U%", "x")
 
 
 @pytest.mark.postgres
