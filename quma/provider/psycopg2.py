@@ -81,6 +81,8 @@ class PostgresChangelingCursor(DictCursor):
 
 
 class Connection(conn.Connection):
+    dialect = "postgresql"
+
     def __init__(self, url, **kwargs):
         super().__init__(url, kwargs)
 

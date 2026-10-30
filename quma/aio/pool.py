@@ -129,6 +129,10 @@ class AsyncPool:
     def has_rowcount(self) -> bool:
         return self._conn.has_rowcount
 
+    @property
+    def dialect(self) -> str:
+        return self._conn.dialect
+
     def status(self) -> str:
         return (
             f"Pool size: {self.size} Connections in pool: {self.checkedin} "

@@ -133,24 +133,24 @@ def test_commit(mydb, mypooldb):
 
 
 @pytest.mark.mysql
-def test_autocommit(pyformat_sqldirs):
+def test_autocommit(named_sqldirs):
     from .test_db import autocommit
 
     autocommit(
         util.MYSQL_URI,
-        pyformat_sqldirs,
+        named_sqldirs,
         MySQLdb.ProgrammingError,
         MySQLdb.OperationalError,
     )
 
 
 @pytest.mark.mysql
-def test_autocommit_pool(pyformat_sqldirs):
+def test_autocommit_pool(named_sqldirs):
     from .test_db import autocommit
 
     autocommit(
         util.MYSQL_POOL_URI,
-        pyformat_sqldirs,
+        named_sqldirs,
         MySQLdb.ProgrammingError,
         MySQLdb.OperationalError,
     )
@@ -282,10 +282,10 @@ def test_prepared_statement(mydb, mypooldb):
 
 @pytest.mark.mysql
 def test_cursor_query(mydb, mypooldb):
-    sql = "SELECT name, city FROM users WHERE email = %s AND 1 = %s;"
+    sql = "SELECT name, city FROM users WHERE email = :email AND 1 = :one;"
     for db in (mydb, mypooldb):
         with db.cursor as cur:
-            q = cur.query(sql, "user.1@example.com", 1)
+            q = cur.query(sql, email="user.1@example.com", one=1)
             assert q.value() == "User 1"
 
 
@@ -306,8 +306,44 @@ def test_failing_later_statement_returns_connection():
 def test_echo_parameter(mydb_echo, mypooldb_echo, capsys):
     for db in (mydb_echo, mypooldb_echo):
         with db.cursor as cursor:
-            db.user.by_email(cursor, "user.1@example.com", 1).one()
+            db.user.by_name(cursor, name="User 1").one()
             assert capsys.readouterr().out.endswith(
-                "SELECT name, city FROM users WHERE email = "
-                "'user.1@example.com' AND 1 = 1;\n"
+                "WHERE\n    name = 'User 1';\n"
             )
+
+
+@pytest.mark.mysql
+def test_native_placeholders(mydb_native):
+    with mydb_native.cursor as cur:
+        user = cur.user.by_email("user.1@example.com", 1).one()
+        assert user[0] == "User 1"
+        assert cur.user.by_name(name="User 2").one()[1] == "City A"
+        q = cur.query("SELECT CONCAT('User%%', %(n)s)", n=1)
+        assert q.value() == "User%1"
+
+
+@pytest.mark.mysql
+def test_literal_percent(mydb, mypooldb):
+    sql = "SELECT name FROM users WHERE name LIKE 'User%' AND city = :city"
+    for db in (mydb, mypooldb):
+        with db.cursor as cur:
+            q = cur.query("SELECT count(*) FROM users WHERE name LIKE 'U%'")
+            assert q.value() == 7
+            assert cur.query(sql, city="City B").count() == 2
+            assert cur.query("SELECT 7 % 4").value() == 3
+
+
+@pytest.mark.mysql
+def test_backslash_strings(mydb):
+    with mydb.cursor as cur:
+        sql = r"""SELECT 'it\'s :a', "say \":b\"", :c"""
+        q = cur.query(sql, c="x")
+        assert tuple(q.one()) == ("it's :a", 'say ":b"', "x")
+
+
+@pytest.mark.mysql
+def test_execute_stays_native(mydb):
+    with mydb.cursor as cur:
+        cur.execute("SELECT CONCAT(%(x)s, '%%')", {"x": "a"})
+        assert cur.fetchone()[0] == "a%"
+    assert mydb.execute("SELECT '100%'")[0][0] == "100%"

@@ -21,6 +21,7 @@ from ..database import (
 )
 from ..exc import APIError
 from ..namespace import Namespace
+from ..placeholders import Placeholders
 from ..script import (
     PrepareParams,
     Script,
@@ -70,6 +71,7 @@ class AsyncDatabase(BaseDatabase[AsyncConnectionLike]):
         contextcommit: bool = False,
         echo: bool = False,
         cache: bool = False,
+        placeholders: Placeholders = "named",
         **kwargs: Any,
     ) -> None:
         if args:
@@ -85,6 +87,7 @@ class AsyncDatabase(BaseDatabase[AsyncConnectionLike]):
             contextcommit=contextcommit,
             echo=echo,
             cache=cache,
+            placeholders=placeholders,
         )
 
     def __call__(

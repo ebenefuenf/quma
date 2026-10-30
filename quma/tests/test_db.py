@@ -255,14 +255,12 @@ def test_first(db):
 
 def value(db):
     cursor = db.cursor()
-    assert cursor.users.by_email("user.1@example.com", 1).value() == "User 1"
-    assert cursor.users.by_email("user.1@example.com", 1).value(1) == "City A"
+    assert cursor.users.by_name(name="User 1").value() == "user.1@example.com"
+    assert cursor.users.by_name(name="User 1").value(1) == "City A"
     assert (
-        db.users.by_email(cursor, "user.2@example.com", 1).value() == "User 2"
+        db.users.by_name(cursor, name="User 2").value() == "user.2@example.com"
     )
-    assert (
-        db.users.by_email(cursor, "user.2@example.com", 1).value(1) == "City A"
-    )
+    assert db.users.by_name(cursor, name="User 2").value(1) == "City A"
     cursor.close()
 
 
@@ -516,14 +514,12 @@ def test_script_with_dbapi_cursor(db):
     raw_cursor.close()
 
 
-def test_overwrite_script_class(pyformat_sqldirs):
+def test_overwrite_script_class(named_sqldirs):
     class MyScript(script.Script):
         def the_test(self):
             return "Test"
 
-    db = Database(
-        util.SQLITE_MEMORY, pyformat_sqldirs, script_factory=MyScript
-    )
+    db = Database(util.SQLITE_MEMORY, named_sqldirs, script_factory=MyScript)
     assert db.user.all.the_test() == "Test"
 
 
@@ -570,7 +566,8 @@ def test_no_changeling_cursor(db_no_changeling):
     )
 
 
-def test_qmark_script(db):
+def test_qmark_script(db_native):
+    db = db_native
     with db.cursor as cursor:
         user = db.user.by_email(cursor, "user.3@example.com", 1).one()
         assert user[0] == "User 3"
@@ -602,8 +599,8 @@ def test_template_type_error(db):
             cursor.query("SELECT ${len(1)};", is_template=True).run()
 
 
-def test_template_positional_params(db):
-    with db.cursor as cursor:
+def test_template_positional_params(db_native):
+    with db_native.cursor as cursor:
         with pytest.raises(TypeError, match="keyword parameters"):
             cursor.query("SELECT ?;", 1, is_template=True).run()
 
@@ -1021,9 +1018,35 @@ def test_result_replaced_by_another_statement(db):
 
 def test_cursor_query(db):
     with db.cursor as cur:
+        sql = "SELECT name, city FROM users WHERE email = :email AND 1 = :one;"
+        q = cur.query(sql, email="user.1@example.com", one=1)
+        assert q.value() == "User 1"
+
+
+def test_cursor_query_native(db_native):
+    with db_native.cursor as cur:
         sql = "SELECT name, city FROM users WHERE email = ? AND 1 = ?;"
         q = cur.query(sql, "user.1@example.com", 1)
         assert q.value() == "User 1"
+
+
+def test_positional_params_need_native(db):
+    with db.cursor as cur:
+        with pytest.raises(TypeError, match='placeholders="native"'):
+            db.user.by_email(cur, "user.3@example.com", 1).one()
+        with pytest.raises(TypeError, match='placeholders="native"'):
+            cur.query("SELECT ?", 1).run()
+
+
+def test_driver_placeholders_need_native(db):
+    with db.cursor as cur:
+        with pytest.raises(exc.PlaceholderError, match="line 1"):
+            cur.query("SELECT name FROM users WHERE name LIKE 'User%%'").all()
+
+
+def test_unknown_placeholders():
+    with pytest.raises(ValueError, match="placeholders"):
+        Database(util.SQLITE_MEMORY, placeholders="pyformat")  # ty: ignore[invalid-argument-type]
 
 
 def test_echo_parameter(dbecho, capsys):

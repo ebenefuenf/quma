@@ -21,6 +21,12 @@ def pyformat_sqldirs():
 
 
 @pytest.fixture(scope="session")
+def named_sqldirs():
+    p = pathlib.Path(__file__).parent / "fixtures" / "scripts" / "named"
+    return str(p)
+
+
+@pytest.fixture(scope="session")
 def qmark_sqldirs():
     return pathlib.Path(__file__).parent / "fixtures" / "scripts" / "qmark"
 
@@ -41,6 +47,21 @@ def db(qmark_sqldirs):
         persist=True,
         sqldirs=qmark_sqldirs,
         changeling=True,
+    )
+    db.execute(util.CREATE_USERS)
+    db.execute(util.INSERT_USERS)
+    yield db
+    db.close()
+
+
+@pytest.fixture
+def db_native(qmark_sqldirs):
+    db = Database(
+        util.SQLITE_MEMORY,
+        persist=True,
+        sqldirs=qmark_sqldirs,
+        changeling=True,
+        placeholders="native",
     )
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
@@ -168,6 +189,7 @@ def dbseqcb(qmark_sqldirs):
         prepare_params=sequence_callback,
         persist=True,
         changeling=True,
+        placeholders="native",
     )
     db.execute(util.CREATE_USERS)
     db.execute(util.INSERT_USERS)
@@ -192,59 +214,73 @@ def pgdriver(request):
 
 
 @pytest.fixture
-def pgdb(pgdriver, pyformat_sqldirs):
-    db = Database(pgdriver.uri, pyformat_sqldirs, changeling=True)
+def pgdb(pgdriver, named_sqldirs):
+    db = Database(pgdriver.uri, named_sqldirs, changeling=True)
     return db
 
 
 @pytest.fixture
-def pgdb_echo(pgdriver, pyformat_sqldirs):
-    db = Database(pgdriver.uri, pyformat_sqldirs, changeling=True, echo=True)
-    return db
-
-
-@pytest.fixture
-def pgdb_persist(pgdriver, pyformat_sqldirs):
-    db = Database(pgdriver.uri, pyformat_sqldirs, persist=True)
-    yield db
-    db.close()
-
-
-@pytest.fixture
-def pgpooldb(pgdriver, pyformat_sqldirs):
-    db = Database(pgdriver.pool_uri, pyformat_sqldirs, changeling=True)
-    yield db
-    db.close()
-
-
-@pytest.fixture
-def pgpooldb_echo(pgdriver, pyformat_sqldirs):
+def pgdb_native(pgdriver, pyformat_sqldirs):
     db = Database(
-        pgdriver.pool_uri, pyformat_sqldirs, changeling=True, echo=True
-    )
-    yield db
-    db.close()
-
-
-@pytest.fixture
-def mydb(pyformat_sqldirs):
-    db = Database(util.MYSQL_URI, pyformat_sqldirs, charset="utf8")
-    return db
-
-
-@pytest.fixture
-def mydb_dict(pyformat_sqldirs):
-    db = Database(
-        util.MYSQL_URI, pyformat_sqldirs, dict_cursor=True, charset="utf8"
+        pgdriver.uri, pyformat_sqldirs, changeling=True, placeholders="native"
     )
     return db
 
 
 @pytest.fixture
-def mydb_echo(pyformat_sqldirs):
+def pgdb_echo(pgdriver, named_sqldirs):
+    db = Database(pgdriver.uri, named_sqldirs, changeling=True, echo=True)
+    return db
+
+
+@pytest.fixture
+def pgdb_persist(pgdriver, named_sqldirs):
+    db = Database(pgdriver.uri, named_sqldirs, persist=True)
+    yield db
+    db.close()
+
+
+@pytest.fixture
+def pgpooldb(pgdriver, named_sqldirs):
+    db = Database(pgdriver.pool_uri, named_sqldirs, changeling=True)
+    yield db
+    db.close()
+
+
+@pytest.fixture
+def pgpooldb_echo(pgdriver, named_sqldirs):
+    db = Database(pgdriver.pool_uri, named_sqldirs, changeling=True, echo=True)
+    yield db
+    db.close()
+
+
+@pytest.fixture
+def mydb(named_sqldirs):
+    db = Database(util.MYSQL_URI, named_sqldirs, charset="utf8")
+    return db
+
+
+@pytest.fixture
+def mydb_native(pyformat_sqldirs):
+    db = Database(
+        util.MYSQL_URI, pyformat_sqldirs, charset="utf8", placeholders="native"
+    )
+    return db
+
+
+@pytest.fixture
+def mydb_dict(named_sqldirs):
+    db = Database(
+        util.MYSQL_URI, named_sqldirs, dict_cursor=True, charset="utf8"
+    )
+    return db
+
+
+@pytest.fixture
+def mydb_echo(named_sqldirs):
     db = Database(
         util.MYSQL_URI,
-        pyformat_sqldirs,
+        named_sqldirs,
         dict_cursor=True,
         echo=True,
         charset="utf8",
@@ -253,34 +289,32 @@ def mydb_echo(pyformat_sqldirs):
 
 
 @pytest.fixture
-def mydb_persist(pyformat_sqldirs):
+def mydb_persist(named_sqldirs):
+    db = Database(util.MYSQL_URI, named_sqldirs, persist=True, charset="utf8")
+    yield db
+    db.close()
+
+
+@pytest.fixture
+def mypooldb(named_sqldirs):
+    db = Database(util.MYSQL_POOL_URI, named_sqldirs, charset="utf8")
+    yield db
+    db.close()
+
+
+@pytest.fixture
+def mypooldb_echo(named_sqldirs):
     db = Database(
-        util.MYSQL_URI, pyformat_sqldirs, persist=True, charset="utf8"
+        util.MYSQL_POOL_URI, named_sqldirs, echo=True, charset="utf8"
     )
     yield db
     db.close()
 
 
 @pytest.fixture
-def mypooldb(pyformat_sqldirs):
-    db = Database(util.MYSQL_POOL_URI, pyformat_sqldirs, charset="utf8")
-    yield db
-    db.close()
-
-
-@pytest.fixture
-def mypooldb_echo(pyformat_sqldirs):
+def mypooldb_dict(named_sqldirs):
     db = Database(
-        util.MYSQL_POOL_URI, pyformat_sqldirs, echo=True, charset="utf8"
-    )
-    yield db
-    db.close()
-
-
-@pytest.fixture
-def mypooldb_dict(pyformat_sqldirs):
-    db = Database(
-        util.MYSQL_POOL_URI, pyformat_sqldirs, dict_cursor=True, charset="utf8"
+        util.MYSQL_POOL_URI, named_sqldirs, dict_cursor=True, charset="utf8"
     )
     yield db
     db.close()

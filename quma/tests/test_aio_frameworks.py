@@ -43,7 +43,7 @@ def check_app(client):
     assert client.get("/users/User 1").status_code == 404
 
 
-def test_starlette(pyformat_sqldirs):
+def test_starlette(named_sqldirs):
     pytest.importorskip("starlette")
     from starlette.applications import Starlette
     from starlette.requests import Request
@@ -56,7 +56,7 @@ def test_starlette(pyformat_sqldirs):
 
     @asynccontextmanager
     async def lifespan(app: Starlette) -> AsyncGenerator[dict[str, Any], None]:
-        async with database(pyformat_sqldirs) as db:
+        async with database(named_sqldirs) as db:
             yield {"db": db}
 
     async def get_user(request: Request) -> JSONResponse:
@@ -90,7 +90,7 @@ def test_starlette(pyformat_sqldirs):
         check_app(client)
 
 
-def test_fastapi(pyformat_sqldirs):
+def test_fastapi(named_sqldirs):
     pytest.importorskip("fastapi")
     from fastapi import (
         Depends,
@@ -103,7 +103,7 @@ def test_fastapi(pyformat_sqldirs):
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-        async with database(pyformat_sqldirs) as db:
+        async with database(named_sqldirs) as db:
             app.state.db = db
             yield
 
@@ -136,7 +136,7 @@ def test_fastapi(pyformat_sqldirs):
         check_app(client)
 
 
-def test_litestar(pyformat_sqldirs):
+def test_litestar(named_sqldirs):
     pytest.importorskip("litestar")
     from litestar import (
         Litestar,
@@ -159,7 +159,7 @@ def test_litestar(pyformat_sqldirs):
 
     @asynccontextmanager
     async def db_lifespan(app: Litestar) -> AsyncGenerator[None, None]:
-        async with database(pyformat_sqldirs) as db:
+        async with database(named_sqldirs) as db:
             app.state.db = db
             yield
 

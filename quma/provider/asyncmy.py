@@ -20,6 +20,8 @@ from .. import (
 
 
 class AsyncConnection(conn.AsyncConnection):
+    dialect = "mysql"
+
     def __init__(self, url, **kwargs):
         super().__init__(url, kwargs)
         self.hostname = self.url.hostname or "localhost"

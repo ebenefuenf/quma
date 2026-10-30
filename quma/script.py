@@ -12,6 +12,7 @@ from typing import (
     overload,
 )
 
+from . import placeholders
 from .conn import Params
 
 if TYPE_CHECKING:
@@ -53,6 +54,7 @@ class Script:
         self.is_template = is_template
         self.sqldirs = sqldirs
         self.params = None
+        self._converted: tuple[tuple[str, str], str] | None = None
 
     @overload
     def __call__(
@@ -138,9 +140,27 @@ class Script:
         kwargs: dict[str, Any],
         prepare_params: PrepareParams | None = None,
     ) -> tuple[str, Params]:
-        if args:
-            return self._prepare(cursor, args, prepare_params)
-        return self._prepare(cursor, kwargs, prepare_params)
+        db = getattr(cursor, "db", None)
+        named = db is not None and db.placeholders == "named"
+        if args and named:
+            raise TypeError(
+                "Scripts with :name placeholders need keyword parameters. "
+                'Create the database with placeholders="native" to use '
+                "positional ones."
+            )
+        content, params = self._prepare(cursor, args or kwargs, prepare_params)
+        if named:
+            content = self._convert(content, cursor._conn().dialect)
+        return content, params
+
+    def _convert(self, content: str, dialect: str) -> str:
+        key = (dialect, content)
+        # Read once: threads share cached scripts, also templates.
+        converted = self._converted
+        if converted is None or converted[0] != key:
+            converted = (key, placeholders.convert(content, dialect))
+            self._converted = converted
+        return converted[1]
 
     def execute(self, cursor, args, kwargs, prepare_params=None):
         content, params = self.prepare(cursor, args, kwargs, prepare_params)

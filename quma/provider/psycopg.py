@@ -136,6 +136,8 @@ class AsyncCursor(psycopg.AsyncClientCursor):
 
 
 class BaseConnection(conn.BaseConnection):
+    dialect = "postgresql"
+
     def __init__(self, url, **kwargs):
         super().__init__(url, kwargs)
 

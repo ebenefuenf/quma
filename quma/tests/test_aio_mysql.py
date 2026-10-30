@@ -34,31 +34,31 @@ def setup_function(function):
 
 
 @pytest.fixture(params=["plain", "pool"])
-async def adb(request, pyformat_sqldirs):
+async def adb(request, named_sqldirs):
     uri = POOL_URI if request.param == "pool" else URI
-    db = AsyncDatabase(uri, pyformat_sqldirs)
+    db = AsyncDatabase(uri, named_sqldirs)
     yield db
     await db.close()
 
 
 @pytest.fixture(params=["plain", "pool"])
-async def adb_dict(request, pyformat_sqldirs):
+async def adb_dict(request, named_sqldirs):
     uri = POOL_URI if request.param == "pool" else URI
-    db = AsyncDatabase(uri, pyformat_sqldirs, dict_cursor=True)
+    db = AsyncDatabase(uri, named_sqldirs, dict_cursor=True)
     yield db
     await db.close()
 
 
 @pytest.fixture
-async def apooldb(pyformat_sqldirs):
-    db = AsyncDatabase(POOL_URI, pyformat_sqldirs, size=1, overflow=0)
+async def apooldb(named_sqldirs):
+    db = AsyncDatabase(POOL_URI, named_sqldirs, size=1, overflow=0)
     yield db
     await db.close()
 
 
-def test_sync_database_refuses_driver(pyformat_sqldirs):
+def test_sync_database_refuses_driver(named_sqldirs):
     with pytest.raises(ValueError, match="async only"):
-        Database(URI, pyformat_sqldirs)
+        Database(URI, named_sqldirs)
 
 
 async def test_query_methods(adb):
@@ -78,9 +78,9 @@ async def test_query_methods(adb):
             await cur.users.none().one()
         with pytest.raises(exc.MultipleRowsError):
             await cur.users.by_city(city="City A").one()
-        query = cur.users.by_email("user.3@example.com", 1)
+        query = cur.users.by_name(name="User 3")
         assert (await query.run()).rowcount == 1
-        assert (await query.one())[0] == "User 3"
+        assert (await query.one())[0] == "user.3@example.com"
 
 
 async def test_dict_rows(adb_dict):
@@ -117,12 +117,32 @@ async def test_mapping(adb, adb_dict):
             assert first == {"name": "User 5", "email": "user.5@example.com"}
 
 
-async def test_positional_params(adb):
+async def test_native_placeholders(pyformat_sqldirs):
+    db = AsyncDatabase(URI, pyformat_sqldirs, placeholders="native")
     sql = "SELECT name, city FROM users WHERE email = %s AND 1 = %s"
-    async with adb.cursor as cur:
+    async with db.cursor as cur:
         assert await cur.query(sql, "user.1@example.com", 1).value() == (
             "User 1"
         )
+        user = await cur.user.by_email("user.1@example.com", 1).one()
+        assert user[0] == "User 1"
+        q = cur.query("SELECT CONCAT('User%%', %(n)s)", n=1)
+        assert await q.value() == "User%1"
+    await db.close()
+
+
+async def test_literal_percent(adb):
+    sql = "SELECT name FROM users WHERE name LIKE 'User%' AND city = :city"
+    async with adb.cursor as cur:
+        q = cur.query("SELECT count(*) FROM users WHERE name LIKE 'U%'")
+        assert await q.value() == 7
+        assert await cur.query(sql, city="City B").count() == 2
+
+
+async def test_positional_params_need_native(adb):
+    async with adb.cursor as cur:
+        with pytest.raises(TypeError, match='placeholders="native"'):
+            await cur.query("SELECT %s", 1).run()
 
 
 async def test_autocommit(adb):
@@ -148,8 +168,8 @@ async def test_commit_and_rollback(adb):
         assert await cur.users.all().count() == 6
 
 
-async def test_contextcommit(pyformat_sqldirs):
-    db = AsyncDatabase(POOL_URI, pyformat_sqldirs, contextcommit=True)
+async def test_contextcommit(named_sqldirs):
+    db = AsyncDatabase(POOL_URI, named_sqldirs, contextcommit=True)
     async with db.cursor as cur:
         await cur.users.remove(name="User 1").run()
     with pytest.raises(ValueError):
@@ -220,8 +240,8 @@ async def test_release_waits_for_running_query(apooldb):
             assert await cur.users.all().count() == 7
 
 
-async def test_persistent_connection(pyformat_sqldirs):
-    db = AsyncDatabase(URI, pyformat_sqldirs, persist=True)
+async def test_persistent_connection(named_sqldirs):
+    db = AsyncDatabase(URI, named_sqldirs, persist=True)
     async with db.cursor as cur:
         raw_conn = cur.raw_conn
     assert raw_conn is not None
@@ -253,8 +273,8 @@ async def test_failing_later_statement_returns_connection(apooldb):
             assert await cur.users.all().count() == 7
 
 
-async def test_echo(pyformat_sqldirs, capsys):
-    db = AsyncDatabase(URI, pyformat_sqldirs, echo=True)
+async def test_echo(named_sqldirs, capsys):
+    db = AsyncDatabase(URI, named_sqldirs, echo=True)
     async with db.cursor as cur:
         await cur.users.by_name(name="User 1").one()
     assert "name = 'User 1'" in capsys.readouterr().out

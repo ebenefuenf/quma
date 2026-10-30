@@ -612,13 +612,13 @@ def persistent_pool(uri, sqldirs):
 
 
 @pytest.mark.postgres
-def test_postgres_persistent_pool(pgdriver, pyformat_sqldirs):
-    persistent_pool(pgdriver.pool_uri, pyformat_sqldirs)
+def test_postgres_persistent_pool(pgdriver, named_sqldirs):
+    persistent_pool(pgdriver.pool_uri, named_sqldirs)
 
 
 @pytest.mark.mysql
-def test_mysql_persistent_pool(pyformat_sqldirs):
-    persistent_pool(util.MYSQL_POOL_URI, pyformat_sqldirs)
+def test_mysql_persistent_pool(named_sqldirs):
+    persistent_pool(util.MYSQL_POOL_URI, named_sqldirs)
 
 
 def failing_check(uri, error):

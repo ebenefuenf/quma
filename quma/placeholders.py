@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import re
+from typing import Literal
 
 from .exc import PlaceholderError
+
+Placeholders = Literal["named", "native"]
 
 # Strings, quoted identifiers and comments are copied unchanged. The
 # drivers' formatting isn't SQL-aware, so "%" is doubled in them too.

@@ -25,6 +25,9 @@ class BaseConnectionLike(Protocol):
     @property
     def has_rowcount(self) -> bool: ...
 
+    @property
+    def dialect(self) -> str: ...
+
     def cursor(self, conn: RawConnection) -> RawCursor: ...
 
     def get_cursor_attr(self, cursor: RawCursor, key: str) -> Any: ...
@@ -64,6 +67,9 @@ ConnT = TypeVar("ConnT", bound=BaseConnectionLike)
 class BaseConnection:
     """Abstract base class for DBMS specific connection objects: the
     options and the methods that do no I/O."""
+
+    # How quma converts placeholders: "postgresql", "mysql" or "sqlite".
+    dialect: str
 
     def __init__(self, url: ParseResult, kwargs: dict[str, Any]) -> None:
         # kwargs are the **kwargs passed to the specific provider

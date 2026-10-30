@@ -55,6 +55,8 @@ class SQLiteChangelingRow(sqlite3.Row):
 
 
 class Connection(conn.Connection):
+    dialect = "sqlite"
+
     def __init__(self, url, **kwargs):
         super().__init__(url, kwargs)
         if not self.database:

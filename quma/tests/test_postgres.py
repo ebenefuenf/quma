@@ -6,7 +6,10 @@ from unittest.mock import Mock
 
 import pytest
 
-from .. import Database
+from .. import (
+    Database,
+    PlaceholderError,
+)
 from ..exc import FetchError
 from ..pool import Pool
 from . import util
@@ -238,24 +241,24 @@ def test_commit(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
-def test_autocommit(pgdriver, pyformat_sqldirs):
+def test_autocommit(pgdriver, named_sqldirs):
     from .test_db import autocommit
 
     autocommit(
         pgdriver.uri,
-        pyformat_sqldirs,
+        named_sqldirs,
         pgdriver.dbapi.ProgrammingError,
         pgdriver.dbapi.ProgrammingError,
     )
 
 
 @pytest.mark.postgres
-def test_autocommit_pool(pgdriver, pyformat_sqldirs):
+def test_autocommit_pool(pgdriver, named_sqldirs):
     from .test_db import autocommit
 
     autocommit(
         pgdriver.pool_uri,
-        pyformat_sqldirs,
+        named_sqldirs,
         pgdriver.dbapi.ProgrammingError,
         pgdriver.dbapi.ProgrammingError,
     )
@@ -327,9 +330,9 @@ def test_faulty_fetch(pgdburl):
 
 
 @pytest.mark.postgres
-def test_get_cursor_attr(pyformat_sqldirs, monkeypatch):
+def test_get_cursor_attr(named_sqldirs, monkeypatch):
     psycopg2 = pytest.importorskip("psycopg2")
-    pgdb = Database(util.PGSQL_URI, pyformat_sqldirs, changeling=True)
+    pgdb = Database(util.PGSQL_URI, named_sqldirs, changeling=True)
     conn = pgdb.conn
     assert conn is not None
     cursor = Mock()
@@ -359,9 +362,9 @@ def test_get_cursor_attr(pyformat_sqldirs, monkeypatch):
 
 
 @pytest.mark.postgres
-def test_psycopg_get_cursor_attr(pyformat_sqldirs):
+def test_psycopg_get_cursor_attr(named_sqldirs):
     psycopg = pytest.importorskip("psycopg")
-    db = Database(util.pg_uri("psycopg"), pyformat_sqldirs)
+    db = Database(util.pg_uri("psycopg"), named_sqldirs)
     conn = db.conn
     assert conn is not None
     cursor = Mock()
@@ -482,10 +485,10 @@ def test_close_twice(pgpooldb):
 
 @pytest.mark.postgres
 def test_cursor_query(pgdb, pgpooldb):
-    sql = "SELECT name, city FROM users WHERE email = %s AND 1 = %s;"
+    sql = "SELECT name, city FROM users WHERE email = :email AND 1 = :one;"
     for db in (pgdb, pgpooldb):
         with db.cursor as cur:
-            q = cur.query(sql, "user.1@example.com", 1)
+            q = cur.query(sql, email="user.1@example.com", one=1)
             assert q.value() == "User 1"
 
 
@@ -505,8 +508,61 @@ def test_prepared_statement(pgdb, pgpooldb):
 def test_echo_parameter(pgdb_echo, pgpooldb_echo, capsys):
     for db in (pgdb_echo, pgpooldb_echo):
         with db.cursor as cursor:
-            db.user.by_email(cursor, "user.1@example.com", 1).one()
+            db.user.by_name(cursor, name="User 1").one()
             assert capsys.readouterr().out.endswith(
-                "SELECT name, city FROM users WHERE email = "
-                "'user.1@example.com' AND 1 = 1;\n"
+                "WHERE\n    name = 'User 1';\n"
             )
+
+
+@pytest.mark.postgres
+def test_native_placeholders(pgdb_native):
+    with pgdb_native.cursor as cur:
+        user = cur.user.by_email("user.1@example.com", 1).one()
+        assert user.name == "User 1"
+        assert cur.user.by_name(name="User 2").one().city == "City A"
+        q = cur.query("SELECT 'User%%' || %(n)s", n=1)
+        assert q.value() == "User%1"
+
+
+@pytest.mark.postgres
+def test_literal_percent(pgdb, pgpooldb):
+    sql = "SELECT name FROM users WHERE name LIKE 'User%' AND city = :city"
+    for db in (pgdb, pgpooldb):
+        with db.cursor as cur:
+            q = cur.query("SELECT count(*) FROM users WHERE name LIKE 'U%'")
+            assert q.value() == 7
+            assert cur.query(sql, city="City B").count() == 2
+            assert cur.query("SELECT 7 % 4").value() == 3
+
+
+@pytest.mark.postgres
+def test_casts_and_strings(pgdb):
+    with pgdb.cursor as cur:
+        assert cur.query("SELECT :n::int + 1", n="2").value() == 3
+        q = cur.query(r"SELECT ':a', $$ :b $$, E'it\'s :d' || :c", c="x")
+        assert tuple(q.one()) == (":a", " :b ", "it's :dx")
+
+
+@pytest.mark.postgres
+def test_template_placeholders(pgdb):
+    pytest.importorskip("mako")
+    sql = "SELECT '${prefix}%' AS pattern, :name AS name"
+    with pgdb.cursor as cur:
+        row = cur.query(sql, is_template=True, prefix="U", name="x").one()
+        assert (row.pattern, row.name) == ("U%", "x")
+
+
+@pytest.mark.postgres
+def test_driver_placeholders_need_native(pgdriver, pyformat_sqldirs):
+    db = Database(pgdriver.uri, pyformat_sqldirs)
+    with db.cursor as cur:
+        with pytest.raises(PlaceholderError, match='placeholders="native"'):
+            cur.user.by_name(name="User 1").one()
+
+
+@pytest.mark.postgres
+def test_execute_stays_native(pgdb):
+    with pgdb.cursor as cur:
+        cur.execute("SELECT %(x)s || '%%'", {"x": "a"})
+        assert cur.fetchone()[0] == "a%"
+    assert pgdb.execute("SELECT '100%'")[0][0] == "100%"

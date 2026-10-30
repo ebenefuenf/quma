@@ -41,6 +41,7 @@ from .namespace import (
     Namespace,
     get_namespace,
 )
+from .placeholders import Placeholders
 from .script import (
     PrepareParams,
     Script,
@@ -164,7 +165,10 @@ class BaseDatabase(Generic[ConnT]):
         contextcommit: bool,
         echo: bool,
         cache: bool,
+        placeholders: Placeholders,
     ) -> None:
+        if placeholders not in ("named", "native"):
+            raise ValueError('placeholders must be "named" or "native"')
         if isinstance(sqldirs, os.PathLike):
             sqldirs = os.fspath(sqldirs)
         self.sqldirs = sqldirs
@@ -175,6 +179,7 @@ class BaseDatabase(Generic[ConnT]):
         self.contextcommit = contextcommit
         self.echo = echo
         self.cache = cache
+        self.placeholders = placeholders
 
         self.heap = CarrierHeap()
         self.namespaces: dict[str, Namespace] = {}
@@ -267,6 +272,12 @@ class Database(BaseDatabase[ConnectionLike]):
     :param cache: cache the scripts in memory if ``True``,
         otherwise re-read each script when the query is executed.
         Defaults to ``False``.
+    :param placeholders: ``'named'`` lets scripts use ``:name``
+        placeholders and a plain ``%`` with every driver (see
+        :doc:`Parameters <parameters>`). ``'native'`` passes the SQL
+        to the driver unchanged, so scripts use the driver's
+        placeholders, e.g. ``%(name)s`` or ``?``, and positional
+        parameters work. Defaults to ``'named'``.
 
     Additional connection pool parameters (see :doc:`Connection pool <pool>`):
 
@@ -293,6 +304,7 @@ class Database(BaseDatabase[ConnectionLike]):
         contextcommit: bool = False,
         echo: bool = False,
         cache: bool = False,
+        placeholders: Placeholders = "named",
         **kwargs: Any,
     ) -> None:
         if args:
@@ -308,6 +320,7 @@ class Database(BaseDatabase[ConnectionLike]):
             contextcommit=contextcommit,
             echo=echo,
             cache=cache,
+            placeholders=placeholders,
         )
 
     def __call__(

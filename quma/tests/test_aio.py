@@ -36,31 +36,31 @@ def setup_function(function):
 
 
 @pytest.fixture(params=["plain", "pool"])
-async def adb(request, pyformat_sqldirs):
+async def adb(request, named_sqldirs):
     uri = POOL_URI if request.param == "pool" else URI
-    db = AsyncDatabase(uri, pyformat_sqldirs, changeling=True)
+    db = AsyncDatabase(uri, named_sqldirs, changeling=True)
     yield db
     await db.close()
 
 
 @pytest.fixture
-async def apooldb(pyformat_sqldirs):
+async def apooldb(named_sqldirs):
     db = AsyncDatabase(
-        POOL_URI, pyformat_sqldirs, changeling=True, size=1, overflow=0
+        POOL_URI, named_sqldirs, changeling=True, size=1, overflow=0
     )
     yield db
     await db.close()
 
 
-async def test_create_does_no_io(pyformat_sqldirs):
-    db = AsyncDatabase(URI + "_wrong", pyformat_sqldirs, persist=True)
+async def test_create_does_no_io(named_sqldirs):
+    db = AsyncDatabase(URI + "_wrong", named_sqldirs, persist=True)
     with pytest.raises(exc.ConnectionError):
         await db.open()
     await db.close()
 
 
-async def test_async_with_opens_and_closes(pyformat_sqldirs):
-    async with AsyncDatabase(POOL_URI, pyformat_sqldirs) as db:
+async def test_async_with_opens_and_closes(named_sqldirs):
+    async with AsyncDatabase(POOL_URI, named_sqldirs) as db:
         pool = db.conn
         assert isinstance(pool, AsyncPool)
         assert pool.checkedin == 1
@@ -69,8 +69,8 @@ async def test_async_with_opens_and_closes(pyformat_sqldirs):
     await db.close()
 
 
-async def test_closed_database(pyformat_sqldirs):
-    db = AsyncDatabase(URI, pyformat_sqldirs)
+async def test_closed_database(named_sqldirs):
+    db = AsyncDatabase(URI, named_sqldirs)
     await db.close()
     with pytest.raises(exc.APIError):
         async with db.cursor:
@@ -79,10 +79,10 @@ async def test_closed_database(pyformat_sqldirs):
         await db.open()
 
 
-async def test_unsupported_driver(pyformat_sqldirs):
+async def test_unsupported_driver(named_sqldirs):
     pytest.importorskip("psycopg2")
     with pytest.raises(ValueError, match="no async support"):
-        AsyncDatabase(util.pg_uri("psycopg2"), pyformat_sqldirs)
+        AsyncDatabase(util.pg_uri("psycopg2"), named_sqldirs)
 
 
 async def test_query_methods(adb):
@@ -104,11 +104,11 @@ async def test_query_methods(adb):
             await cur.users.none().one()
         with pytest.raises(exc.MultipleRowsError):
             await cur.users.by_city(city="City A").one()
-        query = cur.users.by_email("user.3@example.com", 1)
+        query = cur.users.by_name(name="User 3")
         assert isinstance(query, AsyncQuery)
         assert await query.run() is query
         assert query.rowcount == 1
-        assert (await query.one()).name == "User 3"
+        assert (await query.one()).email == "user.3@example.com"
 
 
 async def test_iteration(adb):
@@ -217,12 +217,12 @@ async def test_ad_hoc_queries(adb):
     pytest.importorskip("mako")
     async with adb.cursor as cur:
         row = await cur.query(
-            "SELECT name FROM users WHERE city = %(city)s ORDER BY id",
+            "SELECT name FROM users WHERE city = :city ORDER BY id",
             city="City B",
         ).first()
         assert row.name == "User 3"
         row = await cur.query(
-            "SELECT ${column} FROM users WHERE id = %(id)s",
+            "SELECT ${column} FROM users WHERE id = :id",
             is_template=True,
             column="email",
             id=2,
@@ -244,7 +244,7 @@ async def test_cursor_without_block(adb):
     assert cur.raw_conn is None
 
 
-async def test_autocommit(adb, pyformat_sqldirs):
+async def test_autocommit(adb, named_sqldirs):
     async with adb.cursor(autocommit=True) as cur:
         assert cur.raw_conn.autocommit
         await cur.users.remove(name="User 1").run()
@@ -269,8 +269,8 @@ async def test_commit_and_rollback(adb):
         assert await cur.users.all().count() == 6
 
 
-async def test_contextcommit(pyformat_sqldirs):
-    db = AsyncDatabase(POOL_URI, pyformat_sqldirs, contextcommit=True)
+async def test_contextcommit(named_sqldirs):
+    db = AsyncDatabase(POOL_URI, named_sqldirs, contextcommit=True)
     async with db.cursor as cur:
         await cur.users.remove(name="User 1").run()
     with pytest.raises(ValueError):
@@ -292,7 +292,7 @@ async def test_contextcommit(pyformat_sqldirs):
     await db.close()
 
 
-async def test_failed_contextcommit_returns_connection(pyformat_sqldirs):
+async def test_failed_contextcommit_returns_connection(named_sqldirs):
     psycopg = pytest.importorskip("psycopg")
     db = AsyncDatabase(POOL_URI, size=1, contextcommit=True)
     with pytest.raises(psycopg.IntegrityError):
@@ -324,10 +324,8 @@ async def test_carrier(adb):
     assert not adb.heap.heap
 
 
-async def test_tasks_on_one_carrier_share_its_connection(pyformat_sqldirs):
-    db = AsyncDatabase(
-        POOL_URI, pyformat_sqldirs, size=1, overflow=0, timeout=1
-    )
+async def test_tasks_on_one_carrier_share_its_connection(named_sqldirs):
+    db = AsyncDatabase(POOL_URI, named_sqldirs, size=1, overflow=0, timeout=1)
     carrier = SimpleNamespace()
 
     async def backend_pid():
@@ -342,7 +340,7 @@ async def test_tasks_on_one_carrier_share_its_connection(pyformat_sqldirs):
     await db.close()
 
 
-async def test_release_ends_the_carrier(pyformat_sqldirs):
+async def test_release_ends_the_carrier(named_sqldirs):
     db = AsyncDatabase(POOL_URI, size=2, overflow=0, timeout=0.1)
     request = SimpleNamespace()
     wrapper = db(request)
@@ -441,8 +439,8 @@ async def test_one_task_per_cursor(apooldb):
             )
 
 
-async def test_one_cursor_per_task(pyformat_sqldirs):
-    db = AsyncDatabase(POOL_URI, pyformat_sqldirs, size=2, overflow=1)
+async def test_one_cursor_per_task(named_sqldirs):
+    db = AsyncDatabase(POOL_URI, named_sqldirs, size=2, overflow=1)
 
     async def count(city):
         async with db.cursor as cur:
@@ -456,8 +454,8 @@ async def test_one_cursor_per_task(pyformat_sqldirs):
     await db.close()
 
 
-async def test_persistent_connection(pyformat_sqldirs):
-    db = AsyncDatabase(URI, pyformat_sqldirs, persist=True)
+async def test_persistent_connection(named_sqldirs):
+    db = AsyncDatabase(URI, named_sqldirs, persist=True)
     async with db.cursor as cur:
         raw_conn = cur.raw_conn
     assert raw_conn is not None
@@ -477,20 +475,20 @@ async def test_execute(adb):
         await adb.execute("SELECT * FROM missing_table")
 
 
-async def test_echo(pyformat_sqldirs, capsys):
-    db = AsyncDatabase(URI, pyformat_sqldirs, echo=True)
+async def test_echo(named_sqldirs, capsys):
+    db = AsyncDatabase(URI, named_sqldirs, echo=True)
     async with db.cursor as cur:
         await cur.users.by_name(name="User 1").one()
     assert "name = 'User 1'" in capsys.readouterr().out
     await db.close()
 
 
-async def test_prepare_params(pyformat_sqldirs):
+async def test_prepare_params(named_sqldirs):
     def prepare(carrier, params):
         params["name"] = "User 6"
         return params
 
-    db = AsyncDatabase(URI, pyformat_sqldirs, prepare_params=prepare)
+    db = AsyncDatabase(URI, named_sqldirs, prepare_params=prepare)
     async with db.cursor as cur:
         assert (await cur.users.by_name().one())[1] == "City C"
     await db.close()
@@ -520,9 +518,9 @@ async def test_namespace_classes(tmp_path):
         assert cur.users.kind() == "sync"
 
 
-async def test_sync_and_async_database_together(pyformat_sqldirs):
-    sync_db = Database(util.pg_uri("psycopg+pool"), pyformat_sqldirs)
-    async_db = AsyncDatabase(POOL_URI, pyformat_sqldirs)
+async def test_sync_and_async_database_together(named_sqldirs):
+    sync_db = Database(util.pg_uri("psycopg+pool"), named_sqldirs)
+    async_db = AsyncDatabase(POOL_URI, named_sqldirs)
     with sync_db.cursor as cur:
         cur.users.remove(name="User 7").run()
         cur.commit()
@@ -591,3 +589,31 @@ async def test_cancelled_waiter_returns_nothing(apooldb):
             await waiter
     assert isinstance(apooldb.conn, AsyncPool)
     assert apooldb.conn.checkedout == 0
+
+
+async def test_native_placeholders(pyformat_sqldirs):
+    db = AsyncDatabase(
+        URI, pyformat_sqldirs, changeling=True, placeholders="native"
+    )
+    async with db.cursor as cur:
+        user = await cur.user.by_email("user.1@example.com", 1).one()
+        assert user.name == "User 1"
+        q = cur.query("SELECT 'User%%' || %(n)s", n=1)
+        assert await q.value() == "User%1"
+    await db.close()
+
+
+async def test_literal_percent(adb):
+    sql = "SELECT name FROM users WHERE name LIKE 'User%' AND city = :city"
+    async with adb.cursor as cur:
+        q = cur.query("SELECT count(*) FROM users WHERE name LIKE 'U%'")
+        assert await q.value() == 7
+        assert await cur.query(sql, city="City B").count() == 2
+
+
+async def test_driver_placeholders_need_native(pyformat_sqldirs):
+    db = AsyncDatabase(URI, pyformat_sqldirs)
+    async with db.cursor as cur:
+        with pytest.raises(exc.PlaceholderError, match="native"):
+            await cur.user.by_name(name="User 1").one()
+    await db.close()
