@@ -31,6 +31,11 @@ class ConnectionError(Exception):
     pass
 
 
+class PlaceholderError(Exception):
+    """Raised when a script contains driver placeholders where quma
+    expects ``:name`` placeholders."""
+
+
 class MappingError(Exception):
     """Raised when the rows of a query cannot be mapped to a target."""
 

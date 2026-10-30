@@ -17,6 +17,7 @@ from .exc import (  # noqa: F401
     MissingColumnError,
     MultipleRowsError,
     OperationalError,
+    PlaceholderError,
     TimeoutError,
 )
 from .mapping import FromRow
@@ -39,6 +40,7 @@ __all__ = [
     "MissingColumnError",
     "MultipleRowsError",
     "OperationalError",
+    "PlaceholderError",
     "TimeoutError",
 ]
 
