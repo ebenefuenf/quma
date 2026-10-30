@@ -8,7 +8,6 @@ SQL.
 
 from __future__ import annotations
 
-import os
 import re
 from collections.abc import Callable, Iterator
 from typing import Literal, NamedTuple
@@ -204,7 +203,14 @@ def _ambiguous(
         if getattr(reading, field) != getattr(default, field)
     )
     cause, hint = _CAUSES[dialect, field]
-    index = len(os.path.commonprefix([converted, other]))
+    index = next(
+        (
+            i
+            for i, (a, b) in enumerate(zip(converted, other, strict=False))
+            if a != b
+        ),
+        min(len(converted), len(other)),
+    )
     lineno = converted.count("\n", 0, index) + 1
     line = sql.split("\n")[lineno - 1].strip()
     return PlaceholderError(
