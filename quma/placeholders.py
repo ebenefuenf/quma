@@ -8,9 +8,10 @@ SQL.
 
 from __future__ import annotations
 
+import os
 import re
 from collections.abc import Callable, Iterator
-from typing import Literal
+from typing import Literal, NamedTuple
 
 from .exc import PlaceholderError
 
@@ -18,6 +19,35 @@ Placeholders = Literal["named", "native"]
 
 # Literal text, or the text and the name of a placeholder.
 Token = tuple[str, str | None]
+
+
+class Reading(NamedTuple):
+    """Session settings that change how the server reads SQL. quma can't
+    see them, so it converts SQL only if every reading agrees."""
+
+    # Backslashes escape in standard strings: PostgreSQL's
+    # standard_conforming_strings = off, MySQL's default.
+    backslashes: bool = False
+    # MySQL's ANSI_QUOTES: "..." is a name, not a string.
+    ansi_quotes: bool = False
+
+
+# What makes a reading differ from the default, and what to write instead.
+_CAUSES = {
+    ("postgresql", "backslashes"): (
+        "standard_conforming_strings = off",
+        "Write a string with backslashes as E'...', for example E'C:\\\\'.",
+    ),
+    ("mysql", "backslashes"): (
+        "the sql_mode NO_BACKSLASH_ESCAPES",
+        "Write '' for a quote in a string instead of \\'.",
+    ),
+    ("mysql", "ansi_quotes"): (
+        "the sql_mode ANSI_QUOTES",
+        'Write "" for a double quote in a string instead of \\", or use '
+        "single quotes.",
+    ),
+}
 
 _NAME = r"[^\W\d]\w*"
 
@@ -55,10 +85,13 @@ _PG_CONTINUE = re.compile(
 # PostgreSQL's block comments nest.
 _COMMENT_MARK = re.compile(r"/\*|\*/")
 
+_DOUBLE_PLAIN = re.compile(r'(?:[^"]|"")*+(?:"|\Z)')
+_DOUBLE_ESCAPED = re.compile(r'(?:[^"\\]|\\[\s\S]|"")*+(?:"|\Z)')
+
 _MYSQL_TOKEN = re.compile(
     rf"""
         (?P<run>[^'"`\#\-/:\\]++)
-      | (?P<string>'(?:[^'\\]|\\[\s\S]|'')*+(?:'|\Z)|"(?:[^"\\]|\\[\s\S]|"")*+(?:"|\Z))
+      | (?P<string>['"])
       | (?P<quoted>`(?:[^`]|``)*+(?:`|\Z))
       | (?P<comment>\#[^\n]*+|--(?=\s|\Z)[^\n]*+)
       | (?P<block>/\*[\s\S]*?(?:\*/|\Z))
@@ -96,10 +129,38 @@ def convert(sql: str, dialect: str) -> str:
     Raises :class:`quma.PlaceholderError` if ``sql`` contains a
     ``%(name)s`` placeholder or ``%%``: the script was written for the
     driver, see the ``placeholders`` option of :class:`quma.Database`.
+    Also raises it if a setting of the session could change where a
+    string ends and so whether a placeholder is in it.
     """
     _check(sql)
-    tokens = _SCANNERS[dialect](sql)
+    scan = _SCANNERS[dialect]
     pyformat = dialect != "sqlite"
+    default, *others = _readings(sql, dialect)
+    converted = _render(scan(sql, default), pyformat)
+    for reading in others:
+        other = _render(scan(sql, reading), pyformat)
+        if other != converted:
+            raise _ambiguous(sql, converted, other, dialect, default, reading)
+    return converted
+
+
+def _readings(sql: str, dialect: str) -> list[Reading]:
+    # Without a backslash, the readings don't differ.
+    if dialect == "postgresql":
+        readings = [Reading()]
+        if "\\" in sql:
+            readings.append(Reading(backslashes=True))
+    elif dialect == "mysql":
+        readings = [Reading(backslashes=True)]
+        if "\\" in sql:
+            readings.append(Reading(backslashes=True, ansi_quotes=True))
+            readings.append(Reading())
+    else:
+        readings = [Reading()]
+    return readings
+
+
+def _render(tokens: Iterator[Token], pyformat: bool) -> str:
     parts = []
     for text, name in tokens:
         if name is None:
@@ -109,7 +170,32 @@ def convert(sql: str, dialect: str) -> str:
     return "".join(parts)
 
 
-def _postgresql(sql: str) -> Iterator[Token]:
+def _ambiguous(
+    sql: str,
+    converted: str,
+    other: str,
+    dialect: str,
+    default: Reading,
+    reading: Reading,
+) -> PlaceholderError:
+    field = next(
+        field
+        for field in Reading._fields
+        if getattr(reading, field) != getattr(default, field)
+    )
+    cause, hint = _CAUSES[dialect, field]
+    index = len(os.path.commonprefix([converted, other]))
+    lineno = converted.count("\n", 0, index) + 1
+    line = sql.split("\n")[lineno - 1].strip()
+    return PlaceholderError(
+        f"Line {lineno} reads differently with {cause}, so quma can't "
+        f"tell where its placeholders are: {line}\n{hint} To pass the SQL "
+        'to the driver unchanged, create the database with placeholders="native".'
+    )
+
+
+def _postgresql(sql: str, reading: Reading) -> Iterator[Token]:
+    plain = _ESCAPED if reading.backslashes else _PLAIN
     pos = 0
     while pos < len(sql):
         match = _match(_PG_TOKEN, sql, pos)
@@ -124,7 +210,7 @@ def _postgresql(sql: str) -> Iterator[Token]:
         if kind == "escaped":
             pos = _pg_string(sql, pos, _ESCAPED)
         elif kind == "string":
-            pos = _pg_string(sql, pos, _PLAIN)
+            pos = _pg_string(sql, pos, plain)
         elif kind == "block":
             pos = _comment_end(sql, pos)
         elif kind == "dollar":
@@ -151,20 +237,40 @@ def _comment_end(sql: str, pos: int) -> int:
     return len(sql)
 
 
-def _scanner(token: re.Pattern[str]) -> Callable[[str], Iterator[Token]]:
-    def scan(sql: str) -> Iterator[Token]:
-        pos = 0
-        while pos < len(sql):
-            match = _match(token, sql, pos)
-            pos = match.end()
-            if match.lastgroup == "name":
-                yield match[0], match["name"]
-            elif match.lastgroup == "escape":
-                yield ":", None
-            else:
-                yield match[0], None
+def _mysql(sql: str, reading: Reading) -> Iterator[Token]:
+    single = _ESCAPED if reading.backslashes else _PLAIN
+    if reading.backslashes and not reading.ansi_quotes:
+        double = _DOUBLE_ESCAPED
+    else:
+        double = _DOUBLE_PLAIN
+    pos = 0
+    while pos < len(sql):
+        match = _match(_MYSQL_TOKEN, sql, pos)
+        start, pos = match.span()
+        kind = match.lastgroup
+        if kind == "name":
+            yield match[0], match["name"]
+            continue
+        if kind == "escape":
+            yield ":", None
+            continue
+        if kind == "string":
+            body = single if match[0] == "'" else double
+            pos = _match(body, sql, pos).end()
+        yield sql[start:pos], None
 
-    return scan
+
+def _sqlite(sql: str, reading: Reading) -> Iterator[Token]:
+    pos = 0
+    while pos < len(sql):
+        match = _match(_SQLITE_TOKEN, sql, pos)
+        pos = match.end()
+        if match.lastgroup == "name":
+            yield match[0], match["name"]
+        elif match.lastgroup == "escape":
+            yield ":", None
+        else:
+            yield match[0], None
 
 
 def _match(pattern: re.Pattern[str], sql: str, pos: int) -> re.Match[str]:
@@ -174,10 +280,10 @@ def _match(pattern: re.Pattern[str], sql: str, pos: int) -> re.Match[str]:
     return match
 
 
-_SCANNERS: dict[str, Callable[[str], Iterator[Token]]] = {
+_SCANNERS: dict[str, Callable[[str, Reading], Iterator[Token]]] = {
     "postgresql": _postgresql,
-    "mysql": _scanner(_MYSQL_TOKEN),
-    "sqlite": _scanner(_SQLITE_TOKEN),
+    "mysql": _mysql,
+    "sqlite": _sqlite,
 }
 
 

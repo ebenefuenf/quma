@@ -139,6 +139,17 @@ async def test_literal_percent(adb):
         assert await cur.query(sql, city="City B").count() == 2
 
 
+async def test_placeholders_and_quoting_settings(adb):
+    value = ", (SELECT 12345), "
+    async with adb.cursor as cur:
+        for mode in ("", "NO_BACKSLASH_ESCAPES", "ANSI_QUOTES"):
+            await cur.execute(f"SET SESSION sql_mode = '{mode}'")
+            with pytest.raises(exc.PlaceholderError):
+                await cur.query("SELECT 'a\\', ':x'", x=value).one()
+            row = await cur.query("SELECT 'it''s :x', :x", x=value).one()
+            assert tuple(row) == ("it's :x", value)
+
+
 async def test_positional_params_need_native(adb):
     async with adb.cursor as cur:
         with pytest.raises(TypeError, match='placeholders="native"'):

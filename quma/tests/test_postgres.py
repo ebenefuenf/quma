@@ -555,6 +555,19 @@ def test_placeholders_stay_in_strings(pgdb):
 
 
 @pytest.mark.postgres
+def test_placeholders_and_quoting_settings(pgdb):
+    value = " || (SELECT 12345) || "
+    with pgdb.cursor as cur:
+        for setting in ("on", "off"):
+            cur.execute(f"SET standard_conforming_strings = {setting}")
+            with pytest.raises(PlaceholderError):
+                cur.query("SELECT 'a\\' , :x, '", x=value).one()
+            row = cur.query("SELECT E'it\\'s :x', :x", x=value).one()
+            assert tuple(row) == ("it's :x", value)
+        cur.rollback()
+
+
+@pytest.mark.postgres
 def test_template_placeholders(pgdb):
     pytest.importorskip("mako")
     sql = "SELECT 7\n%% 4 AS r, '${prefix}%' AS pattern, :name AS name"

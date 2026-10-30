@@ -1,6 +1,9 @@
 import pytest
 
-from .. import Database
+from .. import (
+    Database,
+    PlaceholderError,
+)
 from . import util
 
 MySQLdb = pytest.importorskip("MySQLdb")
@@ -336,9 +339,10 @@ def test_literal_percent(mydb, mypooldb):
 @pytest.mark.mysql
 def test_backslash_strings(mydb):
     with mydb.cursor as cur:
-        sql = r"""SELECT 'it\'s :a', "say \":b\"", :c"""
-        q = cur.query(sql, c="x")
-        assert tuple(q.one()) == ("it's :a", 'say ":b"', "x")
+        sql = r"""SELECT '\\:a', "\\", :c"""
+        assert tuple(cur.query(sql, c="x").one()) == ("\\:a", "\\", "x")
+        with pytest.raises(PlaceholderError, match="NO_BACKSLASH_ESCAPES"):
+            cur.query(r"SELECT 'it\'s :a', :c", c="x").one()
 
 
 @pytest.mark.mysql
@@ -347,3 +351,16 @@ def test_execute_stays_native(mydb):
         cur.execute("SELECT CONCAT(%(x)s, '%%')", {"x": "a"})
         assert cur.fetchone()[0] == "a%"
     assert mydb.execute("SELECT '100%'")[0][0] == "100%"
+
+
+@pytest.mark.mysql
+def test_placeholders_and_quoting_settings(mydb):
+    value = ", (SELECT 12345), "
+    modes = ("", "NO_BACKSLASH_ESCAPES", "ANSI_QUOTES")
+    with mydb.cursor as cur:
+        for mode in modes:
+            cur.execute(f"SET SESSION sql_mode = '{mode}'")
+            with pytest.raises(PlaceholderError):
+                cur.query("SELECT 'a\\', ':x'", x=value).one()
+            row = cur.query("SELECT 'it''s :x', :x", x=value).one()
+            assert tuple(row) == ("it's :x", value)

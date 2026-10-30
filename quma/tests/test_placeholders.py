@@ -53,17 +53,27 @@ def test_strings_and_identifiers():
 
 
 def test_postgresql_strings():
-    # Backslashes escape in E'...' only.
-    sql = r"SELECT E'it\'s :a', e'\\', '\' :b"
+    # Backslashes escape in E'...' strings, whatever the settings.
+    sql = r"SELECT E'it\'s :a', e'\\', '\\d+', :b"
     assert convert(sql, "postgresql") == (
-        r"SELECT E'it\'s :a', e'\\', '\' %(b)s"
+        r"SELECT E'it\'s :a', e'\\', '\\d+', %(b)s"
+    )
+
+
+def test_postgresql_backslash_before_quote():
+    # A standard string ends at its quote, unless
+    # standard_conforming_strings is off.
+    with pytest.raises(PlaceholderError, match="standard_conforming_strings"):
+        convert(r"SELECT 'C:\' || :b", "postgresql")
+    assert convert(r"SELECT E'C:\\' || :b", "postgresql") == (
+        r"SELECT E'C:\\' || %(b)s"
     )
     # A name ending in "e" doesn't start an E'...' string, also with a
     # non-ASCII character, which PostgreSQL counts as part of a name.
-    assert convert(r"SELECT name'\' :b", "postgresql") == (
-        r"SELECT name'\' %(b)s"
-    )
-    assert convert(r"SELECT €E'\' :b", "postgresql") == (r"SELECT €E'\' %(b)s")
+    for prefix in ("name", "€E"):
+        with pytest.raises(PlaceholderError):
+            convert(f"SELECT {prefix}'a\\' :b '", "postgresql")
+    assert convert("SELECT E'a\\' :b '", "postgresql") == "SELECT E'a\\' :b '"
 
 
 def test_postgresql_continued_strings():
@@ -73,14 +83,11 @@ def test_postgresql_continued_strings():
         assert convert(sql, "postgresql") == (
             f"SELECT %(x)s, E'a'{gap}'it\\'s :x', %(y)s"
         )
-    # Without a newline, or with a /* */ comment, it doesn't continue.
-    for gap in (" ", " /* c */\n"):
-        sql = f"SELECT E'a'{gap}'b\\' :x"
-        assert convert(sql, "postgresql") == f"SELECT E'a'{gap}'b\\' %(x)s"
-    # A continued standard string keeps its rules too.
-    assert convert("SELECT 'a'\n'b\\' :x", "postgresql") == (
-        "SELECT 'a'\n'b\\' %(x)s"
-    )
+    # Without a newline, or with a /* */ comment, the next part is a
+    # standard string, and so is a continued standard string.
+    for sql in ("E'a' 'b", "E'a' /* c */\n'b", "'a'\n'b"):
+        with pytest.raises(PlaceholderError, match="standard_conforming"):
+            convert(f"SELECT {sql}\\' :x", "postgresql")
 
 
 def test_postgresql_comment_ends():
@@ -108,13 +115,30 @@ def test_postgresql_nested_comments():
 
 
 def test_mysql_strings_and_comments():
-    sql = r"""SELECT 'it\'s :a', "say \":b\"", `c:d` # :e"""
+    sql = r"""SELECT 'it''s :a', "say "":b"" ", '\\', "\\", `c:d` # :e"""
     assert convert(sql, "mysql") == sql
     # MySQL's block comments don't nest, and "--" needs a space.
     assert convert("/* /* :a */ :b */", "mysql") == "/* /* :a */ %(b)s */"
     assert convert("SELECT 1--:a\n-- :b", "mysql") == (
         "SELECT 1--%(a)s\n-- :b"
     )
+
+
+def test_mysql_backslash_before_quote():
+    # Backslashes escape unless the sql_mode has NO_BACKSLASH_ESCAPES, and
+    # with ANSI_QUOTES "..." is a name, where they never escape.
+    with pytest.raises(PlaceholderError, match="NO_BACKSLASH_ESCAPES"):
+        convert(r"SELECT 'it\'s :a', :b", "mysql")
+    with pytest.raises(PlaceholderError, match="ANSI_QUOTES"):
+        convert(r'SELECT "say \":a\"", :b', "mysql")
+    # Without a placeholder it reads the same either way.
+    assert convert(r"SELECT 'it\'s'", "mysql") == r"SELECT 'it\'s'"
+
+
+def test_ambiguous_line():
+    sql = "SELECT\n  'a\\',\n  ':b'"
+    with pytest.raises(PlaceholderError, match=r"Line 3 .*: ':b'\n"):
+        convert(sql, "mysql")
 
 
 def test_sqlite_identifiers():
