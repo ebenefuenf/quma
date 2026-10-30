@@ -544,6 +544,17 @@ def test_casts_and_strings(pgdb):
 
 
 @pytest.mark.postgres
+def test_placeholders_stay_in_strings(pgdb):
+    # The value must stay a value: a placeholder in a string would run it.
+    value = " || (SELECT 12345) || "
+    with pgdb.cursor as cur:
+        for gap in ("\n", "\r", " -- c\n"):
+            sql = f"SELECT :x, E'a'{gap}'it\\'s :x'"
+            row = cur.query(sql, x=value).one()
+            assert tuple(row) == (value, "ait's :x")
+
+
+@pytest.mark.postgres
 def test_template_placeholders(pgdb):
     pytest.importorskip("mako")
     sql = "SELECT 7\n%% 4 AS r, '${prefix}%' AS pattern, :name AS name"

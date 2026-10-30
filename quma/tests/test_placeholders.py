@@ -58,16 +58,45 @@ def test_postgresql_strings():
     assert convert(sql, "postgresql") == (
         r"SELECT E'it\'s :a', e'\\', '\' %(b)s"
     )
-    # A name ending in "e" doesn't start an E'...' string.
+    # A name ending in "e" doesn't start an E'...' string, also with a
+    # non-ASCII character, which PostgreSQL counts as part of a name.
     assert convert(r"SELECT name'\' :b", "postgresql") == (
         r"SELECT name'\' %(b)s"
     )
+    assert convert(r"SELECT €E'\' :b", "postgresql") == (r"SELECT €E'\' %(b)s")
+
+
+def test_postgresql_continued_strings():
+    # An E'...' string continued after a newline keeps its escapes.
+    for gap in ("\n", "\r", " -- c\n  -- d\n ", "\v\n\v"):
+        sql = f"SELECT :x, E'a'{gap}'it\\'s :x', :y"
+        assert convert(sql, "postgresql") == (
+            f"SELECT %(x)s, E'a'{gap}'it\\'s :x', %(y)s"
+        )
+    # Without a newline, or with a /* */ comment, it doesn't continue.
+    for gap in (" ", " /* c */\n"):
+        sql = f"SELECT E'a'{gap}'b\\' :x"
+        assert convert(sql, "postgresql") == f"SELECT E'a'{gap}'b\\' %(x)s"
+    # A continued standard string keeps its rules too.
+    assert convert("SELECT 'a'\n'b\\' :x", "postgresql") == (
+        "SELECT 'a'\n'b\\' %(x)s"
+    )
+
+
+def test_postgresql_comment_ends():
+    assert convert("SELECT 1 -- c\r:x", "postgresql") == "SELECT 1 -- c\r%(x)s"
 
 
 def test_postgresql_dollar_quotes():
     sql = "SELECT $$ :a ' $$, $fn$ :b $$ :c $fn$, $1, :d"
     assert convert(sql, "postgresql") == (
         "SELECT $$ :a ' $$, $fn$ :b $$ :c $fn$, $1, %(d)s"
+    )
+    # Tags may hold non-ASCII characters, quotes may follow each other,
+    # and a name may contain dollar signs.
+    sql = "SELECT $€$ :a $€$, $$b$$$$ :c $$, ab$d$ :e"
+    assert convert(sql, "postgresql") == (
+        "SELECT $€$ :a $€$, $$b$$$$ :c $$, ab$d$ %(e)s"
     )
 
 

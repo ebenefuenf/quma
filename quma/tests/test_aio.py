@@ -611,6 +611,13 @@ async def test_literal_percent(adb):
         assert await cur.query(sql, city="City B").count() == 2
 
 
+async def test_placeholders_stay_in_strings(adb):
+    value = " || (SELECT 12345) || "
+    async with adb.cursor as cur:
+        row = await cur.query("SELECT :x, E'a'\n'it\\'s :x'", x=value).one()
+        assert tuple(row) == (value, "ait's :x")
+
+
 async def test_driver_placeholders_need_native(pyformat_sqldirs):
     db = AsyncDatabase(URI, pyformat_sqldirs)
     async with db.cursor as cur:
