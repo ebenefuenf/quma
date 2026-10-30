@@ -27,12 +27,37 @@ sign. Templates are converted after rendering (see
 The conversion knows the SQL syntax of each database: a colon inside a
 string, a quoted identifier, a comment or a PostgreSQL dollar-quoted string
 is no placeholder, and neither is a PostgreSQL cast like ``x::text``. A
-colon followed by a name anywhere else is one. Write ``\:`` for a colon that
+colon followed by a name anywhere else is one, also in a MySQL comment like
+``/*! ... */``, which the server runs as SQL. Write ``\:`` for a colon that
 isn't, for example in a PostgreSQL array slice like ``arr[lo\:hi]``.
 
 There are no positional placeholders: a ``?`` would collide with
 PostgreSQL's jsonb operators ``?``, ``?|`` and ``?&``. Calling a script with
 positional arguments raises ``TypeError``.
+
+
+Settings that change strings
+----------------------------
+
+The drivers put the values into the SQL before they send it, so a
+placeholder the server sees inside a string would let its value run as
+SQL. Some settings of the session change where a string ends, and quma
+can't see them:
+
+* PostgreSQL's ``standard_conforming_strings = off`` lets a backslash
+  escape the quote in a standard string like ``'C:\'``.
+* With MySQL's ``sql_mode`` ``NO_BACKSLASH_ESCAPES``, ``'it\'s'`` ends after
+  ``it\``, and with ``ANSI_QUOTES``, ``"..."`` is a name, in which a
+  backslash doesn't escape.
+* Whether MySQL or MariaDB runs a versioned comment like
+  ``/*!80000 ... */`` or ``/*M! ... */`` depends on the server.
+
+quma converts such SQL for each setting and raises
+:class:`quma.PlaceholderError` if the results differ, naming the line and
+the setting. Write the SQL so that it doesn't depend on the setting:
+``E'C:\\'`` in PostgreSQL, ``''`` instead of ``\'`` for a quote in MySQL,
+and no placeholders in versioned comments. SQL without backslashes and
+versioned comments never depends on these settings.
 
 
 Driver placeholders

@@ -10,8 +10,11 @@ Unreleased
   converts them to the driver's style, after rendering templates. This
   fixes scripts with a literal ``%``, like ``LIKE 'A%'``, failing on
   psycopg2, psycopg and mysqlclient. A script with ``%(name)s`` or
-  ``%%`` raises the new ``PlaceholderError``, positional parameters raise
-  ``TypeError``. To keep the old behavior, create ``Database`` or
+  ``%%`` raises the new ``PlaceholderError``, and so does SQL in which a
+  session setting quma can't see could move the end of a string, like
+  PostgreSQL's ``standard_conforming_strings`` or MySQL's
+  ``NO_BACKSLASH_ESCAPES``. Positional parameters raise ``TypeError``.
+  To keep the old behavior, create ``Database`` or
   ``AsyncDatabase`` with ``placeholders='native'``: the SQL then reaches
   the driver unchanged, as before. ``cur.execute()`` and ``db.execute()``
   pass the SQL unchanged in both modes. See "Passing Parameters".
