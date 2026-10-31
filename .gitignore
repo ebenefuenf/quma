@@ -26,3 +26,4 @@ sdist/
 memory/
 var/
 wheels/
+.hypothesis/

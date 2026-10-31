@@ -45,6 +45,39 @@ which also installs missing Python versions:
 All tox environments use the same test databases, so don't run them
 in parallel.
 
+Fuzz tests
+----------
+
+``quma/tests/test_placeholders_fuzz.py`` checks the conversion of
+``:name`` placeholders against the servers. `Hypothesis
+<https://hypothesis.readthedocs.io>`_ generates SQL full of strings,
+comments and placeholders that hold tricky text, quma converts it, and
+the server has to return the row the test expects. The value bound to
+the placeholders breaks out of any string or comment it lands in, so a
+placeholder the server reads differently changes the row or fails the
+query.
+
+The test suite runs 100 examples per test. Run more with the ``fuzz``
+profile:
+
+::
+
+    uv run pytest quma/tests/test_placeholders_fuzz.py --hypothesis-profile=fuzz
+
+Hypothesis saves failing examples in ``.hypothesis/`` and tries them
+first on the next run. To fuzz MariaDB as well as MySQL, run the MySQL
+tests again with ``QUMA_MYSQL_PORT`` set to the other server, for
+example a container:
+
+::
+
+    podman run -d --name quma-mariadb -p 127.0.0.1:3307:3306 \
+        -e MARIADB_ROOT_PASSWORD=root_password \
+        -e MARIADB_DATABASE=quma_test_db -e MARIADB_USER=quma_test_user \
+        -e MARIADB_PASSWORD=quma_test_password mariadb:latest
+    QUMA_MYSQL_PORT=3307 uv run pytest -m mysql \
+        quma/tests/test_placeholders_fuzz.py --hypothesis-profile=fuzz
+
 Overwrite credentials
 ---------------------
 

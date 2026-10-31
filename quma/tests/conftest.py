@@ -2,9 +2,16 @@ import pathlib
 from types import SimpleNamespace
 
 import pytest
+from hypothesis import settings
 
 from .. import Database
 from . import util
+
+# Based on "default": in CI, the loaded "ci" profile runs the same
+# examples every time.
+settings.register_profile(
+    "fuzz", settings.get_profile("default"), max_examples=5000
+)
 
 
 @pytest.fixture

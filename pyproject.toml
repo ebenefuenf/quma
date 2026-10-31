@@ -28,6 +28,7 @@ classifiers = [
 test = [
     "pytest",
     "pytest-cov",
+    "hypothesis",
     "anyio",
     "httpx2",
     "starlette",
