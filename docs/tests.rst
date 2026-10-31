@@ -78,6 +78,9 @@ example a container:
     QUMA_MYSQL_PORT=3307 uv run pytest -m mysql \
         quma/tests/test_placeholders_fuzz.py --hypothesis-profile=fuzz
 
+The CI fuzzes the latest PostgreSQL, MySQL and MariaDB releases with the
+``fuzz`` profile on every push and once a week.
+
 Overwrite credentials
 ---------------------
 
