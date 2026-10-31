@@ -29,9 +29,10 @@ class Reading(NamedTuple):
     backslashes: bool = False
     # MySQL's ANSI_QUOTES: "..." is a name, not a string.
     ansi_quotes: bool = False
-    # The server runs versioned comments: /*!80000 ... */ runs on MySQL
-    # 8.0 and later, /*M! ... */ on MariaDB only.
-    versioned: bool = True
+    # How the server reads versioned comments like /*!80000 ... */ and
+    # /*M! ... */: it runs them as SQL, skips them (one nested comment
+    # included), or reads a plain comment, as MySQL does with /*M! ... */.
+    versioned: Literal["run", "skip", "plain"] = "run"
 
 
 # What makes a reading differ from the default, and what to write instead.
@@ -48,11 +49,6 @@ _CAUSES = {
         "the sql_mode ANSI_QUOTES",
         'Write "" for a double quote in a string instead of \\", or use '
         "single quotes.",
-    ),
-    ("mysql", "versioned"): (
-        "another server version or type",
-        "Keep placeholders out of versioned comments like /*!80000 ... */ "
-        "and /*M! ... */, and */ out of strings in them.",
     ),
 }
 
@@ -95,16 +91,17 @@ _COMMENT_MARK = re.compile(r"/\*|\*/")
 _DOUBLE_PLAIN = re.compile(r'(?:[^"]|"")*+(?:"|\Z)')
 _DOUBLE_ESCAPED = re.compile(r'(?:[^"\\]|\\[\s\S]|"")*+(?:"|\Z)')
 
-# The server runs /*! ... */ as SQL: a */ in a string or a line comment
-# doesn't end it. "--" starts a comment before ASCII whitespace or control
-# characters only.
+# Every server runs /*! ... */ without a five digit version as SQL: a */
+# in a string or a line comment doesn't end it. "--" starts a comment
+# before ASCII whitespace or control characters only.
 _MYSQL_TOKEN = re.compile(
     rf"""
         (?P<run>[^'"`\#\-/*:\\]++)
       | (?P<string>['"])
       | (?P<quoted>`(?:[^`]|``)*+(?:`|\Z))
       | (?P<comment>\#[^\n]*+|--(?=[\x00-\x20\x7f]|\Z)[^\n]*+)
-      | (?P<executable>/\*(?:[Mm]!|!)\d*+)
+      | (?P<executable>/\*!(?!\d{{5}}))
+      | (?P<versioned>/\*(?:!\d{{5}}|M!))
       | (?P<block>/\*[\s\S]*?(?:\*/|\Z))
       | (?P<end>\*/)
       | (?P<cast>::)
@@ -130,7 +127,7 @@ _SQLITE_TOKEN = re.compile(
     re.VERBOSE,
 )
 
-_VERSIONED = re.compile(r"/\*(?:!\d|[Mm]!)")
+_VERSIONED = re.compile(r"/\*(?:!\d{5}|M!)")
 
 _NATIVE = re.compile(r"%\([^()]*\)s|%%")
 
@@ -144,16 +141,24 @@ def convert(sql: str, dialect: str) -> str:
     ``%(name)s`` placeholder or ``%%``: the script was written for the
     driver, see the ``placeholders`` option of :class:`quma.Database`.
     Also raises it if a setting of the session could change where a
-    string ends and so whether a placeholder is in it.
+    string ends and so whether a placeholder is in it, and for MySQL SQL
+    with placeholders and versioned comments.
     """
     _check(sql)
     scan = _SCANNERS[dialect]
     pyformat = dialect != "sqlite"
     default, *others = _readings(sql, dialect)
     converted = _render(scan(sql, default), pyformat)
+    # One server may run some versioned comments and skip others, which no
+    # reading covers, so only SQL that needs no conversion is safe.
+    versioned = _VERSIONED.search(sql) if dialect == "mysql" else None
+    if versioned and converted != sql.replace("%", "%%"):
+        raise _versioned(sql, versioned)
     for reading in others:
         other = _render(scan(sql, reading), pyformat)
         if other != converted:
+            if versioned:
+                raise _versioned(sql, versioned)
             raise _ambiguous(sql, converted, other, dialect, default, reading)
     return converted
 
@@ -172,7 +177,9 @@ def _readings(sql: str, dialect: str) -> list[Reading]:
         readings = list(quoting)
         if _VERSIONED.search(sql):
             readings += [
-                reading._replace(versioned=False) for reading in quoting
+                reading._replace(versioned=versioned)
+                for versioned in ("skip", "plain")
+                for reading in quoting
             ]
     else:
         readings = [Reading()]
@@ -217,6 +224,18 @@ def _ambiguous(
         f"Line {lineno} reads differently with {cause}, so quma can't "
         f"tell where its placeholders are: {line}\n{hint} To pass the SQL "
         'to the driver unchanged, create the database with placeholders="native".'
+    )
+
+
+def _versioned(sql: str, match: re.Match[str]) -> PlaceholderError:
+    lineno = sql.count("\n", 0, match.start()) + 1
+    line = sql.split("\n")[lineno - 1].strip()
+    return PlaceholderError(
+        f"Line {lineno} has a versioned comment, and whether the server runs "
+        "it depends on its version and type, so quma can't tell where its "
+        f"placeholders are: {line}\nWrite no placeholders or \\: in SQL with "
+        "comments like /*!80000 ... */ or /*M! ... */. To pass the SQL to the "
+        'driver unchanged, create the database with placeholders="native".'
     )
 
 
@@ -285,15 +304,32 @@ def _mysql(sql: str, reading: Reading) -> Iterator[Token]:
         if kind == "string":
             body = single if match[0] == "'" else double
             pos = _match(body, sql, pos).end()
-        elif kind == "executable":
-            if match[0] == "/*!" or reading.versioned:
-                depth += 1
-            else:
-                end = sql.find("*/", pos)
-                pos = len(sql) if end == -1 else end + 2
+        elif kind == "executable" or (
+            kind == "versioned" and reading.versioned == "run"
+        ):
+            depth += 1
+        elif kind == "versioned" and reading.versioned == "skip":
+            pos = _skipped_end(sql, pos)
+        elif kind == "versioned":
+            end = sql.find("*/", pos)
+            pos = len(sql) if end == -1 else end + 2
         elif kind == "end" and depth:
             depth -= 1
         yield sql[start:pos], None
+
+
+def _skipped_end(sql: str, pos: int) -> int:
+    # In a skipped versioned comment, the server counts nested comments one
+    # level deep, also in what would be strings.
+    while mark := _COMMENT_MARK.search(sql, pos):
+        pos = mark.end()
+        if mark[0] == "*/":
+            return pos
+        end = sql.find("*/", pos)
+        if end == -1:
+            break
+        pos = end + 2
+    return len(sql)
 
 
 def _sqlite(sql: str, reading: Reading) -> Iterator[Token]:

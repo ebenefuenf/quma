@@ -148,12 +148,24 @@ def test_mysql_executable_comments():
 
 
 def test_mysql_versioned_comments():
-    # Whether the server runs them depends on its version and type.
-    for sql in ("/*!80000 :a */", "/*M! :a */", "/*!80000 '*/' */ :a"):
-        with pytest.raises(PlaceholderError, match="server version"):
+    # Whether the server runs them depends on its version and type, and
+    # one server may run some and skip others.
+    for sql in (
+        "/*!80000 :a */",
+        "/*M! :a */",
+        "/*!80000 '*/' */ :a",
+        "/*!99999 '/*' */ :a */",
+        "/*!50700 1, */ :a",
+        "/*!50700 1, */ a\\:b",
+    ):
+        with pytest.raises(PlaceholderError, match="versioned comment"):
             convert(f"SELECT {sql}", "mysql")
-    sql = "SELECT /*!80000 1 + */ 2, /*M!100100 3 + */ 4, :a"
-    assert convert(sql, "mysql") == sql.replace(":a", "%(a)s")
+    sql = "SELECT /*!80000 1 + */ 2 % 3, /*M!100100 3 + */ ':a'"
+    assert convert(sql, "mysql") == sql.replace("%", "%%")
+    # Without five digits, /*! has no version, and /*m! is a comment.
+    assert convert("SELECT /*!123 :a */, /*m! :b */ :c", "mysql") == (
+        "SELECT /*!123 %(a)s */, /*m! :b */ %(c)s"
+    )
 
 
 def test_mysql_line_comments():

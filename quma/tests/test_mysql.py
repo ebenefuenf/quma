@@ -360,8 +360,12 @@ def test_executable_comments(mydb):
         assert cur.query("SELECT /*! :x + */ 1", x=42).value() == 43
         row = cur.query("SELECT /*! '*/' AS a, */ ':y' AS b", y=value).one()
         assert tuple(row) == ("*/", ":y")
-        with pytest.raises(PlaceholderError, match="server version"):
-            cur.query("SELECT /*!50000 :x + */ 1", x=42).value()
+        for sql in (
+            "SELECT /*!50000 :x + */ 1",
+            "SELECT /*!99999 /* */ :x */ 1",
+        ):
+            with pytest.raises(PlaceholderError, match="versioned comment"):
+                cur.query(sql, x=value).value()
 
 
 @pytest.mark.mysql

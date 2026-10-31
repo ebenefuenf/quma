@@ -13,7 +13,9 @@ Unreleased
   ``%%`` raises the new ``PlaceholderError``, and so does SQL in which a
   session setting quma can't see could move the end of a string, like
   PostgreSQL's ``standard_conforming_strings`` or MySQL's
-  ``NO_BACKSLASH_ESCAPES``. Positional parameters raise ``TypeError``.
+  ``NO_BACKSLASH_ESCAPES``, and SQL with placeholders and a versioned
+  comment like ``/*!80000 ... */``. Positional parameters raise
+  ``TypeError``.
   To keep the old behavior, create ``Database`` or
   ``AsyncDatabase`` with ``placeholders='native'``: the SQL then reaches
   the driver unchanged, as before. ``cur.execute()`` and ``db.execute()``

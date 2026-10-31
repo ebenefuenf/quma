@@ -49,15 +49,19 @@ can't see them:
 * With MySQL's ``sql_mode`` ``NO_BACKSLASH_ESCAPES``, ``'it\'s'`` ends after
   ``it\``, and with ``ANSI_QUOTES``, ``"..."`` is a name, in which a
   backslash doesn't escape.
-* Whether MySQL or MariaDB runs a versioned comment like
-  ``/*!80000 ... */`` or ``/*M! ... */`` depends on the server.
 
 quma converts such SQL for each setting and raises
 :class:`quma.PlaceholderError` if the results differ, naming the line and
 the setting. Write the SQL so that it doesn't depend on the setting:
-``E'C:\\'`` in PostgreSQL, ``''`` instead of ``\'`` for a quote in MySQL,
-and no placeholders in versioned comments. SQL without backslashes and
-versioned comments never depends on these settings.
+``E'C:\\'`` in PostgreSQL and ``''`` instead of ``\'`` for a quote in
+MySQL. SQL without backslashes never depends on these settings.
+
+Whether MySQL or MariaDB runs a versioned comment like ``/*!80000 ... */``
+or ``/*M! ... */`` depends on the server's version and type, and one
+server may run some of them and skip others. So SQL with such a comment
+can't have placeholders or ``\:``, and quma raises
+:class:`quma.PlaceholderError` for it. A ``/*! ... */`` comment without a
+version runs on every server and may hold placeholders.
 
 
 Driver placeholders
