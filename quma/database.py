@@ -277,7 +277,8 @@ class Database(BaseDatabase[ConnectionLike]):
         :doc:`Parameters <parameters>`). ``'native'`` passes the SQL
         to the driver unchanged, so scripts use the driver's
         placeholders, e.g. ``%(name)s`` or ``?``, and positional
-        parameters work. Defaults to ``'named'``.
+        parameters work. Use ``'native'`` with servers other than
+        PostgreSQL, MySQL, MariaDB and SQLite. Defaults to ``'named'``.
 
     Additional connection pool parameters (see :doc:`Connection pool <pool>`):
 

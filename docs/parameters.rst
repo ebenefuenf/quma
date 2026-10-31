@@ -64,6 +64,23 @@ can't have placeholders or ``\:``, and quma raises
 version runs on every server and may hold placeholders.
 
 
+Supported servers
+-----------------
+
+The conversion follows how PostgreSQL, MySQL and MariaDB read SQL, and
+quma's tests check it against current releases of each, also with
+generated SQL full of strings, comments and placeholders. Other servers
+that work with the same drivers, like CockroachDB, Amazon Redshift or
+TiDB, have parsers of their own, which may read strings and comments
+differently. Create the database with ``placeholders='native'`` for
+them: a placeholder that quma takes for SQL, but the server reads as
+part of a string or comment, would let its value run as SQL.
+
+SQLite reads ``:name`` placeholders itself and binds the values
+separately, so there a placeholder in the wrong place can't let its
+value run as SQL.
+
+
 Driver placeholders
 -------------------
 

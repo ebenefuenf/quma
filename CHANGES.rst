@@ -18,8 +18,10 @@ Unreleased
   ``TypeError``.
   To keep the old behavior, create ``Database`` or
   ``AsyncDatabase`` with ``placeholders='native'``: the SQL then reaches
-  the driver unchanged, as before. ``cur.execute()`` and ``db.execute()``
-  pass the SQL unchanged in both modes. See "Passing Parameters".
+  the driver unchanged, as before. Use it also with servers other than
+  PostgreSQL, MySQL, MariaDB and SQLite, like CockroachDB or TiDB.
+  ``cur.execute()`` and ``db.execute()`` pass the SQL unchanged in both
+  modes. See "Passing Parameters".
 - Add an async API for asyncio applications: ``AsyncDatabase``,
   ``AsyncCursor`` and ``AsyncQuery``, with psycopg 3 (``psycopg://`` and
   ``psycopg+pool://``) and, for MySQL and MariaDB, asyncmy
