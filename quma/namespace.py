@@ -23,7 +23,7 @@ def get_namespace(self, attr):
     if attr in self.namespaces:
         return self.namespaces[attr]
 
-    root = self.namespaces["__root__"]
+    root = self.namespaces.get("__root__")
     while root:
         try:
             return getattr(root, attr)

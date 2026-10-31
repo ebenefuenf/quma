@@ -66,6 +66,16 @@ def test_namespace(db):
         assert str(e.value).startswith("Namespace, Root method, or")
 
 
+def test_namespace_without_sqldirs():
+    db = Database(util.SQLITE_MEMORY)
+    with pytest.raises(AttributeError, match="Namespace or Root method"):
+        db.nonexistent
+    with db.cursor as cursor:
+        with pytest.raises(AttributeError):
+            cursor.nonexistent
+    db.close()
+
+
 def test_root_attr(db):
     assert isinstance(db.get_users, script.Script)
     with db().cursor as cursor:

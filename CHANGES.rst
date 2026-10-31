@@ -80,6 +80,8 @@ Unreleased
   ``count()`` or ``exists()`` on PostgreSQL or MySQL, or when other
   statements ran between the batches of ``unbunch()`` or
   ``many().get()``.
+- Fix an unknown attribute of a database without SQL directories raising
+  ``KeyError`` instead of ``AttributeError``, which broke ``hasattr()``.
 
 Version 0.4.0
 -------------
