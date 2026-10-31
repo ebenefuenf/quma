@@ -248,5 +248,6 @@ def test_mapped_types(db: Database):
         assert_type(query.all(dict), list[dict[str, Any]])
         assert_type(query.unbunch(10, User), Iterator[User])
         assert_type(query.unbunch(target=dict), Iterator[dict[str, Any]])
+        assert_type(query.unbunch(10, User, stream=True), Iterator[User])
         assert_type(query.many().get(10, User), list[User])
         assert_type(query.many().get(target=UserDict), list[UserDict])

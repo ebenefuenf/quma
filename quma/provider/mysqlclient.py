@@ -3,6 +3,8 @@ try:
     from MySQLdb.cursors import (
         Cursor,
         DictCursor,
+        SSCursor,
+        SSDictCursor,
     )
 except ImportError as e:
     raise ImportError(
@@ -24,12 +26,17 @@ class Connection(conn.Connection):
         self.port = self.url.port or 3306
         if kwargs.pop("dict_cursor", False):
             self.cursor_factory = DictCursor
+            self.stream_factory = SSDictCursor
         else:
             self.cursor_factory = Cursor
+            self.stream_factory = SSCursor
         self._init_conn()
 
     def cursor(self, conn):
         return conn.cursor()
+
+    def stream_cursor(self, conn):
+        return conn.cursor(self.stream_factory)
 
     def create_conn(self, **kwargs):
         try:

@@ -196,13 +196,11 @@ avoid to mix `many` queries with "normal" queries.
 A simpler version of :meth:`many()`
 ------------------------------------
 
-If your expected result set is too large for simply iterating over
-the query object or calling :meth:`all()` (as they call ``fetchall`` internally)
-but you like to work with the result in a single simple loop instead of using
-:meth:`many()`, you can use the method :meth:`unbunch()`. It is a convenience
-method which internally calls ``fetchmany`` with the given size. Using
-:meth:`unbunch()` we can simplify the :meth:`many()` example with the
-``users_generator`` from the last section:
+To work with the rows in a single simple loop instead of using
+:meth:`many()`, you can use the method :meth:`unbunch()`. It is a
+convenience method which internally calls ``fetchmany`` with the given
+size. Using :meth:`unbunch()` we can simplify the :meth:`many()` example
+with the ``users_generator`` from the last section:
 
 .. code-block:: python
 
@@ -210,8 +208,57 @@ method which internally calls ``fetchmany`` with the given size. Using
         for user in cur.users.all().unbunch(3):
             print(user.name)
 
-:meth:`unbunch()` re-excutes the query and invalidates the cache on each call,
+:meth:`unbunch()` re-executes the query and invalidates the cache on each call,
 just like :meth:`many()`.
+
+The drivers read the whole result when the query runs, so :meth:`many()`
+and :meth:`unbunch()` need as much memory as :meth:`all()`. To read a
+large result in batches, stream it.
+
+
+.. _streaming:
+
+Streaming large results
+-----------------------
+
+With ``stream=True``, :meth:`unbunch()` lets the server send the rows in
+batches while the loop runs, so a result of any size needs the memory of
+one batch only:
+
+.. code-block:: python
+
+    with db.cursor as cur:
+        for entry in cur.logs.all().unbunch(1000, stream=True):
+            archive(entry)
+
+Without a size, a batch has 2000 rows. On PostgreSQL quma declares a
+server-side cursor and fetches each batch with ``FETCH``. On MySQL and
+MariaDB it reads the result with the driver's unbuffered cursor
+(``SSCursor``). SQLite reads rows as they are fetched anyway.
+
+Leaving the loop early closes the stream. So does closing its cursor or
+returning its connection to the pool, and the loop then raises
+:class:`quma.APIError` instead of ending early. A stream doesn't touch
+the query's cached rows.
+
+Errors the server runs into while it produces the rows, like a division
+by zero in a late row, are raised in the loop, not when it starts. The
+databases add some limits:
+
+* PostgreSQL streams in transactions only, so a cursor with
+  ``autocommit=True`` raises :class:`quma.APIError`. The stream ends with
+  its transaction: don't commit or roll back in the loop. The query must
+  be a single ``SELECT`` or ``VALUES`` statement. Other statements can
+  run between the batches, also on the same cursor.
+* MySQL and MariaDB can't run other statements on a connection while a
+  stream is open on it. quma raises :class:`quma.APIError` for them,
+  also for ``commit()``, ``rollback()`` and statements of other cursors
+  on the same :doc:`carrier <carrier>`. Run them on a cursor with a
+  connection of its own. A stream that is closed early still reads the
+  rest of the result, because the server sends it anyway.
+
+In async code, wrap a stream that may end early in
+:func:`contextlib.aclosing` (see :doc:`async`).
 
 
 

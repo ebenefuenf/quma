@@ -31,6 +31,10 @@ from .script import (
     PrepareParams,
     Script,
 )
+from .stream import (
+    check_idle,
+    close_streams,
+)
 
 if TYPE_CHECKING:
     from .database import (
@@ -47,9 +51,13 @@ class CarriedConnection(Generic[ConnT]):
 
 class RawCursorWrapper:
     def __init__(
-        self, conn: BaseConnectionLike, raw_cursor: RawCursor
+        self,
+        conn: BaseConnectionLike,
+        raw_conn: RawConnection,
+        raw_cursor: RawCursor,
     ) -> None:
         self.conn = conn
+        self.raw_conn = raw_conn
         self.cursor = raw_cursor
         self.has_rowcount = conn.has_rowcount
         # Tells a query whether the cursor still holds its result.
@@ -65,6 +73,7 @@ class RawCursorWrapper:
         return self._run("callproc", args, kwargs)
 
     def _run(self, name: str, args: Any, kwargs: Any) -> Any:
+        check_idle(self.raw_conn)
         self.executions += 1
         return self.conn.get_cursor_attr(self.cursor, name)(*args, **kwargs)
 
@@ -111,7 +120,7 @@ class BaseCursor(Generic[ConnT]):
                 self.carrier.add_conn(CarriedConnection(conn, raw_conn))
             self.carrier.cursors.add(self)
         self.raw_conn = raw_conn
-        self.raw_cursor = RawCursorWrapper(conn, raw_cursor)
+        self.raw_cursor = RawCursorWrapper(conn, raw_conn, raw_cursor)
 
     def _detach(self, force: bool) -> tuple[ConnT, RawConnection] | None:
         """Return the connection to put back, or None if there is none."""
@@ -141,6 +150,7 @@ class BaseCursor(Generic[ConnT]):
     def _raw_conn(self) -> RawConnection:
         if self.raw_conn is None:
             raise exc.APIError("The cursor has no open connection.")
+        check_idle(self.raw_conn)
         return self.raw_conn
 
     def _driver_attr(self, value: Any) -> Any:
@@ -255,6 +265,7 @@ class Cursor(BaseCursor[ConnectionLike]):
         if self.raw_conn is None or self.raw_cursor is None:
             return
         try:
+            close_streams(self.raw_conn, self)
             self.raw_cursor.close()
         finally:
             detached = self._detach(force)

@@ -860,6 +860,56 @@ def test_unbunch(db):
     unbunch(db)
 
 
+def stream(db):
+    with db.cursor as cur:
+        users = cur.users.all()
+        rows = [tuple(row) for row in users.all()]
+        assert [tuple(row) for row in users.unbunch(3, stream=True)] == rows
+        assert [tuple(row) for row in users.unbunch(stream=True)] == rows
+        names = [user["name"] for user in users.unbunch(2, dict, stream=True)]
+        assert names == [row[1] for row in rows]
+        for _ in users.unbunch(2, stream=True):
+            break
+        assert cur.query("SELECT 1 AS one").value() == 1
+        with pytest.raises(ValueError, match="at least 1"):
+            next(users.unbunch(0, stream=True))
+
+
+def test_stream(db):
+    stream(db)
+
+
+def stream_closed_with_cursor(db):
+    cur = db.cursor()
+    rows = cur.users.all().unbunch(1, stream=True)
+    next(rows)
+    cur.close()
+    with pytest.raises(exc.APIError, match="closed before its end"):
+        next(rows)
+    carrier = object()
+    try:
+        with db(carrier).cursor as cur:
+            rows = cur.users.all().unbunch(1, stream=True)
+            next(rows)
+        with pytest.raises(exc.APIError, match="closed before its end"):
+            next(rows)
+        with db(carrier).cursor as cur:
+            assert cur.query("SELECT 1 AS one").value() == 1
+            rows = cur.users.all().unbunch(1, stream=True)
+            next(rows)
+            db.release(carrier)
+        with pytest.raises(exc.APIError, match="closed before its end"):
+            next(rows)
+    finally:
+        db.release(carrier)
+    with db.cursor as cur:
+        assert cur.query("SELECT 1 AS one").value() == 1
+
+
+def test_stream_closed_with_cursor(dbfile):
+    stream_closed_with_cursor(dbfile)
+
+
 def test_shadowing(db, dbshadow):
     with db.cursor as cursor:
         assert len(dbshadow.get_users(cursor)) == 7

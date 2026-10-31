@@ -129,6 +129,9 @@ class Pool:
     def cursor(self, conn: RawConnection) -> RawCursor:
         return conn.cursor()
 
+    def stream_cursor(self, conn: RawConnection) -> RawCursor:
+        return self._conn.stream_cursor(conn)
+
     def get_cursor_attr(self, cursor: RawCursor, key: str) -> Any:
         return self._conn.get_cursor_attr(cursor, key)
 

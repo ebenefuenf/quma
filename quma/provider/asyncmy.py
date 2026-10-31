@@ -3,6 +3,8 @@ try:
     from asyncmy.cursors import (
         Cursor,
         DictCursor,
+        SSCursor,
+        SSDictCursor,
     )
     from asyncmy.errors import (
         Error,
@@ -28,8 +30,13 @@ class AsyncConnection(conn.AsyncConnection):
         self.port = self.url.port or 3306
         if kwargs.pop("dict_cursor", False):
             self.cursor_factory = DictCursor
+            self.stream_factory = SSDictCursor
         else:
             self.cursor_factory = Cursor
+            self.stream_factory = SSCursor
+
+    def stream_cursor(self, conn):
+        return conn.cursor(self.stream_factory)
 
     def get_cursor_attr(self, cursor, key):
         if key in ("fetchall", "fetchmany"):

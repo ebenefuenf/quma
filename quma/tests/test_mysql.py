@@ -1,6 +1,7 @@
 import pytest
 
 from .. import (
+    APIError,
     Database,
     PlaceholderError,
 )
@@ -227,6 +228,78 @@ def test_unbunch(mydb, mypooldb):
 
     for db in (mydb, mypooldb):
         unbunch(db)
+
+
+@pytest.mark.mysql
+def test_stream(mydb, mydb_persist, mypooldb, mydb_dict):
+    from .test_db import stream
+
+    for db in (mydb, mydb_persist, mypooldb):
+        stream(db)
+    with mydb_dict.cursor as cur:
+        names = [row["name"] for row in cur.users.all().unbunch(stream=True)]
+        assert names == [f"User {i}" for i in range(1, 8)]
+
+
+@pytest.mark.mysql
+def test_stream_closed_with_cursor(mypooldb):
+    from .test_db import stream_closed_with_cursor
+
+    stream_closed_with_cursor(mypooldb)
+    assert mypooldb.conn.checkedout == 0
+
+
+@pytest.mark.mysql
+def test_stream_blocks_connection(mypooldb):
+    carrier = object()
+    try:
+        with (
+            mypooldb(carrier).cursor as cur,
+            mypooldb(carrier).cursor as other,
+        ):
+            names = []
+            for row in cur.users.all().unbunch(1, stream=True):
+                names.append(row[1])
+                with pytest.raises(APIError, match="MySQL can't run"):
+                    cur.query("SELECT 1").run()
+                with pytest.raises(APIError, match="MySQL can't run"):
+                    other.query("SELECT 1").run()
+                with pytest.raises(APIError, match="MySQL can't run"):
+                    cur.commit()
+            assert names == [f"User {i}" for i in range(1, 8)]
+            assert other.query("SELECT 1 AS one").value() == 1
+    finally:
+        mypooldb.release(carrier)
+
+
+# About 35 MB, more than the buffers of the connection hold.
+LARGE = (
+    "SELECT REPEAT('x', 300) FROM users a, users b, users c, users d, "
+    "users e, users f"
+)
+
+
+@pytest.mark.mysql
+def test_stream_reads_while_the_server_sends(mydb):
+    with mydb.cursor as cur, mydb.cursor as watcher:
+        conn_id = cur.query("SELECT CONNECTION_ID()").value()
+        rows = cur.query(LARGE).unbunch(10, stream=True)
+        next(rows)
+        command = watcher.query(
+            "SELECT COMMAND FROM information_schema.PROCESSLIST WHERE ID = :id",
+            id=conn_id,
+        ).value()
+        assert command == "Query"
+        rows.close()
+        assert cur.query("SELECT 1 AS one").value() == 1
+
+
+@pytest.mark.mysql
+def test_stream_echo(mydb_echo, capsys):
+    with mydb_echo.cursor as cur:
+        rows = cur.query("SELECT :x AS x", x="echoed").unbunch(stream=True)
+        assert [row["x"] for row in rows] == ["echoed"]
+    assert "'echoed'" in capsys.readouterr().out
 
 
 @pytest.mark.mysql

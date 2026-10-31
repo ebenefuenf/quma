@@ -10,6 +10,10 @@ from typing import (
 from urllib.parse import ParseResult
 
 from . import exc
+from .stream import (
+    aclose_streams,
+    close_streams,
+)
 
 # DB-API connections, cursors and rows differ from driver to driver.
 RawConnection = Any
@@ -29,6 +33,8 @@ class BaseConnectionLike(Protocol):
     def dialect(self) -> str: ...
 
     def cursor(self, conn: RawConnection) -> RawCursor: ...
+
+    def stream_cursor(self, conn: RawConnection) -> RawCursor: ...
 
     def get_cursor_attr(self, cursor: RawCursor, key: str) -> Any: ...
 
@@ -90,6 +96,10 @@ class BaseConnection:
     def cursor(self, conn: RawConnection) -> RawCursor:
         return conn.cursor()
 
+    def stream_cursor(self, conn: RawConnection) -> RawCursor:
+        """Return a cursor that reads its result as it is fetched."""
+        return self.cursor(conn)
+
     def get_cursor_attr(self, cursor: RawCursor, key: str) -> Any:
         return getattr(cursor, key)
 
@@ -133,6 +143,7 @@ class Connection(BaseConnection):
     def reset(self, conn: RawConnection) -> bool:
         """Return False if ``conn`` is broken and has been discarded."""
         try:
+            close_streams(conn)
             conn.rollback()
             self.disable_autocommit(conn)
         except Exception:
@@ -232,6 +243,7 @@ class AsyncConnection(BaseConnection):
     async def reset(self, conn: RawConnection) -> bool:
         """Return False if ``conn`` is broken and has been discarded."""
         try:
+            await aclose_streams(conn)
             await conn.rollback()
             await self.disable_autocommit(conn)
         except Exception:

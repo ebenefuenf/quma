@@ -30,6 +30,7 @@ from ..script import (
     PrepareParams,
     Script,
 )
+from ..stream import aclose_streams
 from .query import AsyncQuery
 
 if TYPE_CHECKING:
@@ -143,6 +144,7 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
                 return
             self._open = False
             try:
+                await aclose_streams(self.raw_conn, self)
                 await self.raw_cursor.close()
             finally:
                 detached = self._detach(force)

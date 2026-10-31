@@ -158,6 +158,24 @@ Python can't await inside ``len()``, ``bool()``, indexing or a ``for``
 loop, so an async query raises :class:`TypeError` there and names the
 method to use instead. Without that, ``if query:`` would always be true.
 
+``unbunch(stream=True)`` streams large results (see
+:ref:`streaming`). Python doesn't close an async generator when its loop
+ends early, by ``break`` or an exception, so wrap a stream that may end
+early in :func:`contextlib.aclosing`:
+
+.. code-block:: python
+
+    from contextlib import aclosing
+
+    rows = cur.logs.all().unbunch(1000, stream=True)
+    async with aclosing(rows):
+        async for entry in rows:
+            if entry.final:
+                break
+
+Otherwise the stream stays open until its cursor closes, and on MySQL
+and MariaDB its connection can't run other statements until then.
+
 
 Custom namespaces
 -----------------

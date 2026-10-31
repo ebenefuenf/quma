@@ -32,6 +32,12 @@ Unreleased
   it with Starlette, FastAPI and Litestar.
 - ``quma`` exports ``Cursor``, ``AsyncDatabase``, ``AsyncCursor`` and
   ``connect_async()``.
+- ``unbunch(stream=True)`` lets the server send a result in batches
+  while the loop runs, with a server-side cursor on PostgreSQL and an
+  unbuffered cursor on MySQL and MariaDB, so a large result needs the
+  memory of one batch only. Without it, and with ``many()``, the drivers
+  still load the whole result when the query runs. The docs claimed
+  ``unbunch()`` avoided that. See "Streaming large results".
 - With ``contextcommit``, a cursor's ``with`` block now rolls back when it
   raises. Before, quma committed the statements that ran before the
   error. If the block raises to signal success, such as a redirect, call
