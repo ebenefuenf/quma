@@ -6,7 +6,12 @@ on:
   push:
     branches:
       - main
+    paths: &paths
+      - quma/placeholders.py
+      - quma/tests/test_placeholders_fuzz.py
+      - .github/workflows/fuzz.yml
   pull_request:
+    paths: *paths
   schedule:
     - cron: "17 4 * * 1"
   workflow_dispatch:

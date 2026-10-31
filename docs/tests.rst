@@ -79,7 +79,8 @@ example a container:
         quma/tests/test_placeholders_fuzz.py --hypothesis-profile=fuzz
 
 The CI fuzzes the latest PostgreSQL, MySQL and MariaDB releases with the
-``fuzz`` profile on every push and once a week.
+``fuzz`` profile once a week and whenever the conversion or the fuzz tests
+change.
 
 Overwrite credentials
 ---------------------
