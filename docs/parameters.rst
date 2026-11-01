@@ -36,6 +36,50 @@ PostgreSQL's jsonb operators ``?``, ``?|`` and ``?&``. Calling a script with
 positional arguments raises ``TypeError``.
 
 
+Lists
+-----
+
+A list, tuple or set directly after ``IN`` or ``NOT IN`` works with every
+driver:
+
+.. code-block:: sql
+
+    -- sql/users/by_ids.sql
+    SELECT name FROM users WHERE id IN :ids
+
+.. code-block:: python
+
+    cur.users.by_ids(ids=[1, 2, 3])
+
+quma sends ``IN (%(ids__0)s, %(ids__1)s, %(ids__2)s)`` with one parameter per
+element, and the driver binds each value as usual.
+
+* Write no parentheses and nothing else between ``IN`` and the placeholder.
+  ``IN (:ids)`` and ``IN /* c */ :ids`` go to the driver unchanged, and it
+  rejects the list there.
+* An empty list raises ``ValueError``, because SQL has no empty ``IN`` list.
+  The usual replacement, ``IN (NULL)``, matches nothing with ``NOT IN`` as
+  well, where you'd expect every row. Handle the empty case before the query.
+* Elements are single values. Row values like ``(a, b) IN :pairs`` only work
+  with psycopg2, mysqlclient and asyncmy.
+* A parameter named like an element, ``ids__0``, raises ``ValueError``.
+
+Everywhere else a list goes to the driver as it is. On PostgreSQL it's an
+array there, which gives you an alternative to ``IN``:
+
+.. code-block:: sql
+
+    SELECT name FROM users WHERE id = ANY(:ids)
+    SELECT name FROM users WHERE id <> ALL(:ids)
+
+These work with an empty list, as you'd expect from ``IN`` and ``NOT IN``, and
+need one placeholder however long the list is.
+
+With ``placeholders='native'`` and in ``cur.execute()`` quma doesn't touch
+lists. There ``IN %(ids)s`` with a tuple works with psycopg2, mysqlclient and
+asyncmy, and psycopg and SQLite don't support it.
+
+
 Settings that change strings
 ----------------------------
 

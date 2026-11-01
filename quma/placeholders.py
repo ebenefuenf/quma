@@ -9,8 +9,8 @@ SQL.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Iterator
-from typing import Literal, NamedTuple
+from collections.abc import Callable, Iterator, Mapping
+from typing import Any, Literal, NamedTuple
 
 from .exc import PlaceholderError
 
@@ -129,7 +129,53 @@ _SQLITE_TOKEN = re.compile(
 
 _VERSIONED = re.compile(r"/\*(?:!\d{5}|M!)")
 
+_LISTS = (list, tuple, set, frozenset)
+
+# Non-ASCII characters are identifier characters on every server. The IN is
+# spelled out because re.IGNORECASE would also take a dotless i.
+_IN = r"(?<![A-Za-z0-9_$.\u0080-\U0010ffff])[Ii][Nn][ \t\n\r\f\v]*"
+_IN_NAME = re.compile(rf"{_IN}:({_NAME})")
+_AFTER_IN = re.compile(rf"{_IN}\Z")
+
 _NATIVE = re.compile(r"%\([^()]*\)s|%%")
+
+
+class Converted(NamedTuple):
+    sql: str
+    # The lists that became a list of placeholders.
+    expanded: frozenset[str]
+    # The parameters that have a placeholder of their own.
+    kept: frozenset[str]
+
+
+def list_sizes(sql: str, params: Mapping[str, Any]) -> dict[str, int]:
+    """The sizes of the lists in ``params`` that may need expanding. The
+    text may be in a string or comment: only ``convert()`` can tell."""
+    lists = {k: len(v) for k, v in params.items() if isinstance(v, _LISTS)}
+    if not lists:
+        return {}
+    return {
+        name: lists[name] for name in _IN_NAME.findall(sql) if name in lists
+    }
+
+
+def spread(params: Mapping[str, Any], converted: Converted) -> dict[str, Any]:
+    """Return ``params`` with a parameter per element of the expanded
+    lists. A list without a placeholder of its own has to go: MySQL's
+    drivers escape every parameter, used or not, and reject lists or sets."""
+    result = dict(params)
+    for name in converted.expanded:
+        for i, value in enumerate(params[name]):
+            key = _element(name, i)
+            if key in params:
+                raise ValueError(
+                    f'The parameter "{key}" has the name quma gives an '
+                    f'element of the list "{name}". Rename it.'
+                )
+            result[key] = value
+        if name not in converted.kept:
+            del result[name]
+    return result
 
 
 def convert(sql: str, dialect: str) -> str:
@@ -144,22 +190,35 @@ def convert(sql: str, dialect: str) -> str:
     string ends and so whether a placeholder is in it, and for MySQL SQL
     with placeholders and versioned comments.
     """
+    return convert_lists(sql, dialect, {}).sql
+
+
+def convert_lists(
+    sql: str, dialect: str, sizes: Mapping[str, int]
+) -> Converted:
+    """Like :func:`convert`, but a placeholder directly after ``IN`` whose
+    name is in ``sizes`` becomes a list of that many placeholders. Only the
+    placeholders multiply: the driver still binds every value. Raises
+    :class:`ValueError` for an empty list there.
+    """
     _check(sql)
     scan = _SCANNERS[dialect]
     pyformat = dialect != "sqlite"
     default, *others = _readings(sql, dialect)
-    converted = _render(scan(sql, default), pyformat)
+    converted = _render(scan(sql, default), pyformat, sizes)
     # One server may run some versioned comments and skip others, which no
     # reading covers, so only SQL that needs no conversion is safe.
     versioned = _VERSIONED.search(sql) if dialect == "mysql" else None
-    if versioned and converted != sql.replace("%", "%%"):
+    if versioned and converted.sql != sql.replace("%", "%%"):
         raise _versioned(sql, versioned)
     for reading in others:
-        other = _render(scan(sql, reading), pyformat)
-        if other != converted:
+        other = _render(scan(sql, reading), pyformat, sizes).sql
+        if other != converted.sql:
             if versioned:
                 raise _versioned(sql, versioned)
-            raise _ambiguous(sql, converted, other, dialect, default, reading)
+            raise _ambiguous(
+                sql, converted.sql, other, dialect, default, reading
+            )
     return converted
 
 
@@ -186,14 +245,44 @@ def _readings(sql: str, dialect: str) -> list[Reading]:
     return readings
 
 
-def _render(tokens: Iterator[Token], pyformat: bool) -> str:
+def _render(
+    tokens: Iterator[Token], pyformat: bool, sizes: Mapping[str, int]
+) -> Converted:
     parts = []
+    expanded = set()
+    kept = set()
+    # A comment or string before the placeholder is a token of its own.
+    previous = ""
     for text, name in tokens:
         if name is None:
             parts.append(text.replace("%", "%%") if pyformat else text)
+        elif name in sizes and _AFTER_IN.search(previous):
+            parts.append(_expanded(name, sizes[name], pyformat))
+            expanded.add(name)
         else:
-            parts.append(f"%({name})s" if pyformat else text)
-    return "".join(parts)
+            parts.append(_placeholder(name, pyformat))
+            kept.add(name)
+        previous = text
+    return Converted("".join(parts), frozenset(expanded), frozenset(kept))
+
+
+def _placeholder(name: str, pyformat: bool) -> str:
+    return f"%({name})s" if pyformat else f":{name}"
+
+
+def _element(name: str, index: int) -> str:
+    return f"{name}__{index}"
+
+
+def _expanded(name: str, size: int, pyformat: bool) -> str:
+    if size == 0:
+        raise ValueError(
+            f'The parameter "{name}" is empty, and IN needs at least one '
+            "value, so handle the empty case before the query. On PostgreSQL, "
+            f"= ANY(:{name}) and <> ALL(:{name}) work with empty lists."
+        )
+    elements = (_element(name, i) for i in range(size))
+    return f"({', '.join(_placeholder(e, pyformat) for e in elements)})"
 
 
 def _ambiguous(

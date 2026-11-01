@@ -1,7 +1,12 @@
 import pytest
 
 from .. import PlaceholderError
-from ..placeholders import convert
+from ..placeholders import (
+    convert,
+    convert_lists,
+    list_sizes,
+    spread,
+)
 
 DIALECTS = ["postgresql", "mysql", "sqlite"]
 SERVERS = ["postgresql", "mysql"]
@@ -212,3 +217,189 @@ def test_driver_placeholders_line():
         match=r'"%\(name\)s" in line 3: WHERE name = %\(name\)s\n',
     ):
         convert(sql, "postgresql")
+
+
+def plain(dialect):
+    return ":ids" if dialect == "sqlite" else "%(ids)s"
+
+
+def elements(dialect, size=2):
+    names = [f"ids__{i}" for i in range(size)]
+    if dialect == "sqlite":
+        return "(" + ", ".join(f":{name}" for name in names) + ")"
+    return "(" + ", ".join(f"%({name})s" for name in names) + ")"
+
+
+@pytest.mark.parametrize("dialect", DIALECTS)
+def test_list_after_in(dialect):
+    converted = convert_lists("SELECT 1 WHERE 1 IN :ids", dialect, {"ids": 2})
+    assert converted.sql == f"SELECT 1 WHERE 1 IN {elements(dialect)}"
+    assert converted.expanded == {"ids"}
+    assert converted.kept == frozenset()
+
+
+@pytest.mark.parametrize("dialect", DIALECTS)
+@pytest.mark.parametrize(
+    "before",
+    [
+        "x IN ",
+        "x NOT IN ",
+        "x in ",
+        "x In\n\t",
+        "x IN\r\n",
+        "x IN",
+        "'a'IN ",
+        "(x)IN ",
+        "1 IN ",
+    ],
+)
+def test_list_after_in_spellings(dialect, before):
+    converted = convert_lists(f"SELECT {before}:ids", dialect, {"ids": 2})
+    assert converted.sql == f"SELECT {before}{elements(dialect)}"
+
+
+@pytest.mark.parametrize("dialect", DIALECTS)
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "x = ANY({})",
+        "x = {}",
+        "x IN ({})",
+        "x IN /* c */ {}",
+        "x IN -- c\n {}",
+        "x -- IN\n{}",
+        "x /* IN */ {}",
+        "'IN' {}",
+        '"IN" {}',
+        "margin {}",
+        "x_in {}",
+        "t.in {}",
+        "x$in {}",
+        "€in {}",
+        "1in {}",
+        "ıN {}",
+        "IN\xa0{}",
+    ],
+)
+def test_list_not_directly_after_in(dialect, sql):
+    converted = convert_lists(sql.format(":ids"), dialect, {"ids": 2})
+    assert converted.sql == sql.format(plain(dialect))
+    assert converted.expanded == frozenset()
+    assert converted.kept == {"ids"}
+
+
+@pytest.mark.parametrize("dialect", DIALECTS)
+@pytest.mark.parametrize(
+    "text",
+    ["'IN :ids'", "-- IN :ids", "/* IN :ids */", "'x' -- IN :ids\n"],
+)
+def test_text_that_looks_like_a_list(dialect, text):
+    converted = convert_lists(f"SELECT {text}", dialect, {"ids": 2})
+    assert converted.sql == f"SELECT {text}"
+    assert converted.expanded == frozenset()
+
+
+def test_text_that_looks_like_a_list_in_postgresql_strings():
+    for text in ("$$IN :ids$$", "$a$IN :ids$a$", "E'IN :ids'", '"IN :ids"'):
+        sql = f"SELECT {text}"
+        assert convert_lists(sql, "postgresql", {"ids": 2}).sql == sql
+
+
+@pytest.mark.parametrize("dialect", DIALECTS)
+def test_list_used_twice(dialect):
+    sql = "x IN :ids OR y NOT IN :ids"
+    converted = convert_lists(sql, dialect, {"ids": 2})
+    list_sql = elements(dialect)
+    assert converted.sql == f"x IN {list_sql} OR y NOT IN {list_sql}"
+    assert converted.kept == frozenset()
+
+
+def test_list_after_in_and_elsewhere():
+    converted = convert_lists(
+        "x IN :ids OR y = ANY(:ids)", "postgresql", {"ids": 1}
+    )
+    assert converted.sql == ("x IN (%(ids__0)s) OR y = ANY(%(ids)s)")
+    assert converted.expanded == {"ids"}
+    assert converted.kept == {"ids"}
+
+
+def test_list_keeps_the_rest_of_the_conversion():
+    converted = convert_lists(
+        "name LIKE 'a%' AND city = :city AND id IN :ids AND x::text = '1'",
+        "postgresql",
+        {"ids": 1},
+    )
+    assert converted.sql == (
+        "name LIKE 'a%%' AND city = %(city)s AND id IN (%(ids__0)s) "
+        "AND x::text = '1'"
+    )
+    assert converted.kept == {"city"}
+
+
+@pytest.mark.parametrize("dialect", DIALECTS)
+def test_empty_list_after_in(dialect):
+    with pytest.raises(ValueError, match='"ids" is empty'):
+        convert_lists("SELECT 1 WHERE 1 NOT IN :ids", dialect, {"ids": 0})
+
+
+def test_empty_list_elsewhere():
+    sql = "SELECT 1 WHERE 1 = ANY(:ids) -- IN :ids"
+    assert convert_lists(sql, "postgresql", {"ids": 0}).sql == (
+        "SELECT 1 WHERE 1 = ANY(%(ids)s) -- IN :ids"
+    )
+
+
+def test_list_in_sql_the_readings_disagree_on():
+    with pytest.raises(PlaceholderError, match="standard_conforming_strings"):
+        convert_lists(r"SELECT 'C:\' IN :ids", "postgresql", {"ids": 2})
+    with pytest.raises(PlaceholderError, match="NO_BACKSLASH_ESCAPES"):
+        convert_lists(r"SELECT 'it\'s' IN :ids", "mysql", {"ids": 2})
+
+
+def test_list_in_mysql_comments():
+    assert convert_lists(
+        "SELECT /*! 1 IN :ids */", "mysql", {"ids": 1}
+    ).sql == ("SELECT /*! 1 IN (%(ids__0)s) */")
+    with pytest.raises(PlaceholderError, match="versioned comment"):
+        convert_lists("SELECT /*!80000 2, */ 1 IN :ids", "mysql", {"ids": 1})
+
+
+@pytest.mark.parametrize("value", [[1, 2], (1, 2), {1, 2}, frozenset({1, 2})])
+def test_list_sizes_of_lists(value):
+    assert list_sizes("x IN :ids", {"ids": value, "other": 1}) == {"ids": 2}
+
+
+@pytest.mark.parametrize(
+    "value", ["ab", b"ab", {"a": 1}, None, 1, range(2), iter([1, 2])]
+)
+def test_list_sizes_of_other_values(value):
+    assert list_sizes("x IN :ids", {"ids": value}) == {}
+
+
+def test_list_sizes_without_in():
+    assert list_sizes("x = :ids", {"ids": [1, 2]}) == {}
+    assert list_sizes("x IN :other", {"ids": [1, 2]}) == {}
+
+
+def test_spread():
+    params = {"ids": [5, 6], "city": "Berlin"}
+    converted = convert_lists("x IN :ids AND y = :city", "mysql", {"ids": 2})
+    assert spread(params, converted) == {
+        "ids__0": 5,
+        "ids__1": 6,
+        "city": "Berlin",
+    }
+    assert params == {"ids": [5, 6], "city": "Berlin"}
+
+
+def test_spread_keeps_a_list_with_its_own_placeholder():
+    converted = convert_lists(
+        "x IN :ids OR y = ANY(:ids)", "postgresql", {"ids": 1}
+    )
+    assert spread({"ids": [5]}, converted) == {"ids": [5], "ids__0": 5}
+
+
+def test_spread_refuses_a_name_in_use():
+    converted = convert_lists("x IN :ids", "postgresql", {"ids": 1})
+    with pytest.raises(ValueError, match='"ids__0"'):
+        spread({"ids": [5], "ids__0": 7}, converted)

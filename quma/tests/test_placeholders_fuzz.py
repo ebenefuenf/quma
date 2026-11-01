@@ -19,10 +19,27 @@ from .. import Database, PlaceholderError
 from . import util
 
 VALUE = "v'\"`\n*/ -- # $$ %:y"
+LIST = [VALUE, "w'\"`\n*/ -- # $$ %:x"]
+
+# Expanded to a list of placeholders, with the result they have to give.
+IN_LISTS = (
+    (":x IN :l", True),
+    (":x in :l", True),
+    (":x IN\n:l", True),
+    (":x\tIN\t:l", True),
+    (":x IN:l", True),
+    ("(:x) IN :l", True),
+    ("'nope' IN :l", False),
+    ("'nope' NOT IN :l", True),
+    (":x NOT IN :l", False),
+)
 
 PIECES = (
     ":x",
     ":y",
+    ":l",
+    "IN :l",
+    " IN ",
     "::x",
     "\\:x",
     ":",
@@ -147,7 +164,15 @@ def pg_string(draw, backslashes):
 
 @st.composite
 def pg_column(draw, backslashes):
-    kind = draw(st.sampled_from(["placeholder", "string", "string", "slice"]))
+    kind = draw(
+        st.sampled_from(
+            ["placeholder", "string", "string", "slice", "in", "array"]
+        )
+    )
+    if kind == "in":
+        return draw(st.sampled_from(IN_LISTS))
+    if kind == "array":
+        return ":l", LIST
     if kind == "placeholder":
         placeholders = [":x", "(:x)", ":x::text", "CAST(:x AS text)"]
         return draw(st.sampled_from(placeholders)), VALUE
@@ -198,7 +223,11 @@ def mysql_string(draw, mode):
 
 @st.composite
 def mysql_column(draw, mode):
-    if draw(st.booleans()):
+    kind = draw(st.sampled_from(["placeholder", "string", "in"]))
+    if kind == "in":
+        sql, result = draw(st.sampled_from(IN_LISTS))
+        return sql, int(result)
+    if kind == "placeholder":
         return draw(st.sampled_from([":x", "(:x)", "CONCAT(:x)"])), VALUE
     return draw(mysql_string(mode))
 
@@ -281,7 +310,7 @@ def check(db, setup, query):
     with db.cursor(autocommit=True) as cur:
         cur.execute(setup)
         try:
-            row = cur.query(sql, x=VALUE).one()
+            row = cur.query(sql, x=VALUE, l=LIST).one()
         except PlaceholderError:
             event("refused")
             return

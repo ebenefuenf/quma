@@ -56,7 +56,9 @@ class Script:
         self.is_template = is_template
         self.sqldirs = sqldirs
         self.params = None
-        self._converted: tuple[tuple[str, str], str] | None = None
+        self._converted: (
+            tuple[tuple[Any, ...], placeholders.Converted] | None
+        ) = None
 
     @overload
     def __call__(
@@ -152,15 +154,24 @@ class Script:
             )
         content, params = self._prepare(cursor, args or kwargs, prepare_params)
         if named:
-            content = self._convert(content, cursor._conn().dialect)
+            sizes = placeholders.list_sizes(content, params)
+            converted = self._convert(content, cursor._conn().dialect, sizes)
+            content = converted.sql
+            if converted.expanded:
+                params = placeholders.spread(params, converted)
         return content, params
 
-    def _convert(self, content: str, dialect: str) -> str:
-        key = (dialect, content)
+    def _convert(
+        self, content: str, dialect: str, sizes: dict[str, int]
+    ) -> placeholders.Converted:
+        key = (dialect, content, tuple(sizes.items()))
         # Read once: threads share cached scripts, also templates.
         converted = self._converted
         if converted is None or converted[0] != key:
-            converted = (key, placeholders.convert(content, dialect))
+            converted = (
+                key,
+                placeholders.convert_lists(content, dialect, sizes),
+            )
             self._converted = converted
         return converted[1]
 

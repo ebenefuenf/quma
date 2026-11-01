@@ -39,6 +39,12 @@ Unreleased
   the whole result when the query ran, although the docs claimed it
   avoided that. A stream has limits, see "Streaming large results": code
   that can't meet them uses ``many()``, which still loads the result.
+- A list, tuple or set after ``IN`` or ``NOT IN``, like ``WHERE id IN :ids``,
+  works with every driver: quma sends one placeholder per element. Before,
+  it depended on the driver and failed on psycopg and SQLite. An empty list
+  raises ``ValueError``. A list anywhere else still goes to the
+  driver, so ``= ANY(:ids)`` works as before on PostgreSQL. See "Lists" in
+  "Passing Parameters".
 - ``cur.transaction()`` runs a block atomically: it commits at the end of
   the block and rolls back if an exception leaves it. Nested blocks use
   savepoints and undo only their own work. It works the same with every
