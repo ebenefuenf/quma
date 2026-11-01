@@ -84,6 +84,12 @@ class AsyncConnection(conn.AsyncConnection):
     def mogrify(self, cursor, content, params):
         return cursor.mogrify(content, params)
 
+    def in_autocommit(self, conn):
+        return conn.get_autocommit()
+
+    def in_transaction(self, conn):
+        return bool(conn.get_transaction_status())
+
     async def _check(self, conn):
         try:
             await conn.ping(reconnect=False)

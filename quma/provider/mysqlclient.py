@@ -16,6 +16,9 @@ from .. import (
     exc,
 )
 
+# ER_CANT_CHANGE_TX_CHARACTERISTICS
+TRANSACTION_IN_PROGRESS = 1568
+
 
 class Connection(conn.Connection):
     dialect = "mysql"
@@ -64,6 +67,24 @@ class Connection(conn.Connection):
 
     def mogrify(self, cursor, content, params):
         return cursor._executed.decode("utf-8")
+
+    def in_autocommit(self, conn):
+        return conn.get_autocommit()
+
+    def in_transaction(self, conn):
+        # mysqlclient doesn't expose the server's status. This statement
+        # fails in a transaction, and unlike the alternatives it works on
+        # MySQL and MariaDB without privileges.
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SET TRANSACTION READ WRITE")
+        except MySQLdb.Error as e:
+            if e.args[0] == TRANSACTION_IN_PROGRESS:
+                return True
+            raise
+        finally:
+            cursor.close()
+        return False
 
     def _check(self, conn):
         try:

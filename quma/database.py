@@ -166,6 +166,7 @@ class BaseDatabase(Generic[ConnT]):
         echo: bool,
         cache: bool,
         placeholders: Placeholders,
+        autocommit: bool,
     ) -> None:
         if placeholders not in ("named", "native"):
             raise ValueError('placeholders must be "named" or "native"')
@@ -180,6 +181,7 @@ class BaseDatabase(Generic[ConnT]):
         self.echo = echo
         self.cache = cache
         self.placeholders = placeholders
+        self.autocommit = autocommit
 
         self.heap = CarrierHeap()
         self.namespaces: dict[str, Namespace] = {}
@@ -279,6 +281,9 @@ class Database(BaseDatabase[ConnectionLike]):
         placeholders, e.g. ``%(name)s`` or ``?``, and positional
         parameters work. Use ``'native'`` with servers other than
         PostgreSQL, MySQL, MariaDB and SQLite. Defaults to ``'named'``.
+    :param autocommit: If ``True`` all cursors run in autocommit, so
+        statements outside a :ref:`transaction block <transaction-blocks>`
+        commit on their own. Defaults to ``False``.
 
     Additional connection pool parameters (see :doc:`Connection pool <pool>`):
 
@@ -306,6 +311,7 @@ class Database(BaseDatabase[ConnectionLike]):
         echo: bool = False,
         cache: bool = False,
         placeholders: Placeholders = "named",
+        autocommit: bool = False,
         **kwargs: Any,
     ) -> None:
         if args:
@@ -322,6 +328,7 @@ class Database(BaseDatabase[ConnectionLike]):
             echo=echo,
             cache=cache,
             placeholders=placeholders,
+            autocommit=autocommit,
         )
 
     def __call__(

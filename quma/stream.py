@@ -86,11 +86,15 @@ class BaseStream:
         self.raw: Any = None
         self.done = False
         self.description: Sequence[Sequence[Any]] | None = None
-        if self.postgres and self.raw_conn.autocommit:
+        if (
+            self.postgres
+            and self.raw_conn.autocommit
+            and not self.conn.in_transaction(self.raw_conn)
+        ):
             # Its cursor would end with the statement that declares it.
             raise exc.APIError(
                 "PostgreSQL streams results in transactions only. Open the "
-                "cursor without autocommit."
+                "cursor without autocommit, or stream in a transaction block."
             )
 
     def _prepare(self) -> tuple[str, Params]:

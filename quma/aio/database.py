@@ -72,6 +72,7 @@ class AsyncDatabase(BaseDatabase[AsyncConnectionLike]):
         echo: bool = False,
         cache: bool = False,
         placeholders: Placeholders = "named",
+        autocommit: bool = False,
         **kwargs: Any,
     ) -> None:
         if args:
@@ -88,6 +89,7 @@ class AsyncDatabase(BaseDatabase[AsyncConnectionLike]):
             echo=echo,
             cache=cache,
             placeholders=placeholders,
+            autocommit=autocommit,
         )
 
     def __call__(

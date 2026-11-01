@@ -193,6 +193,90 @@ will be executed in its own transaction that is implicitly committed.
     finally:
         cur.close()
 
+To make every cursor of a database work like that, pass ``autocommit=True``
+to :class:`Database`. Statements then commit on their own, and
+`transaction blocks`_ group the ones that belong together:
+
+.. code-block:: python
+
+    db = Database('psycopg2+pool://user:secret@localhost/app', sqldir,
+                  autocommit=True)
+
+    with db.cursor as cur:
+        user = cur.users.by_id(id=13).one()
+        with cur.transaction():
+            cur.users.rename(id=13, name='New Name').run()
+            cur.users.log_rename(id=13).run()
+
+An exception no longer undoes statements that ran outside a block, so it
+is a choice for an application as a whole. It suits new applications, and
+the default suits code that relies on ``commit()``.
+
+
+.. _transaction-blocks:
+
+Transaction blocks
+~~~~~~~~~~~~~~~~~~
+
+The method :meth:`transaction()` of a cursor runs a block atomically. It
+commits at the end of the block and rolls back if an exception leaves it:
+
+.. code-block:: python
+
+    with db.cursor as cur, cur.transaction():
+        user = cur.users.by_id(id=13).one()
+        cur.users.rename(id=13, name='New Name').run()
+
+A block inside another block uses a savepoint: an exception that leaves it
+undoes only its own work, and the outermost block still decides about the
+whole transaction. So a function can use a block whether or not its caller
+has one:
+
+.. code-block:: python
+
+    def reserve(cur, item):
+        with cur.transaction():
+            cur.stock.reduce(item=item).run()
+            cur.stock.log(item=item).run()
+
+    with db.cursor as cur, cur.transaction():
+        cur.orders.add(item=1).run()
+        try:
+            reserve(cur, 1)
+        except StockError:
+            cur.orders.backorder(item=1).run()
+
+Cursors on one :doc:`carrier <carrier>` share a connection, so a block
+opened through one of them contains the statements of the others, and
+their blocks nest.
+
+The outermost block owns its transaction, which has some consequences:
+
+* A block can't start while a transaction is open that no block started,
+  because it could neither commit nor undo that work on its own.
+  :class:`quma.APIError` tells you. Without autocommit, a statement opens
+  a transaction: any statement on PostgreSQL, one that reads a table on
+  MySQL and MariaDB, a write on SQLite. Start the block before the first
+  statement, or use autocommit, where only blocks open transactions.
+* :meth:`commit()` and :meth:`rollback()` raise :class:`quma.APIError`
+  inside a block. Raise an exception to roll back. An exception that
+  signals success, like Pyramid's ``HTTPFound``, rolls back too: raise it
+  after the block.
+* With ``contextcommit``, a block commits at its own end, and the cursor
+  commits what ran after it. A carried cursor that ends inside another
+  cursor's block leaves the transaction to the block.
+* Closing a cursor or returning its connection inside a block rolls the
+  transaction back, and the end of the block raises
+  :class:`quma.APIError`. With ``persist=True`` all cursors share one
+  connection, so closing any of them does that.
+* PostgreSQL aborts a transaction when a statement fails. If you catch
+  that error in the block, the end of the block rolls back and raises
+  :class:`quma.APIError` instead of pretending to commit. To continue after
+  a statement that may fail, wrap it in a nested block.
+* MySQL and MariaDB commit on their own for some statements, like
+  ``CREATE TABLE``, see the note above. That ends the transaction of a
+  block: a nested block then fails at its end, an outermost one can't tell.
+
 
 Executing literal statements
 ----------------------------

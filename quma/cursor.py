@@ -1,7 +1,13 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
-from contextlib import suppress
+from collections.abc import (
+    Generator,
+    Sequence,
+)
+from contextlib import (
+    contextmanager,
+    suppress,
+)
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -35,6 +41,11 @@ from .stream import (
     blocked,
     check_idle,
     close_streams,
+)
+from .transaction import (
+    Block,
+    check_no_block,
+    in_block,
 )
 
 if TYPE_CHECKING:
@@ -95,7 +106,9 @@ class BaseCursor(Generic[ConnT]):
         self.conn = db.conn
         self.namespaces = namespaces
         self.carrier = carrier
-        self.autocommit = isinstance(autocommit, bool) and autocommit
+        self.autocommit = db.autocommit or (
+            isinstance(autocommit, bool) and autocommit
+        )
         self.raw_conn: RawConnection | None = None
         self.raw_cursor: RawCursorWrapper | None = None
         self.contextcommit = contextcommit
@@ -153,6 +166,15 @@ class BaseCursor(Generic[ConnT]):
             raise exc.APIError("The cursor has no open connection.")
         check_idle(self.raw_conn)
         return self.raw_conn
+
+    def _commit_conn(self) -> RawConnection:
+        raw_conn = self._raw_conn()
+        check_no_block(raw_conn)
+        return raw_conn
+
+    def _context_ends_transaction(self) -> bool:
+        # A carried cursor inside another cursor's block leaves it to the block.
+        return self.contextcommit and not in_block(self.raw_conn)
 
     def _driver_attr(self, value: Any) -> Any:
         return value
@@ -214,9 +236,9 @@ class Cursor(BaseCursor[ConnectionLike]):
         if self.raw_conn is None:
             return
         try:
-            if self.contextcommit and exc_type is None:
+            if self._context_ends_transaction() and exc_type is None:
                 self.commit()
-            elif self.contextcommit:
+            elif self._context_ends_transaction():
                 # put() keeps a carried connection and its transaction open.
                 # A failing rollback must not hide the block's exception.
                 with suppress(Exception):
@@ -292,10 +314,29 @@ class Cursor(BaseCursor[ConnectionLike]):
         super()._lose_carried()
 
     def commit(self) -> None:
-        self._raw_conn().commit()
+        self._commit_conn().commit()
 
     def rollback(self) -> None:
-        self._raw_conn().rollback()
+        self._commit_conn().rollback()
+
+    @contextmanager
+    def transaction(self) -> Generator[None, None, None]:
+        """Run a block atomically: commit at its end, or roll back if an
+        exception leaves it. Inside another block it uses a savepoint and
+        undoes only its own work. See :ref:`transaction-blocks`.
+        """
+        block = Block(self)
+        block.begin()
+        try:
+            yield
+            block.commit()
+        except BaseException:
+            # A failing rollback must not hide the block's exception.
+            with suppress(Exception):
+                block.rollback()
+            raise
+        finally:
+            block.forget()
 
     def query(
         self,

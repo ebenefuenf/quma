@@ -80,7 +80,7 @@ class PostgresChangelingCursor(DictCursor):
         self._prefetch = 1
 
 
-class Connection(conn.Connection):
+class Connection(conn.PostgresTransactions, conn.Connection):
     dialect = "postgresql"
 
     def __init__(self, url, **kwargs):

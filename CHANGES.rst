@@ -39,6 +39,16 @@ Unreleased
   the whole result when the query ran, although the docs claimed it
   avoided that. A stream has limits, see "Streaming large results": code
   that can't meet them uses ``many()``, which still loads the result.
+- ``cur.transaction()`` runs a block atomically: it commits at the end of
+  the block and rolls back if an exception leaves it. Nested blocks use
+  savepoints and undo only their own work. It works the same with every
+  driver, sync and async. A block refuses to start while a transaction is
+  open that no block started, and ``commit()`` and ``rollback()`` raise
+  inside a block. See "Transaction blocks". A SQL directory named
+  ``transaction`` can't be reached through a cursor anymore, use
+  ``db.transaction.script(cur)``.
+- ``Database(..., autocommit=True)`` makes all cursors of a database run in
+  autocommit, so only transaction blocks open transactions.
 - With ``contextcommit``, a cursor's ``with`` block now rolls back when it
   raises. Before, quma committed the statements that ran before the
   error. If the block raises to signal success, such as a redirect, call

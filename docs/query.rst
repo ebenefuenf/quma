@@ -228,8 +228,11 @@ by zero in a late row, are raised in the loop, not when it starts. The
 databases add some limits:
 
 * PostgreSQL streams in transactions only, so a cursor with
-  ``autocommit=True`` raises :class:`quma.APIError`. The stream ends with
-  its transaction: don't commit or roll back in the loop. The query must
+  ``autocommit=True`` raises :class:`quma.APIError` outside a
+  :ref:`transaction block <transaction-blocks>`. The stream ends with its
+  transaction: don't commit or roll back in the loop. Rolling back a nested
+  block ends the streams opened in it, and reading one of them then aborts
+  the transaction. The query must
   be a single ``SELECT`` or ``VALUES`` statement. Other statements can
   run between the batches, also on the same cursor. The stream keeps a
   snapshot until it ends, which stops ``VACUUM`` from removing rows

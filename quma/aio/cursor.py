@@ -32,6 +32,7 @@ from ..script import (
 )
 from ..stream import aclose_streams
 from .query import AsyncQuery
+from .transaction import AsyncBlock
 
 if TYPE_CHECKING:
     from ..database import (
@@ -88,9 +89,9 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         if self.raw_conn is None:
             return
         try:
-            if self.contextcommit and exc_type is None:
+            if self._context_ends_transaction() and exc_type is None:
                 await self.commit()
-            elif self.contextcommit:
+            elif self._context_ends_transaction():
                 # put() keeps a carried connection and its transaction open.
                 # A failing rollback must not hide the block's exception.
                 with suppress(Exception):
@@ -160,10 +161,29 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         self._open = False
 
     async def commit(self) -> None:
-        await self._guarded(lambda: self._raw_conn().commit())
+        await self._guarded(lambda: self._commit_conn().commit())
 
     async def rollback(self) -> None:
-        await self._guarded(lambda: self._raw_conn().rollback())
+        await self._guarded(lambda: self._commit_conn().rollback())
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncGenerator[None, None]:
+        """Run a block atomically: commit at its end, or roll back if an
+        exception leaves it. Inside another block it uses a savepoint and
+        undoes only its own work. See :ref:`transaction-blocks`.
+        """
+        block = AsyncBlock(self)
+        await block.begin()
+        try:
+            yield
+            await block.commit()
+        except BaseException:
+            # A failing rollback must not hide the block's exception.
+            with suppress(Exception):
+                await block.rollback()
+            raise
+        finally:
+            block.forget()
 
     async def execute(self, *args: Any, **kwargs: Any) -> Any:
         return await self._guarded(

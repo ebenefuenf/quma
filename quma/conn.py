@@ -14,6 +14,7 @@ from .stream import (
     aclose_streams,
     close_streams,
 )
+from .transaction import end_blocks
 
 # DB-API connections, cursors and rows differ from driver to driver.
 RawConnection = Any
@@ -41,6 +42,12 @@ class BaseConnectionLike(Protocol):
     def mogrify(
         self, cursor: RawCursor, content: str, params: Params
     ) -> str: ...
+
+    def in_autocommit(self, conn: RawConnection) -> bool: ...
+
+    def in_transaction(self, conn: RawConnection) -> bool: ...
+
+    def in_failed_transaction(self, conn: RawConnection) -> bool: ...
 
 
 class ConnectionLike(BaseConnectionLike, Protocol):
@@ -106,6 +113,25 @@ class BaseConnection:
     def mogrify(self, cursor: RawCursor, content: str, params: Params) -> str:
         return content
 
+    def in_autocommit(self, conn: RawConnection) -> bool:
+        return conn.autocommit
+
+    def in_transaction(self, conn: RawConnection) -> bool:
+        raise NotImplementedError
+
+    def in_failed_transaction(self, conn: RawConnection) -> bool:
+        return False
+
+
+class PostgresTransactions:
+    """Reads libpq's transaction status, in psycopg2 and psycopg."""
+
+    def in_transaction(self, conn: RawConnection) -> bool:
+        return conn.info.transaction_status != 0  # PQTRANS_IDLE
+
+    def in_failed_transaction(self, conn: RawConnection) -> bool:
+        return conn.info.transaction_status == 3  # PQTRANS_INERROR
+
 
 class Connection(BaseConnection):
     """Abstract base class for DBMS specific connection objects"""
@@ -144,6 +170,7 @@ class Connection(BaseConnection):
         """Return False if ``conn`` is broken and has been discarded."""
         try:
             close_streams(conn)
+            end_blocks(conn)
             conn.rollback()
             self.disable_autocommit(conn)
         except Exception:
@@ -244,6 +271,7 @@ class AsyncConnection(BaseConnection):
         """Return False if ``conn`` is broken and has been discarded."""
         try:
             await aclose_streams(conn)
+            end_blocks(conn)
             await conn.rollback()
             await self.disable_autocommit(conn)
         except Exception:

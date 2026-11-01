@@ -59,6 +59,8 @@ Sync and async side by side
      - ``await cur.users.rename(id=1, name=n).run()``
    * - ``cur.commit()``, ``cur.rollback()``
      - ``await cur.commit()``, ``await cur.rollback()``
+   * - ``with cur.transaction():``
+     - ``async with cur.transaction():``
    * - ``db.execute(sql)``, ``db.release(request)``
      - ``await db.execute(sql)``, ``await db.release(request)``
    * - ``db.close()``
@@ -116,6 +118,27 @@ a cursor without a block, await it and close it yourself:
 
 With ``contextcommit=True`` the cursor commits when the ``async with``
 block ends, and rolls back if the block raises.
+
+:ref:`Transaction blocks <transaction-blocks>` work as in sync code, and
+``autocommit=True`` on the database suits them well in a new application:
+
+.. code-block:: python
+
+    db = AsyncDatabase('psycopg+pool://user:secret@localhost/app', sqldir,
+                       autocommit=True, size=10, timeout=10, cache=True)
+
+    async def rename_user(user_id, name):
+        async with db.cursor as cur:
+            user = await cur.users.by_id(id=user_id).one()
+            async with cur.transaction():
+                await cur.users.rename(id=user_id, name=name).run()
+                await cur.users.log_rename(id=user_id).run()
+        return user
+
+Cancelling a task inside a block rolls the transaction back. A block on a
+:doc:`carrier <carrier>` holds its connection only for each statement, so
+the statements of other tasks on that carrier land in the block and share
+its fate. Use one task per block there.
 
 **One task per cursor.** A cursor holds one DB-API cursor, and two tasks
 using it at the same time would read each other's results. quma raises

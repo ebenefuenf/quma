@@ -85,6 +85,12 @@ class Connection(conn.Connection):
         conn.isolation_level = "DEFERRED"
         return conn
 
+    def in_autocommit(self, conn):
+        return conn.isolation_level is None
+
+    def in_transaction(self, conn):
+        return conn.in_transaction
+
     def _check(self, conn):
         try:
             cur = conn.cursor()

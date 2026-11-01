@@ -125,6 +125,15 @@ class AsyncPool:
     def get_cursor_attr(self, cursor: RawCursor, key: str) -> Any:
         return self._conn.get_cursor_attr(cursor, key)
 
+    def in_autocommit(self, conn: RawConnection) -> bool:
+        return self._conn.in_autocommit(conn)
+
+    def in_transaction(self, conn: RawConnection) -> bool:
+        return self._conn.in_transaction(conn)
+
+    def in_failed_transaction(self, conn: RawConnection) -> bool:
+        return self._conn.in_failed_transaction(conn)
+
     def mogrify(self, cursor: RawCursor, content: str, params: Params) -> str:
         return self._conn.mogrify(cursor, content, params)
 
