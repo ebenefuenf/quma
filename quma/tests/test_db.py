@@ -867,6 +867,20 @@ def test_stream(db):
     stream(db)
 
 
+def stream_with_second_cursor(db):
+    with db.cursor as reader, db.cursor as writer:
+        for row in reader.users.all().stream(1, dict):
+            writer.query(
+                "UPDATE users SET city = :city WHERE id = :id",
+                city="Moved",
+                id=row["id"],
+            ).run()
+            writer.commit()
+    with db.cursor as cur:
+        moved = "SELECT count(*) FROM users WHERE city = 'Moved'"
+        assert cur.query(moved).value() == 7
+
+
 def stream_closed_with_cursor(db):
     cur = db.cursor()
     rows = cur.users.all().stream(1)

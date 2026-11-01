@@ -246,11 +246,66 @@ databases add some limits:
   loop, run ``SET SESSION net_write_timeout = 600`` on the cursor before
   the stream starts.
 
-If these limits get in the way, read the result with :meth:`many()`,
-which doesn't save the memory.
+If these limits get in the way, see :ref:`large-results-in-batches`.
 
 In async code, wrap a stream that may end early in
 :func:`contextlib.aclosing` (see :doc:`async`).
+
+
+.. _large-results-in-batches:
+
+Working through a large result in batches
+-----------------------------------------
+
+A long job usually commits as it goes, so a failure doesn't lose the work
+already done. A stream can't commit in its own loop, but there are two
+ways around that. If the result fits in memory, :meth:`many()` is simpler:
+commit between the calls of :meth:`get()`.
+
+**Stream on one cursor, write on another.** Each cursor has its own
+connection and transaction:
+
+.. code-block:: python
+
+    from itertools import islice
+
+    with db.cursor as reader, db.cursor as writer:
+        rows = reader.logs.all().stream(target=dict)
+        while batch := list(islice(rows, 1000)):
+            for entry in batch:
+                writer.logs.archive(id=entry['id']).run()
+            writer.commit()
+
+The limits of a stream still apply to the reader. On PostgreSQL, MySQL and
+MariaDB this needs two connections: with ``persist=True`` or a
+:doc:`carrier <carrier>` the cursors share one, and it fails. On SQLite,
+run one query per batch instead, because two connections fail with
+"database is locked" in its default journal mode.
+
+**Run one query per batch.** Each query continues after the last key of
+the one before:
+
+.. code-block:: sql
+
+    -- sql/logs/after.sql
+    SELECT id, message FROM logs WHERE id > :after ORDER BY id LIMIT :size;
+
+.. code-block:: python
+
+    with db.cursor as cur:
+        after = 0
+        while rows := cur.logs.after(after=after, size=1000).all(dict):
+            for entry in rows:
+                archive(entry)
+            cur.commit()
+            after = rows[-1]['id']
+
+This works on every database, on one connection and in autocommit. Nothing
+stays open on the server between the batches, so a job can run for as long
+as it needs to and can resume from the last key. It needs a unique, indexed
+column to sort by. There is no single snapshot: each batch sees the data as
+it is at that moment, and a row inserted with a key below ``after`` is
+missed.
 
 
 

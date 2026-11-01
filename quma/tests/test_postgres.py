@@ -448,6 +448,14 @@ def test_stream(pgdb, pgdb_persist, pgpooldb):
 
 
 @pytest.mark.postgres
+def test_stream_with_second_cursor(pgdb, pgpooldb):
+    from .test_db import stream_with_second_cursor
+
+    for db in (pgdb, pgpooldb):
+        stream_with_second_cursor(db)
+
+
+@pytest.mark.postgres
 def test_stream_closed_with_cursor(pgpooldb):
     from .test_db import stream_closed_with_cursor
 

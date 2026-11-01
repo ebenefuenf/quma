@@ -234,6 +234,14 @@ def test_stream(mydb, mydb_persist, mypooldb, mydb_dict):
 
 
 @pytest.mark.mysql
+def test_stream_with_second_cursor(mydb, mypooldb):
+    from .test_db import stream_with_second_cursor
+
+    for db in (mydb, mypooldb):
+        stream_with_second_cursor(db)
+
+
+@pytest.mark.mysql
 def test_stream_closed_with_cursor(mypooldb):
     from .test_db import stream_closed_with_cursor
 
