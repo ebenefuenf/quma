@@ -231,13 +231,20 @@ databases add some limits:
   ``autocommit=True`` raises :class:`quma.APIError`. The stream ends with
   its transaction: don't commit or roll back in the loop. The query must
   be a single ``SELECT`` or ``VALUES`` statement. Other statements can
-  run between the batches, also on the same cursor.
+  run between the batches, also on the same cursor. The stream keeps a
+  snapshot until it ends, which stops ``VACUUM`` from removing rows
+  updated or deleted in the meantime, so a stream that runs for a long
+  time on a busy database can bloat its tables.
 * MySQL and MariaDB can't run other statements on a connection while a
   stream is open on it. quma raises :class:`quma.APIError` for them,
   also for ``commit()``, ``rollback()`` and statements of other cursors
   on the same :doc:`carrier <carrier>`. Run them on a cursor with a
   connection of its own. A stream that is closed early still reads the
-  rest of the result, because the server sends it anyway.
+  rest of the result, because the server sends it anyway. If the loop
+  stops reading for longer than ``net_write_timeout`` (60 seconds by
+  default), the server can drop the connection (error 2013). For a slow
+  loop, run ``SET SESSION net_write_timeout = 600`` on the cursor before
+  the stream starts.
 
 If these limits get in the way, read the result with :meth:`many()`,
 which doesn't save the memory.
