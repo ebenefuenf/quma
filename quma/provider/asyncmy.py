@@ -6,10 +6,7 @@ try:
         SSCursor,
         SSDictCursor,
     )
-    from asyncmy.errors import (
-        Error,
-        OperationalError,
-    )
+    from asyncmy.errors import Error
 except ImportError as e:
     raise ImportError(
         "In order to use quma with asyncmy you need to install asyncmy"
@@ -17,12 +14,14 @@ except ImportError as e:
 
 from .. import (
     conn,
+    errors,
     exc,
 )
 
 
 class AsyncConnection(conn.AsyncConnection):
     dialect = "mysql"
+    driver_error = Error
 
     def __init__(self, url, **kwargs):
         super().__init__(url, kwargs)
@@ -63,8 +62,8 @@ class AsyncConnection(conn.AsyncConnection):
                 cursor_cls=self.cursor_factory,
                 **kwargs,
             )
-        except OperationalError as e:
-            raise exc.ConnectionError(e) from e
+        except Error as e:
+            raise errors.connection_error(e, self.dialect) from e
         return await self.disable_autocommit(conn)
 
     async def enable_autocommit_if(self, autocommit, conn):
@@ -94,4 +93,4 @@ class AsyncConnection(conn.AsyncConnection):
         try:
             await conn.ping(reconnect=False)
         except Error as e:
-            raise exc.OperationalError from e
+            raise exc.ConnectionLost(str(e)) from e

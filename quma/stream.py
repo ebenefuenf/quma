@@ -11,6 +11,10 @@ from typing import (
 )
 
 from . import exc
+from .errors import (
+    new_cursor,
+    translating,
+)
 from .hooks import observed
 
 if TYPE_CHECKING:
@@ -108,7 +112,9 @@ class BaseStream:
         return content, params
 
     def _open(self) -> None:
-        self.raw = self.conn.stream_cursor(self.raw_conn)
+        self.raw = new_cursor(
+            self.conn, self.conn.stream_cursor, self.raw_conn
+        )
         with _lock:
             _streams.setdefault(id(self.raw_conn), []).append(self)
 
@@ -144,7 +150,11 @@ class BaseStream:
         return self.done
 
     def _attr(self, key: str) -> Any:
-        return self.conn.get_cursor_attr(self.raw, key)
+        return translating(
+            self.conn,
+            self.conn.get_cursor_attr(self.raw, key),
+            self.query.script.name,
+        )
 
     def mogrify(self, content: str, params: Params) -> str:
         return self.conn.mogrify(self.raw, content, params)

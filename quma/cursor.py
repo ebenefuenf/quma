@@ -24,6 +24,10 @@ from .conn import (
     RawConnection,
     RawCursor,
 )
+from .errors import (
+    new_cursor,
+    translating,
+)
 from .hooks import (
     OnExecute,
     observed,
@@ -80,6 +84,8 @@ class RawCursorWrapper:
         self._on_execute = on_execute
         # Tells a query whether the cursor still holds its result.
         self.executions = 0
+        # What an error while fetching belongs to.
+        self._script: str | None = None
 
     def execute(self, *args: Any, **kwargs: Any) -> Any:
         return self._run("execute", args, kwargs)
@@ -100,7 +106,10 @@ class RawCursorWrapper:
     ) -> Any:
         check_idle(self.raw_conn)
         self.executions += 1
-        call = self.conn.get_cursor_attr(self.cursor, name)
+        self._script = script
+        call = translating(
+            self.conn, self.conn.get_cursor_attr(self.cursor, name), script
+        )
         return observed(
             self._on_execute, script, call, args, kwargs, self._rowcount
         )
@@ -110,7 +119,10 @@ class RawCursorWrapper:
         return None if rowcount < 0 else rowcount
 
     def __getattr__(self, key: str) -> Any:
-        return self.conn.get_cursor_attr(self.cursor, key)
+        value = self.conn.get_cursor_attr(self.cursor, key)
+        if callable(value) and not isinstance(value, type):
+            return translating(self.conn, value, self._script)
+        return value
 
 
 class BaseCursor(Generic[ConnT]):
@@ -145,7 +157,7 @@ class BaseCursor(Generic[ConnT]):
         return None
 
     def _attach(self, conn: ConnT, raw_conn: RawConnection) -> None:
-        raw_cursor = conn.cursor(raw_conn)
+        raw_cursor = new_cursor(conn, conn.cursor, raw_conn)
         if self.carrier and self.carrier.ended:
             # Released while this cursor opened: the connection is its own.
             self.carrier = None
@@ -193,6 +205,10 @@ class BaseCursor(Generic[ConnT]):
         raw_conn = self._raw_conn()
         check_no_block(raw_conn)
         return raw_conn
+
+    def _end_transaction(self, method: str) -> Any:
+        raw_conn = self._commit_conn()
+        return translating(self._conn(), getattr(raw_conn, method))()
 
     def _context_ends_transaction(self) -> bool:
         # A carried cursor inside another cursor's block leaves it to the block.
@@ -290,7 +306,9 @@ class Cursor(BaseCursor[ConnectionLike]):
         return self
 
     def _attach_new(self, conn: ConnectionLike, autocommit: bool) -> None:
-        raw_conn = conn.get(autocommit=self._autocommit(autocommit))
+        raw_conn = translating(conn, conn.get)(
+            autocommit=self._autocommit(autocommit)
+        )
         try:
             self._attach(conn, raw_conn)
         except BaseException:
@@ -336,10 +354,10 @@ class Cursor(BaseCursor[ConnectionLike]):
         super()._lose_carried()
 
     def commit(self) -> None:
-        self._commit_conn().commit()
+        self._end_transaction("commit")
 
     def rollback(self) -> None:
-        self._commit_conn().rollback()
+        self._end_transaction("rollback")
 
     @contextmanager
     def transaction(self) -> Generator[None, None, None]:

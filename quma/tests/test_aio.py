@@ -288,9 +288,8 @@ async def test_contextcommit(named_sqldirs):
 
 
 async def test_failed_contextcommit_returns_connection(named_sqldirs):
-    psycopg = pytest.importorskip("psycopg")
     db = AsyncDatabase(POOL_URI, size=1, contextcommit=True)
-    with pytest.raises(psycopg.IntegrityError):
+    with pytest.raises(exc.IntegrityError):
         async with db.cursor as cur:
             await cur.execute(
                 "CREATE TEMP TABLE deferred "
@@ -465,8 +464,7 @@ async def test_execute(adb):
     await adb.execute("INSERT INTO test VALUES (1), (2)")
     rows = await adb.execute("SELECT id FROM test ORDER BY id")
     assert [row[0] for row in rows] == [1, 2]
-    psycopg = pytest.importorskip("psycopg")
-    with pytest.raises(psycopg.errors.UndefinedTable):
+    with pytest.raises(exc.ProgrammingError):
         await adb.execute("SELECT * FROM missing_table")
 
 
@@ -527,12 +525,11 @@ async def test_sync_and_async_database_together(named_sqldirs):
 
 @pytest.mark.parametrize("contextcommit", [False, True])
 async def test_lost_connection(contextcommit):
-    psycopg = pytest.importorskip("psycopg")
     db = AsyncDatabase(
         POOL_URI, size=1, overflow=0, timeout=0.1, contextcommit=contextcommit
     )
     killer = AsyncDatabase(URI)
-    with pytest.raises(psycopg.OperationalError):
+    with pytest.raises(exc.ConnectionLost):
         async with db.cursor as cur:
             await cur.execute("SELECT pg_backend_pid()")
             pid = (await cur.fetchone())[0]
@@ -546,13 +543,12 @@ async def test_lost_connection(contextcommit):
 
 
 async def test_failed_cursor_returns_connection(apooldb):
-    psycopg = pytest.importorskip("psycopg")
     async with apooldb.cursor as cur:
         raw_conn = cur.raw_conn
     assert raw_conn is not None
     await raw_conn.close()
     carrier = SimpleNamespace()
-    with pytest.raises(psycopg.Error):
+    with pytest.raises(exc.DatabaseError):
         async with apooldb(carrier).cursor:
             pass
     assert apooldb.heap.get(carrier).conn is None

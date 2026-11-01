@@ -9,7 +9,10 @@ from typing import (
 )
 from urllib.parse import ParseResult
 
-from . import exc
+from . import (
+    errors,
+    exc,
+)
 from .stream import (
     aclose_streams,
     close_streams,
@@ -32,6 +35,13 @@ class BaseConnectionLike(Protocol):
 
     @property
     def dialect(self) -> str: ...
+
+    @property
+    def driver_error(self) -> type[Exception]: ...
+
+    def translate(
+        self, error: Exception, script: str | None = None
+    ) -> exc.DatabaseError: ...
 
     def cursor(self, conn: RawConnection) -> RawCursor: ...
 
@@ -81,8 +91,11 @@ class BaseConnection:
     """Abstract base class for DBMS specific connection objects: the
     options and the methods that do no I/O."""
 
-    # How quma converts placeholders: "postgresql", "mysql" or "sqlite".
+    # How quma converts placeholders and reads error codes: "postgresql",
+    # "mysql" or "sqlite".
     dialect: str
+    # The base class of the driver's exceptions.
+    driver_error: type[Exception]
 
     def __init__(self, url: ParseResult, kwargs: dict[str, Any]) -> None:
         # kwargs are the **kwargs passed to the specific provider
@@ -99,6 +112,11 @@ class BaseConnection:
         self.pessimistic: bool = kwargs.pop("pessimistic", False)
         self.has_rowcount = True
         self.dbapi_kwargs = kwargs
+
+    def translate(
+        self, error: Exception, script: str | None = None
+    ) -> exc.DatabaseError:
+        return errors.translate(error, self.dialect, script)
 
     def cursor(self, conn: RawConnection) -> RawCursor:
         return conn.cursor()
@@ -158,7 +176,7 @@ class Connection(BaseConnection):
             if self.pessimistic:
                 try:
                     self.check()
-                except exc.OperationalError:
+                except exc.ConnectionLost:
                     self.discard(self.conn)
                     self.conn = self.create_conn(**self.dbapi_kwargs)
             return self.enable_autocommit_if(autocommit, self.conn)
@@ -260,7 +278,7 @@ class AsyncConnection(BaseConnection):
             elif self.pessimistic:
                 try:
                     await self._check(self.conn)
-                except exc.OperationalError:
+                except exc.ConnectionLost:
                     await self.discard(self.conn)
                     # A failed reconnect must not keep the discarded one.
                     self.conn = None

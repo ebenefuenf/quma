@@ -159,10 +159,7 @@ class Query(BaseQuery):
             self.run()
         if self._result_cache is None:
             self._check_result()
-            try:
-                self._result_cache = self.cursor.fetchall()
-            except exc.FetchError as e:
-                raise e.error from e
+            self._result_cache = self.cursor.fetchall()
             self._description = self.cursor.description
         return self._result_cache
 

@@ -2,6 +2,7 @@ import sqlite3
 
 from .. import (
     conn,
+    errors,
     exc,
 )
 
@@ -56,6 +57,7 @@ class SQLiteChangelingRow(sqlite3.Row):
 
 class Connection(conn.Connection):
     dialect = "sqlite"
+    driver_error = sqlite3.Error
 
     def __init__(self, url, **kwargs):
         super().__init__(url, kwargs)
@@ -71,7 +73,7 @@ class Connection(conn.Connection):
         try:
             conn = sqlite3.connect(database=self.database, **kwargs)
         except sqlite3.Error as e:
-            raise exc.ConnectionError(e) from e
+            raise errors.connection_error(e, self.dialect) from e
         if self.changeling:
             conn.row_factory = SQLiteChangelingRow
         return self.disable_autocommit(conn)
@@ -95,7 +97,5 @@ class Connection(conn.Connection):
         try:
             cur = conn.cursor()
             cur.execute("SELECT 1")
-        except sqlite3.ProgrammingError as e:
-            raise exc.OperationalError from e
-        except sqlite3.OperationalError as e:
-            raise exc.OperationalError from e
+        except (sqlite3.ProgrammingError, sqlite3.OperationalError) as e:
+            raise exc.ConnectionLost(str(e)) from e

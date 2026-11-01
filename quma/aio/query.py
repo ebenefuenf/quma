@@ -11,7 +11,6 @@ from typing import (
     overload,
 )
 
-from .. import exc
 from ..conn import Row
 from ..mapping import (
     T,
@@ -83,10 +82,7 @@ class AsyncQuery(BaseQuery):
             await self.run()
         if self._result_cache is None:
             self._check_result()
-            try:
-                self._result_cache = await self.cursor.fetchall()
-            except exc.FetchError as e:
-                raise e.error from e
+            self._result_cache = await self.cursor.fetchall()
             self._description = self.cursor.description
         return self._result_cache
 

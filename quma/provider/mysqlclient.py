@@ -13,6 +13,7 @@ except ImportError as e:
 
 from .. import (
     conn,
+    errors,
     exc,
 )
 
@@ -22,6 +23,7 @@ TRANSACTION_IN_PROGRESS = 1568
 
 class Connection(conn.Connection):
     dialect = "mysql"
+    driver_error = MySQLdb.Error
 
     def __init__(self, url, **kwargs):
         super().__init__(url, kwargs)
@@ -52,8 +54,8 @@ class Connection(conn.Connection):
                 cursorclass=self.cursor_factory,
                 **kwargs,
             )
-        except MySQLdb.OperationalError as e:
-            raise exc.ConnectionError(e) from e
+        except MySQLdb.Error as e:
+            raise errors.connection_error(e, self.dialect) from e
         return self.disable_autocommit(conn)
 
     def enable_autocommit_if(self, autocommit, conn):
@@ -91,4 +93,4 @@ class Connection(conn.Connection):
             cur = conn.cursor()
             cur.execute("SELECT 1")
         except MySQLdb.OperationalError as e:
-            raise exc.OperationalError from e
+            raise exc.ConnectionLost(str(e)) from e

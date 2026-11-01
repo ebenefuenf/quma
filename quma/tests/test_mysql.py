@@ -4,6 +4,7 @@ from .. import (
     APIError,
     Database,
     PlaceholderError,
+    exc,
 )
 from . import util
 
@@ -143,8 +144,8 @@ def test_autocommit(named_sqldirs):
     autocommit(
         util.MYSQL_URI,
         named_sqldirs,
-        MySQLdb.ProgrammingError,
-        MySQLdb.OperationalError,
+        exc.ProgrammingError,
+        exc.ProgrammingError,
     )
 
 
@@ -155,8 +156,8 @@ def test_autocommit_pool(named_sqldirs):
     autocommit(
         util.MYSQL_POOL_URI,
         named_sqldirs,
-        MySQLdb.ProgrammingError,
-        MySQLdb.OperationalError,
+        exc.ProgrammingError,
+        exc.ProgrammingError,
     )
 
 
@@ -332,14 +333,14 @@ def test_execute(mydb, mypooldb_dict):
     from .test_db import execute
 
     for db in (mydb, mypooldb_dict):
-        execute(db, MySQLdb.ProgrammingError)
+        execute(db, exc.ProgrammingError)
 
 
 @pytest.mark.mysql
 def test_execute_returns_connection(mypooldb):
     from .test_db import execute_returns_connection
 
-    execute_returns_connection(mypooldb, MySQLdb.ProgrammingError)
+    execute_returns_connection(mypooldb, exc.ProgrammingError)
 
 
 @pytest.mark.mysql
@@ -385,7 +386,7 @@ def test_cursor_query(mydb, mypooldb):
 @pytest.mark.mysql
 def test_failing_later_statement_returns_connection():
     db = Database(util.MYSQL_POOL_URI, size=1, overflow=0, timeout=0.1)
-    with pytest.raises(MySQLdb.ProgrammingError):
+    with pytest.raises(exc.ProgrammingError):
         with db.cursor as cur:
             cur.execute("SELECT 1; SELECT * FROM missing_table")
             assert cur.fetchone()[0] == 1

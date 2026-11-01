@@ -279,12 +279,12 @@ async def test_execute(adb):
     rows = await adb.execute("SELECT id FROM test ORDER BY id")
     assert [row[0] for row in rows] == [1, 2]
     await adb.execute("DROP TABLE test")
-    with pytest.raises(asyncmy.errors.ProgrammingError):
+    with pytest.raises(exc.ProgrammingError):
         await adb.execute("SELECT * FROM missing_table")
 
 
 async def test_failing_later_statement_returns_connection(apooldb):
-    with pytest.raises(asyncmy.errors.ProgrammingError):
+    with pytest.raises(exc.ProgrammingError):
         async with apooldb.cursor as cur:
             await cur.execute("SELECT 1; SELECT * FROM missing_table")
             assert (await cur.fetchone())[0] == 1
@@ -319,7 +319,7 @@ async def test_lost_connection(pooled, contextcommit):
             URI, persist=True, pessimistic=True, contextcommit=contextcommit
         )
     killer = AsyncDatabase(URI)
-    with pytest.raises(asyncmy.errors.OperationalError):
+    with pytest.raises(exc.ConnectionLost):
         async with db.cursor as cur:
             await cur.execute("SELECT CONNECTION_ID()")
             pid = (await cur.fetchone())[0]

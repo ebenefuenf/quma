@@ -8,6 +8,7 @@
    usage
    query
    Mapping rows to objects <mapping>
+   Handling errors <errors>
    connecting
    pool
    async

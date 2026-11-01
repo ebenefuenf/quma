@@ -14,6 +14,7 @@ from psycopg2.extras import (
 
 from .. import (
     conn,
+    errors,
     exc,
 )
 
@@ -82,6 +83,7 @@ class PostgresChangelingCursor(DictCursor):
 
 class Connection(conn.PostgresTransactions, conn.Connection):
     dialect = "postgresql"
+    driver_error = psycopg2.Error
 
     def __init__(self, url, **kwargs):
         super().__init__(url, kwargs)
@@ -108,7 +110,7 @@ class Connection(conn.PostgresTransactions, conn.Connection):
                 except psycopg2.ProgrammingError as e:
                     if str(e) == "no results to fetch":
                         return ()
-                    raise exc.FetchError(e) from e
+                    raise
 
             return fetch
         return getattr(cursor, key)
@@ -124,8 +126,8 @@ class Connection(conn.PostgresTransactions, conn.Connection):
                 cursor_factory=self.factory,
                 **kwargs,
             )
-        except psycopg2.OperationalError as e:
-            raise exc.ConnectionError(str(e)) from e
+        except psycopg2.Error as e:
+            raise errors.connection_error(e, self.dialect) from e
 
     def enable_autocommit_if(self, autocommit, conn):
         if autocommit:
@@ -142,13 +144,13 @@ class Connection(conn.PostgresTransactions, conn.Connection):
     def _check(self, conn):
         # psycopg2 raises InterfaceError, not OperationalError, if closed.
         if conn.closed:
-            raise exc.OperationalError
+            raise exc.ConnectionLost("The connection is closed.")
         idle = conn.get_transaction_status() == TRANSACTION_STATUS_IDLE
         try:
             cur = conn.cursor()
             cur.execute("SELECT 1")
         except psycopg2.OperationalError as e:
-            raise exc.OperationalError from e
+            raise exc.ConnectionLost(str(e)) from e
         if idle:
             # End the check's transaction, it would block enabling autocommit.
             conn.rollback()

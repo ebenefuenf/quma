@@ -5,6 +5,7 @@ import pytest
 from .. import (
     APIError,
     AsyncDatabase,
+    DatabaseError,
 )
 from ..aio import AsyncPool
 from . import util
@@ -273,12 +274,11 @@ async def test_postgres_read_opens_transaction(pg):
 
 @pytest.mark.postgres
 async def test_postgres_failed_statement_prevents_commit(pg):
-    import psycopg
 
     with pytest.raises(APIError, match=ABORTED):
         async with pg.cursor as cur, cur.transaction():
             await move(cur, 1)
-            with pytest.raises(psycopg.Error):
+            with pytest.raises(DatabaseError):
                 await cur.query("SELECT 1 / 0").run()
     assert await moved(pg) == []
 

@@ -39,6 +39,20 @@ Unreleased
   the whole result when the query ran, although the docs claimed it
   avoided that. A stream has limits, see "Streaming large results": code
   that can't meet them uses ``many()``, which still loads the result.
+- **Breaking:** quma raises its own exceptions instead of the driver's, so
+  the same failure raises the same exception with every driver:
+  ``quma.UniqueViolation``, ``ForeignKeyViolation``, ``NotNullViolation``,
+  ``CheckViolation`` and ``ExclusionViolation`` under ``IntegrityError``, and
+  ``DataError``, ``ProgrammingError``, ``RaisedError``,
+  ``TransactionConflict`` and ``ConnectionLost``, all under
+  ``DatabaseError``. Before, for example, a CHECK violation was an
+  ``IntegrityError`` on PostgreSQL and an ``OperationalError`` on MySQL. So
+  ``except psycopg2.IntegrityError`` no longer catches a failing statement.
+  The exceptions hold ``code``, ``constraint`` and ``script``, and the
+  driver's exception is their ``__cause__``, for example
+  ``e.__cause__.diag``. ``ConnectionError`` is now a ``DatabaseError`` and
+  also covers an invalid connection option. ``FetchError`` and
+  ``OperationalError`` are gone. See "Handling errors".
 - A list, tuple or set after ``IN`` or ``NOT IN``, like ``WHERE id IN :ids``,
   works with every driver: quma sends one placeholder per element. Before,
   it depended on the driver and failed on psycopg and SQLite. An empty list

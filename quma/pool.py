@@ -9,15 +9,12 @@ from collections import deque
 from typing import Any
 from urllib.parse import ParseResult
 
+from . import exc
 from .conn import (
     Connection,
     Params,
     RawConnection,
     RawCursor,
-)
-from .exc import (
-    OperationalError,
-    TimeoutError,
 )
 
 
@@ -89,7 +86,7 @@ class Pool:
         if self._slots is None:
             return
         if not self._slots.acquire(timeout=self._timeout):
-            raise TimeoutError(
+            raise exc.TimeoutError(
                 f"QueuePool limit of size {self._size} overflow "
                 f"{self._max_overflow} reached, connection timed out, "
                 f"timeout {self._timeout}"
@@ -108,7 +105,7 @@ class Pool:
             if self._pessimistic:
                 self._conn.check(conn)
             return self._conn.enable_autocommit_if(autocommit, conn)
-        except OperationalError:
+        except exc.ConnectionLost:
             self._drop(conn)
             return self._new(autocommit)
         except BaseException:
@@ -125,6 +122,15 @@ class Pool:
         with self._lock:
             self._opened -= 1
         self._conn.discard(conn)
+
+    @property
+    def driver_error(self) -> type[Exception]:
+        return self._conn.driver_error
+
+    def translate(
+        self, error: Exception, script: str | None = None
+    ) -> exc.DatabaseError:
+        return self._conn.translate(error, script)
 
     def cursor(self, conn: RawConnection) -> RawCursor:
         return conn.cursor()

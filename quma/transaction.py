@@ -8,6 +8,10 @@ from typing import (
 )
 
 from . import exc
+from .errors import (
+    new_cursor,
+    translating,
+)
 from .stream import (
     check_idle,
     streams,
@@ -56,7 +60,7 @@ class BaseBlock:
         self.savepoint: str | None = None
         if in_block(self.raw_conn):
             self.savepoint = f"quma_{uuid.uuid4().hex}"
-        elif self.conn.in_transaction(self.raw_conn):
+        elif translating(self.conn, self.conn.in_transaction)(self.raw_conn):
             raise exc.APIError(
                 "A transaction is already open on this connection, so a "
                 "transaction block can't own it. Even a SELECT can open one. "
@@ -109,6 +113,9 @@ class BaseBlock:
                 "nested block."
             )
 
+    def _driver(self, call: Any) -> Any:
+        return translating(self.conn, call)
+
     def _blocking_streams(self) -> list[Any]:
         return [s for s in streams(self.raw_conn) if s.blocks]
 
@@ -134,7 +141,7 @@ class Block(BaseBlock):
         self._check_commit()
         self._run(self._commit_statements())
         if self._driver_ends:
-            self.raw_conn.commit()
+            self._driver(self.raw_conn.commit)()
 
     def rollback(self) -> None:
         if self.ended:
@@ -143,13 +150,15 @@ class Block(BaseBlock):
             stream.close()
         self._run(self._rollback_statements())
         if self._driver_ends:
-            self.raw_conn.rollback()
+            self._driver(self.raw_conn.rollback)()
 
     def _run(self, statements: tuple[str, ...]) -> None:
         # A cursor of its own: the query's cursor may hold an unread result.
         for statement in statements:
-            raw = self.conn.cursor(self.raw_conn)
+            raw = new_cursor(self.conn, self.conn.cursor, self.raw_conn)
             try:
-                self.conn.get_cursor_attr(raw, "execute")(statement)
+                self._driver(self.conn.get_cursor_attr(raw, "execute"))(
+                    statement
+                )
             finally:
-                raw.close()
+                self._driver(raw.close)()

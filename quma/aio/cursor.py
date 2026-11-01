@@ -28,6 +28,7 @@ from ..conn import (
     Params,
 )
 from ..cursor import BaseCursor
+from ..errors import translating
 from ..namespace import Namespace
 from ..script import (
     PrepareParams,
@@ -128,7 +129,9 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
     async def _attach_new(
         self, conn: AsyncConnectionLike, autocommit: bool
     ) -> None:
-        raw_conn = await conn.get(autocommit=self._autocommit(autocommit))
+        raw_conn = await translating(conn, conn.get)(
+            autocommit=self._autocommit(autocommit)
+        )
         try:
             self._attach(conn, raw_conn)
         except BaseException:
@@ -164,10 +167,10 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         self._open = False
 
     async def commit(self) -> None:
-        await self._guarded(lambda: self._commit_conn().commit())
+        await self._guarded(lambda: self._end_transaction("commit"))
 
     async def rollback(self) -> None:
-        await self._guarded(lambda: self._commit_conn().rollback())
+        await self._guarded(lambda: self._end_transaction("rollback"))
 
     @asynccontextmanager
     async def transaction(self) -> AsyncGenerator[None, None]:

@@ -1,4 +1,3 @@
-import sqlite3
 import threading
 
 import pytest
@@ -1038,7 +1037,7 @@ def close_twice(pooldb):
 
 
 def test_execute(db):
-    execute(db, sqlite3.OperationalError)
+    execute(db, exc.ProgrammingError)
 
 
 def test_count_runs_query_once(db):

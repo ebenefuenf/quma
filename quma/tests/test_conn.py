@@ -61,10 +61,10 @@ def test_failing_check():
     conn = connect_single(util.SQLITE_MEMORY, persist=True, pessimistic=True)
     connmock = Mock()
     connmock.cursor = get_cursor_mock(sqlite3.ProgrammingError)
-    with pytest.raises(exc.OperationalError):
+    with pytest.raises(exc.ConnectionLost):
         conn._check(connmock)
     connmock.cursor = get_cursor_mock(sqlite3.OperationalError)
-    with pytest.raises(exc.OperationalError):
+    with pytest.raises(exc.ConnectionLost):
         conn._check(connmock)
     conn.close()
 
@@ -75,7 +75,7 @@ def test_persistent_pessimistic(dbpess):
     with dbpess.cursor as cursor:
         assert cn is cursor.raw_conn
     dbpess.conn._check = Mock()
-    dbpess.conn._check.side_effect = exc.OperationalError
+    dbpess.conn._check.side_effect = exc.ConnectionLost
     with dbpess.cursor as cursor:
         assert cn is not cursor.raw_conn
     with pytest.raises(sqlite3.ProgrammingError):
@@ -226,7 +226,7 @@ def pessimistic_failure(uri):
     assert c1 == c2
     conn.put(c2)
     conn._conn.check = Mock()
-    conn._conn.check.side_effect = exc.OperationalError
+    conn._conn.check.side_effect = exc.ConnectionLost
     c1 = conn.get()
     conn.put(c1)
     c2 = conn.get()
@@ -347,7 +347,7 @@ def test_postgres_failed_cursor_returns_connection(pgdriver):
     assert raw_conn is not None
     raw_conn.close()
     carrier = SimpleNamespace()
-    with pytest.raises(pgdriver.dbapi.Error):
+    with pytest.raises(exc.DatabaseError):
         with db(carrier).cursor:
             pass
     assert db.heap.get(carrier).conn is None
@@ -489,7 +489,7 @@ def test_postgres_lost_connection(pgdriver, pooled, contextcommit):
         Database(pgdriver.uri),
         "SELECT pg_backend_pid()",
         "SELECT pg_terminate_backend({pid}, 5000)",
-        pgdriver.dbapi.OperationalError,
+        exc.ConnectionLost,
     )
 
 
@@ -497,7 +497,6 @@ def test_postgres_lost_connection(pgdriver, pooled, contextcommit):
 @pytest.mark.parametrize("contextcommit", [False, True])
 @pytest.mark.parametrize("pooled", [True, False])
 def test_mysql_lost_connection(pooled, contextcommit):
-    import MySQLdb
 
     if pooled:
         db = Database(
@@ -519,7 +518,7 @@ def test_mysql_lost_connection(pooled, contextcommit):
         Database(util.MYSQL_URI),
         "SELECT CONNECTION_ID()",
         "KILL {pid}",
-        MySQLdb.OperationalError,
+        exc.ConnectionLost,
     )
 
 
@@ -625,7 +624,7 @@ def failing_check(uri, error):
     conn = connect_single(uri, pessimistic=True)
     connmock = Mock()
     connmock.cursor = get_cursor_mock(error)
-    with pytest.raises(exc.OperationalError):
+    with pytest.raises(exc.ConnectionLost):
         conn._check(connmock)
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from ..errors import new_cursor
 from ..transaction import BaseBlock
 
 
@@ -14,7 +15,7 @@ class AsyncBlock(BaseBlock):
         statements = self._commit_statements()
         await self.cursor._guarded(lambda: self._run(statements))
         if self._driver_ends:
-            await self.cursor._guarded(self.raw_conn.commit)
+            await self.cursor._guarded(self._driver(self.raw_conn.commit))
 
     async def rollback(self) -> None:
         if not self.ended:
@@ -25,12 +26,14 @@ class AsyncBlock(BaseBlock):
             await stream.close()
         await self._run(self._rollback_statements())
         if self._driver_ends:
-            await self.raw_conn.rollback()
+            await self._driver(self.raw_conn.rollback)()
 
     async def _run(self, statements: tuple[str, ...]) -> None:
         for statement in statements:
-            raw = self.conn.cursor(self.raw_conn)
+            raw = new_cursor(self.conn, self.conn.cursor, self.raw_conn)
             try:
-                await self.conn.get_cursor_attr(raw, "execute")(statement)
+                await self._driver(self.conn.get_cursor_attr(raw, "execute"))(
+                    statement
+                )
             finally:
-                await raw.close()
+                await self._driver(raw.close)()

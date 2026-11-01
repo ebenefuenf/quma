@@ -10,8 +10,8 @@ from .. import (
     APIError,
     Database,
     PlaceholderError,
+    exc,
 )
-from ..exc import FetchError
 from ..pool import Pool
 from . import util
 
@@ -39,7 +39,7 @@ def test_cursor(pgdb, pgpooldb):
 @pytest.mark.postgres
 def test_failed_contextcommit_returns_connection(pgdriver):
     db = Database(pgdriver.pool_uri, size=1, contextcommit=True)
-    with pytest.raises(pgdriver.dbapi.IntegrityError), db.cursor as cur:
+    with pytest.raises(exc.IntegrityError), db.cursor as cur:
         cur.execute(
             "CREATE TEMP TABLE deferred "
             "(id integer UNIQUE DEFERRABLE INITIALLY DEFERRED)"
@@ -89,7 +89,7 @@ def test_release_ends_the_carrier(pgdriver):
     stale = wrapper.cursor()
     released = stale.raw_conn
     db.release(request)
-    with pytest.raises(pgdriver.dbapi.Error):
+    with pytest.raises(exc.DatabaseError):
         stale.execute("SELECT 1")
     with db.cursor as other:
         assert other.raw_conn is released
@@ -248,8 +248,8 @@ def test_autocommit(pgdriver, named_sqldirs):
     autocommit(
         pgdriver.uri,
         named_sqldirs,
-        pgdriver.dbapi.ProgrammingError,
-        pgdriver.dbapi.ProgrammingError,
+        exc.ProgrammingError,
+        exc.ProgrammingError,
     )
 
 
@@ -260,8 +260,8 @@ def test_autocommit_pool(pgdriver, named_sqldirs):
     autocommit(
         pgdriver.pool_uri,
         named_sqldirs,
-        pgdriver.dbapi.ProgrammingError,
-        pgdriver.dbapi.ProgrammingError,
+        exc.ProgrammingError,
+        exc.ProgrammingError,
     )
 
 
@@ -323,15 +323,14 @@ def test_faulty_fetch(pgdburl):
         raise psycopg2.ProgrammingError("test error")
 
     cursor = SimpleNamespace(fetchall=fetch, fetchmany=fetch)
-    with pytest.raises(FetchError) as e:
+    with pytest.raises(psycopg2.ProgrammingError, match="test error"):
         cn.get_cursor_attr(cursor, "fetchall")()
-    assert str(e.value.error) == "test error"
-    with pytest.raises(FetchError) as e:
+    with pytest.raises(psycopg2.ProgrammingError, match="test error"):
         cn.get_cursor_attr(cursor, "fetchmany")()
 
 
 @pytest.mark.postgres
-def test_get_cursor_attr(named_sqldirs, monkeypatch):
+def test_get_cursor_attr(named_sqldirs):
     psycopg2 = pytest.importorskip("psycopg2")
     pgdb = Database(util.PGSQL_URI, named_sqldirs, changeling=True)
     conn = pgdb.conn
@@ -344,22 +343,8 @@ def test_get_cursor_attr(named_sqldirs, monkeypatch):
     )
     assert conn.get_cursor_attr(cursor, "fetchall")() == ()
     cursor.fetchall.side_effect = psycopg2.ProgrammingError("test")
-    with pytest.raises(FetchError) as e:
+    with pytest.raises(psycopg2.ProgrammingError, match="test"):
         conn.get_cursor_attr(cursor, "fetchall")()
-    assert str(e.value.error) == "test"
-
-    # Test Script._fetch except
-    with pgdb.cursor as cursor:
-        raw_cursor = cursor.raw_cursor
-        assert raw_cursor is not None
-        fetchall = Mock(
-            side_effect=FetchError(psycopg2.ProgrammingError("pg-exc-test"))
-        )
-        fetchall.__name__ = "fetchall"
-        monkeypatch.setattr(raw_cursor, "fetchall", fetchall, raising=False)
-        with pytest.raises(psycopg2.ProgrammingError) as e:
-            pgdb.users.all(cursor).first()
-        assert str(e.value) == "pg-exc-test"
 
 
 @pytest.mark.postgres
@@ -374,9 +359,8 @@ def test_psycopg_get_cursor_attr(named_sqldirs):
     assert conn.get_cursor_attr(cursor, "fetchall")() == ()
     cursor.description = [Mock()]
     cursor.fetchall.side_effect = psycopg.ProgrammingError("test")
-    with pytest.raises(FetchError) as e:
+    with pytest.raises(psycopg.ProgrammingError, match="test"):
         conn.get_cursor_attr(cursor, "fetchall")()
-    assert str(e.value.error) == "test"
 
 
 @pytest.mark.postgres
@@ -522,14 +506,14 @@ def test_execute(pgdriver, pgdb, pgpooldb):
     from .test_db import execute
 
     for db in (pgdb, pgpooldb):
-        execute(db, pgdriver.dbapi.ProgrammingError)
+        execute(db, exc.ProgrammingError)
 
 
 @pytest.mark.postgres
 def test_execute_returns_connection(pgdriver, pgpooldb):
     from .test_db import execute_returns_connection
 
-    execute_returns_connection(pgpooldb, pgdriver.dbapi.ProgrammingError)
+    execute_returns_connection(pgpooldb, exc.ProgrammingError)
 
 
 @pytest.mark.postgres

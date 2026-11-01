@@ -13,22 +13,89 @@ class DoesNotExistError(Exception):
     pass
 
 
-class OperationalError(Exception):
-    pass
-
-
-class FetchError(Exception):
-    def __init__(self, error: Exception) -> None:
-        super().__init__()
-        self.error = error
-
-
 class TimeoutError(Exception):
     """Raised when a connection pool times out on getting a connection."""
 
 
-class ConnectionError(Exception):
-    pass
+class DatabaseError(Exception):
+    """Anything the database or the driver reports. See
+    :doc:`Handling errors <errors>`.
+
+    :param message: The message of the database or the driver.
+    :param code: The code of the database: an SQLSTATE like ``'23505'`` on
+        PostgreSQL, an error number like ``1062`` on MySQL and MariaDB, a
+        name like ``'SQLITE_CONSTRAINT_UNIQUE'`` on SQLite. ``None`` if the
+        error has none.
+    :param constraint: The name of the violated constraint, or ``None`` if
+        it isn't known.
+    :param script: The name of the script that failed, like ``users/add``,
+        or ``None`` if the statement doesn't come from a script file.
+    """
+
+    def __init__(
+        self,
+        message: object = "",
+        *,
+        code: str | int | None = None,
+        constraint: str | None = None,
+        script: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.constraint = constraint
+        self.script = script
+
+
+class IntegrityError(DatabaseError):
+    """A statement violated a constraint."""
+
+
+class UniqueViolation(IntegrityError):
+    """A unique or primary key constraint was violated."""
+
+
+class ForeignKeyViolation(IntegrityError):
+    """A foreign key constraint was violated."""
+
+
+class NotNullViolation(IntegrityError):
+    """A column that can't be empty was left empty."""
+
+
+class CheckViolation(IntegrityError):
+    """A check constraint was violated."""
+
+
+class ExclusionViolation(IntegrityError):
+    """An exclusion constraint was violated (PostgreSQL)."""
+
+
+class DataError(DatabaseError):
+    """A value doesn't fit: too long, out of range or of the wrong type."""
+
+
+class ProgrammingError(DatabaseError):
+    """The statement can't run: a syntax error, a missing table or column,
+    a missing permission."""
+
+
+class RaisedError(DatabaseError):
+    """SQL raised the error itself: ``RAISE EXCEPTION`` on PostgreSQL,
+    ``SIGNAL`` on MySQL and MariaDB, ``RAISE()`` on SQLite."""
+
+
+class TransactionConflict(DatabaseError):
+    """Another transaction got in the way: a deadlock, a serialization
+    failure or a lock that wasn't free in time. Roll back and try the
+    transaction again."""
+
+
+class ConnectionError(DatabaseError):
+    """The connection to the database can't be opened."""
+
+
+class ConnectionLost(ConnectionError):
+    """The connection to the database broke."""
 
 
 class PlaceholderError(Exception):

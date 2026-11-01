@@ -100,7 +100,7 @@ class AsyncPool:
             if self._pessimistic:
                 await self._conn.check(conn)
             return await self._conn.enable_autocommit_if(autocommit, conn)
-        except exc.OperationalError:
+        except exc.ConnectionLost:
             await self._drop(conn)
             return await self._new(autocommit)
         except BaseException:
@@ -115,6 +115,15 @@ class AsyncPool:
     async def _drop(self, conn: RawConnection) -> None:
         self._opened -= 1
         await self._conn.discard(conn)
+
+    @property
+    def driver_error(self) -> type[Exception]:
+        return self._conn.driver_error
+
+    def translate(
+        self, error: Exception, script: str | None = None
+    ) -> exc.DatabaseError:
+        return self._conn.translate(error, script)
 
     def cursor(self, conn: RawConnection) -> RawCursor:
         return self._conn.cursor(conn)

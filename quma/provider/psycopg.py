@@ -11,6 +11,7 @@ from psycopg.pq import TransactionStatus
 
 from .. import (
     conn,
+    errors,
     exc,
 )
 
@@ -137,6 +138,7 @@ class AsyncCursor(psycopg.AsyncClientCursor):
 
 class BaseConnection(conn.PostgresTransactions, conn.BaseConnection):
     dialect = "postgresql"
+    driver_error = psycopg.Error
 
     def __init__(self, url, **kwargs):
         super().__init__(url, kwargs)
@@ -159,15 +161,6 @@ class BaseConnection(conn.PostgresTransactions, conn.BaseConnection):
             **kwargs,
         )
 
-    def no_result(self, cursor, error):
-        # PostgreSQL drivers raise an error when fetchall is called
-        # after a CREATE, INSERT, UPDATE and so on. mysqlclient and
-        # sqlite3 return an empty tuple. We do it that way too to
-        # provide an uniform api.
-        if cursor.description is None:
-            return ()
-        raise exc.FetchError(error) from error
-
 
 class Connection(BaseConnection, conn.Connection):
     def __init__(self, url, **kwargs):
@@ -180,8 +173,14 @@ class Connection(BaseConnection, conn.Connection):
             def fetch(*args, **kwargs):
                 try:
                     return getattr(cursor, key)(*args, **kwargs)
-                except psycopg.ProgrammingError as e:
-                    return self.no_result(cursor, e)
+                except psycopg.ProgrammingError:
+                    # PostgreSQL drivers raise an error when fetchall is
+                    # called after a CREATE, INSERT, UPDATE and so on.
+                    # mysqlclient and sqlite3 return an empty tuple. We do
+                    # it that way too to provide an uniform api.
+                    if cursor.description is None:
+                        return ()
+                    raise
 
             return fetch
         return getattr(cursor, key)
@@ -191,8 +190,8 @@ class Connection(BaseConnection, conn.Connection):
             return psycopg.connect(
                 cursor_factory=Cursor, **self.connect_kwargs(kwargs)
             )
-        except psycopg.OperationalError as e:
-            raise exc.ConnectionError(str(e)) from e
+        except psycopg.Error as e:
+            raise errors.connection_error(e, self.dialect) from e
 
     def enable_autocommit_if(self, autocommit, conn):
         if autocommit:
@@ -214,7 +213,7 @@ class Connection(BaseConnection, conn.Connection):
             cur = conn.cursor()
             cur.execute("SELECT 1")
         except psycopg.OperationalError as e:
-            raise exc.OperationalError from e
+            raise exc.ConnectionLost(str(e)) from e
         if idle:
             # End the check's transaction, it would block enabling autocommit.
             conn.rollback()
@@ -227,8 +226,10 @@ class AsyncConnection(BaseConnection, conn.AsyncConnection):
             async def fetch(*args, **kwargs):
                 try:
                     return await getattr(cursor, key)(*args, **kwargs)
-                except psycopg.ProgrammingError as e:
-                    return self.no_result(cursor, e)
+                except psycopg.ProgrammingError:
+                    if cursor.description is None:
+                        return ()
+                    raise
 
             return fetch
         return getattr(cursor, key)
@@ -238,8 +239,8 @@ class AsyncConnection(BaseConnection, conn.AsyncConnection):
             return await psycopg.AsyncConnection.connect(
                 cursor_factory=AsyncCursor, **self.connect_kwargs(kwargs)
             )
-        except psycopg.OperationalError as e:
-            raise exc.ConnectionError(str(e)) from e
+        except psycopg.Error as e:
+            raise errors.connection_error(e, self.dialect) from e
 
     async def enable_autocommit_if(self, autocommit, conn):
         if autocommit:
@@ -263,7 +264,7 @@ class AsyncConnection(BaseConnection, conn.AsyncConnection):
             cur = conn.cursor()
             await cur.execute("SELECT 1")
         except psycopg.OperationalError as e:
-            raise exc.OperationalError from e
+            raise exc.ConnectionLost(str(e)) from e
         if idle:
             # End the check's transaction, it would block enabling autocommit.
             await conn.rollback()

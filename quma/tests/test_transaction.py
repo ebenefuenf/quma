@@ -3,6 +3,7 @@ import pytest
 from .. import (
     APIError,
     Database,
+    DatabaseError,
 )
 from ..pool import Pool
 from . import util
@@ -402,7 +403,7 @@ def test_postgres_failed_statement_prevents_commit(pg, pgdriver):
     with pytest.raises(APIError, match=ABORTED):
         with pg.cursor as cur, cur.transaction():
             move(cur, 1)
-            with pytest.raises(pgdriver.dbapi.Error):
+            with pytest.raises(DatabaseError):
                 cur.query("SELECT 1 / 0").run()
     assert moved(pg) == []
 
@@ -411,14 +412,14 @@ def test_postgres_failed_statement_prevents_commit(pg, pgdriver):
 def test_postgres_nested_recovers_from_failed_statement(pg, pgdriver):
     with pg.cursor as cur, cur.transaction():
         move(cur, 1)
-        with pytest.raises(pgdriver.dbapi.Error):
+        with pytest.raises(DatabaseError):
             with cur.transaction():
                 move(cur, 2)
                 cur.query("SELECT 1 / 0").run()
         with pytest.raises(APIError, match=ABORTED):
             with cur.transaction():
                 move(cur, 3)
-                with pytest.raises(pgdriver.dbapi.Error):
+                with pytest.raises(DatabaseError):
                     cur.query("SELECT 1 / 0").run()
         move(cur, 4)
     assert moved(pg) == [1, 4]
@@ -439,7 +440,7 @@ def test_postgres_stream_ends_with_its_block(pg, pgdriver):
         with cur.transaction():
             rows = cur.users.all().stream(1)
             next(rows)
-        with pytest.raises(pgdriver.dbapi.Error):
+        with pytest.raises(DatabaseError):
             next(rows)
         cur.rollback()
         assert cur.query("SELECT 1 AS one").value() == 1
@@ -468,7 +469,7 @@ def test_postgres_stream_ends_with_rolled_back_nested_block(pg, pgdriver):
                     rows = cur.users.all().stream(1)
                     next(rows)
                     raise ValueError
-            with pytest.raises(pgdriver.dbapi.Error):
+            with pytest.raises(DatabaseError):
                 next(rows)
 
 
