@@ -41,7 +41,16 @@ class AsyncConnection(conn.AsyncConnection):
         if key in ("fetchall", "fetchmany"):
 
             async def fetch(*args, **kwargs):
-                rows = await getattr(cursor, key)(*args, **kwargs)
+                try:
+                    rows = await getattr(cursor, key)(*args, **kwargs)
+                except Error:
+                    # The error ended an unbuffered result, but asyncmy
+                    # compares its int flag to True and keeps waiting for
+                    # rows, forever.
+                    result = getattr(cursor.connection, "_result", None)
+                    if result is not None:
+                        result.unbuffered_active = False
+                    raise
                 # asyncmy returns a list after statements without a
                 # result, mysqlclient an empty tuple.
                 if cursor.description is None:

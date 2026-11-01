@@ -283,6 +283,29 @@ async def test_postgres_stream(db):
     assert rows == [0, 1]
 
 
+@pytest.mark.parametrize("uri", MYSQL)
+async def test_mysql_stream(db):
+    async with db.cursor as cur:
+        await cur.execute("DROP FUNCTION IF EXISTS err_late_a")
+        await cur.execute(
+            "CREATE FUNCTION err_late_a(x INT) RETURNS INT DETERMINISTIC "
+            "NO SQL BEGIN IF x = 3 THEN SIGNAL SQLSTATE '45000' "
+            "SET MESSAGE_TEXT = 'late'; END IF; RETURN x; END"
+        )
+    rows = []
+    # Fails instead of hanging: asyncmy waits for rows that never come.
+    async with asyncio.timeout(10):
+        async with db.cursor as cur:
+            query = cur.query("SELECT err_late_a(id) FROM users ORDER BY id")
+            with pytest.raises(exc.RaisedError, match="late"):
+                async for row in query.stream(1):
+                    rows.append(row[0])
+            assert await cur.query("SELECT 42 AS answer").value() == 42
+    async with db.cursor as cur:
+        await cur.execute("DROP FUNCTION err_late_a")
+    assert rows == [1, 2]
+
+
 async def test_stream_that_fails_to_open(db):
     async with db.cursor as cur:
         with pytest.raises(exc.ProgrammingError):
