@@ -11,6 +11,7 @@
    connecting
    pool
    async
+   Logging and hooks <logging>
    carrier
    changeling
    Passing parameters <parameters>

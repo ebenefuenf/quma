@@ -11,6 +11,7 @@ from typing import (
 )
 
 from . import exc
+from .hooks import observed
 
 if TYPE_CHECKING:
     from .conn import (
@@ -119,6 +120,15 @@ class BaseStream:
             if not listed:
                 _streams.pop(id(self.raw_conn), None)
 
+    def _send(self, content: str, params: Params) -> Any:
+        return observed(
+            self.cursor.db.on_execute,
+            self.query.script.name,
+            self._attr("execute"),
+            (content, params),
+            {},
+        )
+
     def _batch(self) -> str:
         return f'FETCH FORWARD {self.size} FROM "{self.name}"'
 
@@ -146,7 +156,7 @@ class Stream(BaseStream):
         self._open()
         script = self.query.script
         try:
-            self._attr("execute")(content, params)
+            self._send(content, params)
         finally:
             script.echo and script.mogrify(self, content, params)
         if not self.postgres:

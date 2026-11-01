@@ -40,6 +40,8 @@ PrepareParams = Callable[[Any, Params], Params]
 
 
 class Script:
+    name: str | None = None
+
     def __init__(
         self,
         content: str,
@@ -164,15 +166,20 @@ class Script:
 
     def execute(self, cursor, args, kwargs, prepare_params=None):
         content, params = self.prepare(cursor, args, kwargs, prepare_params)
+        run_script = getattr(cursor, "_run_script", None)
         try:
-            cursor.execute(content, params)
+            if run_script is None:
+                # A DB-API cursor instead of a quma cursor, which worked before.
+                cursor.execute(content, params)
+            else:
+                run_script(self.name, content, params)
         finally:
             self.echo and self.mogrify(cursor, content, params)
 
     async def aexecute(self, cursor, args, kwargs, prepare_params=None):
         content, params = self.prepare(cursor, args, kwargs, prepare_params)
         try:
-            await cursor.execute(content, params)
+            await cursor._run_script(self.name, content, params)
         finally:
             self.echo and self.mogrify(cursor, content, params)
 

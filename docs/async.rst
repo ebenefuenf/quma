@@ -98,6 +98,9 @@ applications.
 Set ``cache=True`` in production: without it, quma reads each SQL file
 from disk when it's used, which blocks the event loop briefly.
 
+:doc:`Logging and on_execute <logging>` work as in sync code. ``on_execute``
+is a plain function that runs on the event loop, so it must not block.
+
 
 Cursors and transactions
 ------------------------

@@ -44,6 +44,7 @@ class Namespace:
         self.cache = db.cache
         self.echo = db.echo
         self.shadow = shadow
+        self._prefix = "" if sqldir in db.sqlroots else f"{sqldir.name}/"
         self._scripts: dict[str, Script] = {}
         if db.cache:
             self._collect_scripts(sqldir)
@@ -68,13 +69,24 @@ class Namespace:
                 continue
 
             with open(str(sqlfile)) as f:
-                self._scripts[attr] = self.db.script_factory(
+                self._scripts[attr] = self._create_script(
                     f.read(),
-                    self.echo,
                     ext.lower() == "." + self.db.tmpl_ext,
-                    self.db.sqldirs,
-                    prepare_params=self.db.prepare_params,
+                    filename.stem,
                 )
+
+    def _create_script(
+        self, content: str, is_template: bool, name: str
+    ) -> Script:
+        script = self.db.script_factory(
+            content,
+            self.echo,
+            is_template,
+            self.db.sqldirs,
+            prepare_params=self.db.prepare_params,
+        )
+        script.name = self._prefix + name
+        return script
 
     def __getattr__(self, attr: str) -> Any:
         if self.cache:
@@ -88,12 +100,10 @@ class Namespace:
             if not sqlfile.is_file():
                 sqlfile = self.sqldir / ".".join((attr, self.db.tmpl_ext))
             with open(str(sqlfile)) as f:
-                return self.db.script_factory(
+                return self._create_script(
                     f.read(),
-                    self.echo,
                     Path(sqlfile).suffix == "." + self.db.tmpl_ext,
-                    self.db.sqldirs,
-                    prepare_params=self.db.prepare_params,
+                    attr,
                 )
         except FileNotFoundError:
             return getattr(self.shadow, attr)

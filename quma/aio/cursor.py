@@ -23,7 +23,10 @@ from typing import (
 )
 
 from .. import exc
-from ..conn import AsyncConnectionLike
+from ..conn import (
+    AsyncConnectionLike,
+    Params,
+)
 from ..cursor import BaseCursor
 from ..namespace import Namespace
 from ..script import (
@@ -200,6 +203,13 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
 
     async def fetchall(self) -> Any:
         return await self._guarded(lambda: self._cursor().fetchall())
+
+    async def _run_script(
+        self, script: str | None, content: str, params: Params
+    ) -> None:
+        await self._guarded(
+            lambda: self._cursor()._run_script(script, content, params)
+        )
 
     def _cursor(self) -> Any:
         if self.raw_conn is None or self.raw_cursor is None:

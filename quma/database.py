@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+import inspect
 import os
 import pkgutil
 import threading
@@ -37,6 +38,7 @@ from .cursor import (
     CarriedConnection,
     Cursor,
 )
+from .hooks import OnExecute
 from .namespace import (
     Namespace,
     get_namespace,
@@ -167,9 +169,15 @@ class BaseDatabase(Generic[ConnT]):
         cache: bool,
         placeholders: Placeholders,
         autocommit: bool,
+        on_execute: OnExecute | None,
     ) -> None:
         if placeholders not in ("named", "native"):
             raise ValueError('placeholders must be "named" or "native"')
+        if inspect.iscoroutinefunction(on_execute):
+            raise TypeError(
+                "on_execute must be a plain function, also with AsyncDatabase: "
+                "quma doesn't await it."
+            )
         if isinstance(sqldirs, os.PathLike):
             sqldirs = os.fspath(sqldirs)
         self.sqldirs = sqldirs
@@ -182,9 +190,11 @@ class BaseDatabase(Generic[ConnT]):
         self.cache = cache
         self.placeholders = placeholders
         self.autocommit = autocommit
+        self.on_execute = on_execute
 
         self.heap = CarrierHeap()
         self.namespaces: dict[str, Namespace] = {}
+        self.sqlroots: set[Path] = set()
 
         if isinstance(sqldirs, str):
             self.register_namespace(sqldirs)
@@ -221,6 +231,7 @@ class BaseDatabase(Generic[ConnT]):
                     instantiate(ns_class.alias, ns_class, path)
             instantiate(ns, ns_class, path)
 
+        self.sqlroots.add(Path(sqldir))
         register(Path(sqldir), "__root__")
         for path in Path(sqldir).iterdir():
             if path.is_dir() and path.name != "__pycache__":
@@ -284,6 +295,9 @@ class Database(BaseDatabase[ConnectionLike]):
     :param autocommit: If ``True`` all cursors run in autocommit, so
         statements outside a :ref:`transaction block <transaction-blocks>`
         commit on their own. Defaults to ``False``.
+    :param on_execute: A plain function called with an
+        :class:`~quma.Execution` after every statement, also failed ones.
+        See :doc:`Logging and hooks <logging>`. Defaults to ``None``.
 
     Additional connection pool parameters (see :doc:`Connection pool <pool>`):
 
@@ -312,6 +326,7 @@ class Database(BaseDatabase[ConnectionLike]):
         cache: bool = False,
         placeholders: Placeholders = "named",
         autocommit: bool = False,
+        on_execute: OnExecute | None = None,
         **kwargs: Any,
     ) -> None:
         if args:
@@ -329,6 +344,7 @@ class Database(BaseDatabase[ConnectionLike]):
             cache=cache,
             placeholders=placeholders,
             autocommit=autocommit,
+            on_execute=on_execute,
         )
 
     def __call__(

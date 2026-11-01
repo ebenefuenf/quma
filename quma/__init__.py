@@ -20,6 +20,7 @@ from .exc import (  # noqa: F401
     PlaceholderError,
     TimeoutError,
 )
+from .hooks import Execution
 from .mapping import FromRow
 from .namespace import Namespace
 
@@ -28,6 +29,7 @@ __all__ = [
     "AsyncDatabase",
     "Cursor",
     "Database",
+    "Execution",
     "FromRow",
     "Namespace",
     "connect",

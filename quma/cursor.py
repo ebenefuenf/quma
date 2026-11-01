@@ -24,6 +24,10 @@ from .conn import (
     RawConnection,
     RawCursor,
 )
+from .hooks import (
+    OnExecute,
+    observed,
+)
 from .namespace import (
     CursorNamespace,
     Namespace,
@@ -67,11 +71,13 @@ class RawCursorWrapper:
         conn: BaseConnectionLike,
         raw_conn: RawConnection,
         raw_cursor: RawCursor,
+        on_execute: OnExecute | None = None,
     ) -> None:
         self.conn = conn
         self.raw_conn = raw_conn
         self.cursor = raw_cursor
         self.has_rowcount = conn.has_rowcount
+        self._on_execute = on_execute
         # Tells a query whether the cursor still holds its result.
         self.executions = 0
 
@@ -84,10 +90,24 @@ class RawCursorWrapper:
     def callproc(self, *args: Any, **kwargs: Any) -> Any:
         return self._run("callproc", args, kwargs)
 
-    def _run(self, name: str, args: Any, kwargs: Any) -> Any:
+    def _run_script(
+        self, script: str | None, content: str, params: Params
+    ) -> Any:
+        return self._run("execute", (content, params), {}, script)
+
+    def _run(
+        self, name: str, args: Any, kwargs: Any, script: str | None = None
+    ) -> Any:
         check_idle(self.raw_conn)
         self.executions += 1
-        return self.conn.get_cursor_attr(self.cursor, name)(*args, **kwargs)
+        call = self.conn.get_cursor_attr(self.cursor, name)
+        return observed(
+            self._on_execute, script, call, args, kwargs, self._rowcount
+        )
+
+    def _rowcount(self) -> int | None:
+        rowcount = self.conn.get_cursor_attr(self.cursor, "rowcount")
+        return None if rowcount < 0 else rowcount
 
     def __getattr__(self, key: str) -> Any:
         return self.conn.get_cursor_attr(self.cursor, key)
@@ -134,7 +154,9 @@ class BaseCursor(Generic[ConnT]):
                 self.carrier.add_conn(CarriedConnection(conn, raw_conn))
             self.carrier.cursors.add(self)
         self.raw_conn = raw_conn
-        self.raw_cursor = RawCursorWrapper(conn, raw_conn, raw_cursor)
+        self.raw_cursor = RawCursorWrapper(
+            conn, raw_conn, raw_cursor, self.db.on_execute
+        )
 
     def _detach(self, force: bool) -> tuple[ConnT, RawConnection] | None:
         """Return the connection to put back, or None if there is none."""
@@ -337,6 +359,13 @@ class Cursor(BaseCursor[ConnectionLike]):
             raise
         finally:
             block.forget()
+
+    def _run_script(
+        self, script: str | None, content: str, params: Params
+    ) -> None:
+        if self.raw_cursor is None:
+            raise exc.APIError("The cursor has no open connection.")
+        self.raw_cursor._run_script(script, content, params)
 
     def query(
         self,

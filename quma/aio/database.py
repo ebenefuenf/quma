@@ -20,6 +20,7 @@ from ..database import (
     resolve,
 )
 from ..exc import APIError
+from ..hooks import OnExecute
 from ..namespace import Namespace
 from ..placeholders import Placeholders
 from ..script import (
@@ -73,6 +74,7 @@ class AsyncDatabase(BaseDatabase[AsyncConnectionLike]):
         cache: bool = False,
         placeholders: Placeholders = "named",
         autocommit: bool = False,
+        on_execute: OnExecute | None = None,
         **kwargs: Any,
     ) -> None:
         if args:
@@ -90,6 +92,7 @@ class AsyncDatabase(BaseDatabase[AsyncConnectionLike]):
             cache=cache,
             placeholders=placeholders,
             autocommit=autocommit,
+            on_execute=on_execute,
         )
 
     def __call__(

@@ -34,7 +34,7 @@ class AsyncStream(BaseStream):
         self._open()
         script = self.query.script
         try:
-            await self._attr("execute")(content, params)
+            await self._send(content, params)
         finally:
             script.echo and script.mogrify(self, content, params)
         if not self.postgres:

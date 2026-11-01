@@ -49,6 +49,12 @@ Unreleased
   ``db.transaction.script(cur)``.
 - ``Database(..., autocommit=True)`` makes all cursors of a database run in
   autocommit, so only transaction blocks open transactions.
+- quma logs every statement to the ``quma`` logger at level ``DEBUG``: the
+  script's name like ``users/by_name``, the duration, the rowcount and the
+  SQL, without bound values. ``on_execute`` on ``Database`` and
+  ``AsyncDatabase`` calls a plain function with an ``Execution`` after every
+  statement, also failed ones, for metrics, tracing or finding slow scripts.
+  ``echo`` still prints to stdout. See "Logging and hooks".
 - With ``contextcommit``, a cursor's ``with`` block now rolls back when it
   raises. Before, quma committed the statements that ran before the
   error. If the block raises to signal success, such as a redirect, call
