@@ -191,6 +191,7 @@ def test_litestar(named_sqldirs):
 
     app = Litestar(
         [get_user, remove_user],
+        logging_config=None,
         lifespan=[db_lifespan],
         dependencies={"cur": Provide(provide_cursor)},
         exception_handlers={DoesNotExistError: not_found},
