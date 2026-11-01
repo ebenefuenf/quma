@@ -32,6 +32,7 @@ from .script import (
     Script,
 )
 from .stream import (
+    blocked,
     check_idle,
     close_streams,
 )
@@ -266,7 +267,14 @@ class Cursor(BaseCursor[ConnectionLike]):
             return
         try:
             close_streams(self.raw_conn, self)
-            self.raw_cursor.close()
+            try:
+                self.raw_cursor.close()
+            except Exception:
+                # mysqlclient reports a failing later statement here, but
+                # also fails while another cursor's stream occupies the
+                # connection, which must not hide the block's exception.
+                if not blocked(self.raw_conn):
+                    raise
         finally:
             detached = self._detach(force)
             if detached is not None:

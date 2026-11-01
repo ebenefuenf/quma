@@ -272,6 +272,23 @@ def test_stream_blocks_connection(mypooldb):
         mypooldb.release(carrier)
 
 
+@pytest.mark.mysql
+def test_stream_on_shared_connection_keeps_block_error(mydb_persist, mypooldb):
+    carrier = object()
+    try:
+        for db in (mydb_persist, mypooldb(carrier)):
+            with pytest.raises(ValueError, match="in the block"):
+                with db.cursor as cur, db.cursor as other:
+                    assert other.raw_conn is cur.raw_conn
+                    rows = cur.users.all().stream(1)
+                    next(rows)
+                    raise ValueError("in the block")
+            with db.cursor as cur:
+                assert cur.query("SELECT 1 AS one").value() == 1
+    finally:
+        mypooldb.release(carrier)
+
+
 # About 35 MB, more than the buffers of the connection hold.
 LARGE = (
     "SELECT REPEAT('x', 300) FROM users a, users b, users c, users d, "

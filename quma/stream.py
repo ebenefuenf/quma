@@ -37,10 +37,14 @@ def streams(raw_conn: RawConnection) -> list[Any]:
         return list(_streams.get(id(raw_conn), ()))
 
 
-def check_idle(raw_conn: RawConnection) -> None:
+def blocked(raw_conn: RawConnection) -> bool:
     if id(raw_conn) not in _streams:
-        return
-    if any(stream.blocks for stream in streams(raw_conn)):
+        return False
+    return any(stream.blocks for stream in streams(raw_conn))
+
+
+def check_idle(raw_conn: RawConnection) -> None:
+    if blocked(raw_conn):
         raise exc.APIError(
             "MySQL can't run other statements on a connection while a "
             "stream is open on it. Read the stream to its end or close it "
