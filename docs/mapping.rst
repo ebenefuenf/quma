@@ -3,7 +3,7 @@ Mapping rows to objects
 =======================
 
 The methods :meth:`one()`, :meth:`first()`, :meth:`all()`,
-:meth:`unbunch()` and :meth:`ManyResult.get()` accept a target class
+:meth:`stream()` and :meth:`ManyResult.get()` accept a target class
 and return instances of it instead of rows. quma matches the columns of
 each row to the target by name.
 
@@ -21,11 +21,11 @@ each row to the target by name.
         user = cur.users.by_id(id=42).one(User)        # User
         user = cur.users.by_email(email=e).first(User)  # User or None
         users = cur.users.list().all(User)             # list of User
-        for user in cur.users.list().unbunch(100, User):
+        for user in cur.users.list().stream(100, User):
             ...
         batch = cur.users.list().many().get(100, User)
 
-:meth:`unbunch()` and :meth:`ManyResult.get()` take the size first, so
+:meth:`stream()` and :meth:`ManyResult.get()` take the size first, so
 the target comes second, or pass it as ``target=User``. Iterating,
 indexing and :meth:`value()` always return rows. The rows of a query
 stay cached unmapped, so ``query.all(User)`` followed by ``query.all()``

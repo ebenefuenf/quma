@@ -223,21 +223,13 @@ def test_many_default(mydb, mypooldb):
 
 
 @pytest.mark.mysql
-def test_unbunch(mydb, mypooldb):
-    from .test_db import unbunch
-
-    for db in (mydb, mypooldb):
-        unbunch(db)
-
-
-@pytest.mark.mysql
 def test_stream(mydb, mydb_persist, mypooldb, mydb_dict):
     from .test_db import stream
 
     for db in (mydb, mydb_persist, mypooldb):
         stream(db)
     with mydb_dict.cursor as cur:
-        names = [row["name"] for row in cur.users.all().unbunch(stream=True)]
+        names = [row["name"] for row in cur.users.all().stream()]
         assert names == [f"User {i}" for i in range(1, 8)]
 
 
@@ -258,7 +250,7 @@ def test_stream_blocks_connection(mypooldb):
             mypooldb(carrier).cursor as other,
         ):
             names = []
-            for row in cur.users.all().unbunch(1, stream=True):
+            for row in cur.users.all().stream(1):
                 names.append(row[1])
                 with pytest.raises(APIError, match="MySQL can't run"):
                     cur.query("SELECT 1").run()
@@ -283,7 +275,7 @@ LARGE = (
 def test_stream_reads_while_the_server_sends(mydb):
     with mydb.cursor as cur, mydb.cursor as watcher:
         conn_id = cur.query("SELECT CONNECTION_ID()").value()
-        rows = cur.query(LARGE).unbunch(10, stream=True)
+        rows = cur.query(LARGE).stream(10)
         next(rows)
         command = watcher.query(
             "SELECT COMMAND FROM information_schema.PROCESSLIST WHERE ID = :id",
@@ -297,7 +289,7 @@ def test_stream_reads_while_the_server_sends(mydb):
 @pytest.mark.mysql
 def test_stream_echo(mydb_echo, capsys):
     with mydb_echo.cursor as cur:
-        rows = cur.query("SELECT :x AS x", x="echoed").unbunch(stream=True)
+        rows = cur.query("SELECT :x AS x", x="echoed").stream()
         assert [row["x"] for row in rows] == ["echoed"]
     assert "'echoed'" in capsys.readouterr().out
 

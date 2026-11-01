@@ -22,6 +22,7 @@ from ..query import (
     check_rowcount,
     map_rows,
 )
+from ..stream import SIZE
 from .stream import AsyncStream
 
 
@@ -207,65 +208,34 @@ class AsyncQuery(BaseQuery):
         return AsyncManyResult(self)
 
     @overload
-    def unbunch(
-        self, size: int | None = None, *, stream: bool = False
-    ) -> AsyncIterator[Row]: ...
+    def stream(self, size: int = SIZE) -> AsyncIterator[Row]: ...
 
     @overload
-    def unbunch(
-        self,
-        size: int | None = None,
-        target: type[dict[Any, Any]] = ...,
-        *,
-        stream: bool = False,
+    def stream(
+        self, size: int = SIZE, target: type[dict[Any, Any]] = ...
     ) -> AsyncIterator[dict[str, Any]]: ...
 
     @overload
-    def unbunch(
-        self,
-        size: int | None = None,
-        target: Target[T] = ...,
-        *,
-        stream: bool = False,
+    def stream(
+        self, size: int = SIZE, target: Target[T] = ...
     ) -> AsyncIterator[T]: ...
 
-    async def unbunch(
-        self,
-        size: int | None = None,
-        target: Target[Any] | None = None,
-        *,
-        stream: bool = False,
+    async def stream(
+        self, size: int = SIZE, target: Target[Any] | None = None
     ) -> AsyncIterator[Any]:
-        """Return an async generator that simplifies the use of fetchmany.
+        """Return an async generator that lets the server send the rows
+        in batches instead of loading the whole result. See
+        :ref:`streaming`.
 
-        :param size: The number of rows to be fetched per
-            fetchmany call. If not given use the default value
-            of the driver, or 2000 with ``stream``.
+        :param size: The number of rows per batch.
         :param target: Map the rows to instances of this class
             (see :doc:`mapping`).
-        :param stream: Let the server send the rows in batches of
-            ``size`` instead of loading the whole result. See
-            :ref:`streaming`.
         """
-        if stream:
-            async_stream = AsyncStream(self, size)
-            try:
-                await async_stream.open()
-                while rows := await async_stream.fetch():
-                    for row in map_rows(
-                        target, async_stream.description, rows
-                    ):
-                        yield row
-            finally:
-                await async_stream.finish()
-            return
-        size = self.cursor.arraysize if size is None else size
-        await self.run()
-        description = self.cursor.description
-        while True:
-            self._check_result()
-            results = await self.cursor.fetchmany(size)
-            if not results:
-                break
-            for row in map_rows(target, description, results):
-                yield row
+        stream = AsyncStream(self, size)
+        try:
+            await stream.open()
+            while rows := await stream.fetch():
+                for row in map_rows(target, stream.description, rows):
+                    yield row
+        finally:
+            await stream.finish()

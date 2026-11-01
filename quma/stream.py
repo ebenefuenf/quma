@@ -20,8 +20,7 @@ if TYPE_CHECKING:
     )
     from .query import BaseQuery
 
-# Rows per batch if unbunch() gets no size: the driver's arraysize is 1,
-# which would cost a round trip per row.
+# The driver's default arraysize of 1 would cost a round trip per row.
 SIZE = 2000
 
 # libpq's PQTRANS_INTRANS, in psycopg2 and psycopg.
@@ -68,8 +67,8 @@ class BaseStream:
     own, without loading it whole: a server-side cursor on PostgreSQL,
     an unbuffered cursor on MySQL."""
 
-    def __init__(self, query: BaseQuery, size: int | None) -> None:
-        self.size = SIZE if size is None else operator.index(size)
+    def __init__(self, query: BaseQuery, size: int) -> None:
+        self.size = operator.index(size)
         if self.size < 1:
             raise ValueError("A stream needs a size of at least 1.")
         self.query = query

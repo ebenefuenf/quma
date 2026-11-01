@@ -848,31 +848,19 @@ def test_generator(db):
     assert len(list(users_generator())) == 7
 
 
-def unbunch(db):
-    with db.cursor as cur:
-        i = 0
-        for _ in cur.users.all().unbunch(3):
-            i += 1
-        assert i == 7
-
-
-def test_unbunch(db):
-    unbunch(db)
-
-
 def stream(db):
     with db.cursor as cur:
         users = cur.users.all()
         rows = [tuple(row) for row in users.all()]
-        assert [tuple(row) for row in users.unbunch(3, stream=True)] == rows
-        assert [tuple(row) for row in users.unbunch(stream=True)] == rows
-        names = [user["name"] for user in users.unbunch(2, dict, stream=True)]
+        assert [tuple(row) for row in users.stream(3)] == rows
+        assert [tuple(row) for row in users.stream()] == rows
+        names = [user["name"] for user in users.stream(2, dict)]
         assert names == [row[1] for row in rows]
-        for _ in users.unbunch(2, stream=True):
+        for _ in users.stream(2):
             break
         assert cur.query("SELECT 1 AS one").value() == 1
         with pytest.raises(ValueError, match="at least 1"):
-            next(users.unbunch(0, stream=True))
+            next(users.stream(0))
 
 
 def test_stream(db):
@@ -881,7 +869,7 @@ def test_stream(db):
 
 def stream_closed_with_cursor(db):
     cur = db.cursor()
-    rows = cur.users.all().unbunch(1, stream=True)
+    rows = cur.users.all().stream(1)
     next(rows)
     cur.close()
     with pytest.raises(exc.APIError, match="closed before its end"):
@@ -889,13 +877,13 @@ def stream_closed_with_cursor(db):
     carrier = object()
     try:
         with db(carrier).cursor as cur:
-            rows = cur.users.all().unbunch(1, stream=True)
+            rows = cur.users.all().stream(1)
             next(rows)
         with pytest.raises(exc.APIError, match="closed before its end"):
             next(rows)
         with db(carrier).cursor as cur:
             assert cur.query("SELECT 1 AS one").value() == 1
-            rows = cur.users.all().unbunch(1, stream=True)
+            rows = cur.users.all().stream(1)
             next(rows)
             db.release(carrier)
         with pytest.raises(exc.APIError, match="closed before its end"):
@@ -1059,12 +1047,6 @@ def test_result_replaced_by_another_statement(db):
             users.all()
         assert len(users.run().all()) == 7
         assert len(users.all()) == 7
-        bunches = cur.users.all().unbunch(2)
-        next(bunches)
-        next(bunches)
-        cur.execute("SELECT 1")
-        with pytest.raises(exc.APIError, match=replaced):
-            next(bunches)
         many = cur.users.all().many()
         many.get(2)
         cur.query("SELECT 1").run()

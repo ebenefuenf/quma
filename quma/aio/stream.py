@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
 class AsyncStream(BaseStream):
-    def __init__(self, query: BaseQuery, size: int | None) -> None:
+    def __init__(self, query: BaseQuery, size: int) -> None:
         super().__init__(query, size)
         self.task = asyncio.current_task()
 

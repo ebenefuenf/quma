@@ -160,11 +160,11 @@ def map_resolver(db):
 
 def map_chunks(db):
     with db.cursor as cur:
-        users = list(cur.users.all().unbunch(3, User))
+        users = list(cur.users.all().stream(3, User))
         assert len(users) == 7
         assert users[6] == User(7, "User 7", "user.7@example.com", "City C")
-        tuples = cur.users.all().unbunch(target=UserTuple)
-        assert next(tuples) == UserTuple(1, "User 1")
+        tuples = list(cur.users.all().stream(target=UserTuple))
+        assert tuples[0] == UserTuple(1, "User 1")
 
         many = cur.users.all().many()
         assert many.get(2, User)[1].name == "User 2"
@@ -246,8 +246,7 @@ def test_mapped_types(db: Database):
         assert_type(query.first(dict), dict[str, Any] | None)
         assert_type(query.all(User), list[User])
         assert_type(query.all(dict), list[dict[str, Any]])
-        assert_type(query.unbunch(10, User), Iterator[User])
-        assert_type(query.unbunch(target=dict), Iterator[dict[str, Any]])
-        assert_type(query.unbunch(10, User, stream=True), Iterator[User])
+        assert_type(query.stream(10, User), Iterator[User])
+        assert_type(query.stream(target=dict), Iterator[dict[str, Any]])
         assert_type(query.many().get(10, User), list[User])
         assert_type(query.many().get(target=UserDict), list[UserDict])

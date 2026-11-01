@@ -20,7 +20,10 @@ from .mapping import (
     T,
     Target,
 )
-from .stream import Stream
+from .stream import (
+    SIZE,
+    Stream,
+)
 
 if TYPE_CHECKING:
     from .cursor import BaseCursor
@@ -273,62 +276,28 @@ class Query(BaseQuery):
         return ManyResult(self)
 
     @overload
-    def unbunch(
-        self, size: int | None = None, *, stream: bool = False
-    ) -> Iterator[Row]: ...
+    def stream(self, size: int = SIZE) -> Iterator[Row]: ...
 
     @overload
-    def unbunch(
-        self,
-        size: int | None = None,
-        target: type[dict[Any, Any]] = ...,
-        *,
-        stream: bool = False,
+    def stream(
+        self, size: int = SIZE, target: type[dict[Any, Any]] = ...
     ) -> Iterator[dict[str, Any]]: ...
 
     @overload
-    def unbunch(
-        self,
-        size: int | None = None,
-        target: Target[T] = ...,
-        *,
-        stream: bool = False,
+    def stream(
+        self, size: int = SIZE, target: Target[T] = ...
     ) -> Iterator[T]: ...
 
-    def unbunch(
-        self,
-        size: int | None = None,
-        target: Target[Any] | None = None,
-        *,
-        stream: bool = False,
+    def stream(
+        self, size: int = SIZE, target: Target[Any] | None = None
     ) -> Iterator[Any]:
-        """Return a generator that simplifies the use of fetchmany.
+        """Return a generator that lets the server send the rows in
+        batches instead of loading the whole result. See :ref:`streaming`.
 
-        :param size: The number of rows to be fetched per
-            fetchmany call. If not given use the default value
-            of the driver, or 2000 with ``stream``.
+        :param size: The number of rows per batch.
         :param target: Map the rows to instances of this class
             (see :doc:`mapping`).
-        :param stream: Let the server send the rows in batches of
-            ``size`` instead of loading the whole result. See
-            :ref:`streaming`.
         """
-        if stream:
-            yield from self._stream(size, target)
-            return
-        size = self.cursor.arraysize if size is None else size
-        self.run()
-        description = self.cursor.description
-        while True:
-            self._check_result()
-            results = self.cursor.fetchmany(size)
-            if not results:
-                break
-            yield from map_rows(target, description, results)
-
-    def _stream(
-        self, size: int | None, target: Target[Any] | None
-    ) -> Iterator[Any]:
         stream = Stream(self, size)
         try:
             stream.open()

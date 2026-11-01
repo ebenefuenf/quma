@@ -32,12 +32,13 @@ Unreleased
   it with Starlette, FastAPI and Litestar.
 - ``quma`` exports ``Cursor``, ``AsyncDatabase``, ``AsyncCursor`` and
   ``connect_async()``.
-- ``unbunch(stream=True)`` lets the server send a result in batches
-  while the loop runs, with a server-side cursor on PostgreSQL and an
-  unbuffered cursor on MySQL and MariaDB, so a large result needs the
-  memory of one batch only. Without it, and with ``many()``, the drivers
-  still load the whole result when the query runs. The docs claimed
-  ``unbunch()`` avoided that. See "Streaming large results".
+- **Breaking:** ``Query.stream()`` replaces ``unbunch()``. It lets the
+  server send a result in batches while the loop runs, with a server-side
+  cursor on PostgreSQL and an unbuffered cursor on MySQL and MariaDB, so
+  a large result needs the memory of one batch only. ``unbunch()`` loaded
+  the whole result when the query ran, although the docs claimed it
+  avoided that. A stream has limits, see "Streaming large results": code
+  that can't meet them uses ``many()``, which still loads the result.
 - With ``contextcommit``, a cursor's ``with`` block now rolls back when it
   raises. Before, quma committed the statements that ran before the
   error. If the block raises to signal success, such as a redirect, call
@@ -86,8 +87,7 @@ Unreleased
   when it fetches after another statement ran on the same cursor. Before,
   it silently returned that statement's rows, for example after
   ``count()`` or ``exists()`` on PostgreSQL or MySQL, or when other
-  statements ran between the batches of ``unbunch()`` or
-  ``many().get()``.
+  statements ran between the batches of ``many().get()``.
 - Fix an unknown attribute of a database without SQL directories raising
   ``KeyError`` instead of ``AttributeError``, which broke ``hasattr()``.
 

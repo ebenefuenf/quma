@@ -440,14 +440,6 @@ def test_many_default(pgdb, pgpooldb):
 
 
 @pytest.mark.postgres
-def test_unbunch(pgdb, pgpooldb):
-    from .test_db import unbunch
-
-    for db in (pgdb, pgpooldb):
-        unbunch(db)
-
-
-@pytest.mark.postgres
 def test_stream(pgdb, pgdb_persist, pgpooldb):
     from .test_db import stream
 
@@ -471,13 +463,13 @@ OPEN_CURSORS = "SELECT count(*) FROM pg_catalog.pg_cursors"
 def test_stream_uses_server_side_cursor(pgdb):
     with pgdb.cursor as cur:
         names = []
-        for row in cur.users.all().unbunch(1, stream=True):
+        for row in cur.users.all().stream(1):
             names.append(row.name)
             # Statements run between the batches, also on the same cursor.
             assert cur.query(OPEN_CURSORS).value() == 1
         assert names == [f"User {i}" for i in range(1, 8)]
         assert cur.query(OPEN_CURSORS).value() == 0
-        for _ in cur.users.all().unbunch(1, stream=True):
+        for _ in cur.users.all().stream(1):
             break
         assert cur.query(OPEN_CURSORS).value() == 0
 
@@ -486,14 +478,14 @@ def test_stream_uses_server_side_cursor(pgdb):
 def test_stream_needs_transaction(pgdb):
     with pgdb.cursor(autocommit=True) as cur:
         with pytest.raises(APIError, match="transactions only"):
-            next(cur.users.all().unbunch(stream=True))
+            next(cur.users.all().stream())
         assert cur.users.all().count() == 7
 
 
 @pytest.mark.postgres
 def test_stream_left_after_commit(pgdb):
     with pgdb.cursor as cur:
-        for _ in cur.users.all().unbunch(2, stream=True):
+        for _ in cur.users.all().stream(2):
             cur.commit()
             assert cur.query("SELECT 1 AS one").value() == 1
             break
@@ -504,7 +496,7 @@ def test_stream_left_after_commit(pgdb):
 @pytest.mark.postgres
 def test_stream_echo(pgdb_echo, capsys):
     with pgdb_echo.cursor as cur:
-        rows = cur.query("SELECT :x AS x", x="echoed").unbunch(stream=True)
+        rows = cur.query("SELECT :x AS x", x="echoed").stream()
         assert [row.x for row in rows] == ["echoed"]
     assert "'echoed'" in capsys.readouterr().out
 

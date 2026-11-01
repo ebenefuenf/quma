@@ -193,27 +193,9 @@ Additionally, the cache of ``all_users`` from the last example will be
 invalidated after the first call of :meth:`get()`. So you should
 avoid to mix `many` queries with "normal" queries.
 
-A simpler version of :meth:`many()`
-------------------------------------
-
-To work with the rows in a single simple loop instead of using
-:meth:`many()`, you can use the method :meth:`unbunch()`. It is a
-convenience method which internally calls ``fetchmany`` with the given
-size. Using :meth:`unbunch()` we can simplify the :meth:`many()` example
-with the ``users_generator`` from the last section:
-
-.. code-block:: python
-
-    with db.cursor as cur:
-        for user in cur.users.all().unbunch(3):
-            print(user.name)
-
-:meth:`unbunch()` re-executes the query and invalidates the cache on each call,
-just like :meth:`many()`.
-
-The drivers read the whole result when the query runs, so :meth:`many()`
-and :meth:`unbunch()` need as much memory as :meth:`all()`. To read a
-large result in batches, stream it.
+On PostgreSQL, MySQL and MariaDB the driver loads the whole result when
+the query runs, so :meth:`many()` doesn't make a large result fit in
+memory. To read a large result in batches, stream it.
 
 
 .. _streaming:
@@ -221,14 +203,13 @@ large result in batches, stream it.
 Streaming large results
 -----------------------
 
-With ``stream=True``, :meth:`unbunch()` lets the server send the rows in
-batches while the loop runs, so a result of any size needs the memory of
-one batch only:
+:meth:`stream()` lets the server send the rows in batches while the loop
+runs, so a result of any size needs the memory of one batch only:
 
 .. code-block:: python
 
     with db.cursor as cur:
-        for entry in cur.logs.all().unbunch(1000, stream=True):
+        for entry in cur.logs.all().stream(1000):
             archive(entry)
 
 Without a size, a batch has 2000 rows. On PostgreSQL quma declares a
@@ -238,8 +219,9 @@ MariaDB it reads the result with the driver's unbuffered cursor
 
 Leaving the loop early closes the stream. So does closing its cursor or
 returning its connection to the pool, and the loop then raises
-:class:`quma.APIError` instead of ending early. A stream doesn't touch
-the query's cached rows.
+:class:`quma.APIError` instead of ending early. Each call of
+:meth:`stream()` runs the query again and doesn't touch the query's
+cached rows.
 
 Errors the server runs into while it produces the rows, like a division
 by zero in a late row, are raised in the loop, not when it starts. The
@@ -256,6 +238,9 @@ databases add some limits:
   on the same :doc:`carrier <carrier>`. Run them on a cursor with a
   connection of its own. A stream that is closed early still reads the
   rest of the result, because the server sends it anyway.
+
+If these limits get in the way, read the result with :meth:`many()`,
+which doesn't save the memory.
 
 In async code, wrap a stream that may end early in
 :func:`contextlib.aclosing` (see :doc:`async`).

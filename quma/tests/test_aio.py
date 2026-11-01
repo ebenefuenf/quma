@@ -116,8 +116,8 @@ async def test_iteration(adb):
     async with adb.cursor as cur:
         names = [row.name async for row in cur.users.all()]
         assert names == [f"User {i}" for i in range(1, 8)]
-        bunched = [row.name async for row in cur.users.all().unbunch(3)]
-        assert bunched == names
+        streamed = [row.name async for row in cur.users.all().stream(3)]
+        assert streamed == names
         many = cur.users.all().many()
         assert len(await many.get(4)) == 4
         assert len(await many.get(4)) == 3
@@ -143,7 +143,7 @@ async def test_mapping(adb):
             u.name
             async for u in cur.query(
                 "SELECT name, email, city FROM users ORDER BY id"
-            ).unbunch(5, User)
+            ).stream(5, User)
         ]
         assert len(mapped) == 7
         many = cur.query("SELECT name, email, city FROM users").many()
@@ -178,12 +178,6 @@ async def test_result_replaced_by_another_statement(adb):
         with pytest.raises(exc.APIError, match=replaced):
             await users.all()
         assert len(await (await users.run()).all()) == 7
-        bunches = cur.users.all().unbunch(2)
-        await anext(bunches)
-        await anext(bunches)
-        await cur.execute("SELECT 1")
-        with pytest.raises(exc.APIError, match=replaced):
-            await anext(bunches)
         many = cur.users.all().many()
         await many.get(2)
         await cur.query("SELECT 1").run()
@@ -576,17 +570,17 @@ async def test_stream(adb):
     async with adb.cursor as cur:
         users = cur.users.all()
         rows = await users.all()
-        assert [row async for row in users.unbunch(3, stream=True)] == rows
-        assert [row async for row in users.unbunch(stream=True)] == rows
+        assert [row async for row in users.stream(3)] == rows
+        assert [row async for row in users.stream()] == rows
         mapped = [
             user
             async for user in cur.query(
                 "SELECT name, email, city FROM users ORDER BY id"
-            ).unbunch(2, User, stream=True)
+            ).stream(2, User)
         ]
         assert mapped[0] == User("User 1", "user.1@example.com", "City A")
         names = []
-        async for row in users.unbunch(1, stream=True):
+        async for row in users.stream(1):
             names.append(row.name)
             # Statements run between the batches, also on the same cursor.
             assert await cur.query(OPEN_CURSORS).value() == 1
@@ -596,12 +590,12 @@ async def test_stream(adb):
 
 async def test_stream_left_early(adb):
     async with adb.cursor as cur:
-        async with aclosing(cur.users.all().unbunch(1, stream=True)) as rows:
+        async with aclosing(cur.users.all().stream(1)) as rows:
             async for _ in rows:
                 break
         assert await cur.query(OPEN_CURSORS).value() == 0
         # Without aclosing() the stream stays open until its cursor closes.
-        async for _ in cur.users.all().unbunch(1, stream=True):
+        async for _ in cur.users.all().stream(1):
             break
         assert await cur.query("SELECT 1 AS one").value() == 1
     async with adb.cursor as cur:
@@ -611,7 +605,7 @@ async def test_stream_left_early(adb):
 async def test_stream_needs_transaction(adb):
     async with await adb.cursor(autocommit=True) as cur:
         with pytest.raises(exc.APIError, match="transactions only"):
-            await anext(cur.users.all().unbunch(stream=True))
+            await anext(cur.users.all().stream())
         assert await cur.users.all().count() == 7
 
 
@@ -620,7 +614,7 @@ async def test_cancelled_stream_returns_connection(apooldb):
         async with asyncio.timeout(0.1):
             async with apooldb.cursor as cur:
                 query = cur.query("SELECT pg_sleep(5)")
-                async for _ in query.unbunch(stream=True):
+                async for _ in query.stream():
                     pass
     assert isinstance(apooldb.conn, AsyncPool)
     assert apooldb.conn.checkedout == 0
