@@ -1,5 +1,6 @@
 import array
 import collections
+import contextlib
 import dataclasses
 import decimal
 import enum
@@ -194,4 +195,158 @@ def test_mysqlclient_custom_encoders_stay():
     db = Database(util.MYSQL_URI, conv=conv)
     with db.cursor as cur:
         assert cur.query("SELECT :v AS a", v=Plain()).value() == "encoded"
+    db.close()
+
+
+# A byte above 127, then a quote: with the charset below, the backslash that
+# escapes the quote can be read as the second byte of a character.
+BREAKOUTS = [
+    pytest.param(
+        {"charset": "big5"}, [], b"\xbf' UNION SELECT 99 #", id="big5"
+    ),
+    pytest.param({"charset": "gbk"}, [], b"\xbf' UNION SELECT 99 #", id="gbk"),
+    pytest.param(
+        {"charset": "gb18030"}, [], b"\xbf' UNION SELECT 99 #", id="gb18030"
+    ),
+    pytest.param(
+        {"charset": "sjis"}, [], "¥' UNION SELECT 99 #", id="yen in sjis"
+    ),
+    pytest.param(
+        {"charset": "ujis"}, [], "¥' UNION SELECT 99 #", id="yen in ujis"
+    ),
+    pytest.param({}, ["SET NAMES gbk"], "€' UNION SELECT 99 #", id="set gbk"),
+    pytest.param(
+        {}, ["SET NAMES big5"], "€' UNION SELECT 99 #", id="set big5"
+    ),
+    pytest.param(
+        {}, ["SET NAMES sjis"], "ā' UNION SELECT 99 #", id="set sjis"
+    ),
+    pytest.param(
+        {},
+        ["SET character_set_client = gbk"],
+        "€' UNION SELECT 99 #",
+        id="client",
+    ),
+    pytest.param(
+        {"charset": "latin1"},
+        ["SET NAMES gbk"],
+        "¿' UNION SELECT 99 #",
+        id="latin1",
+    ),
+]
+
+
+def rows_stay_one(rows):
+    assert len(rows) == 1
+    assert 99 not in rows[0]
+    assert "99" not in rows[0]
+    assert b"99" not in rows[0]
+
+
+@pytest.mark.mysql
+@pytest.mark.parametrize("options, setup, value", BREAKOUTS)
+def test_mysqlclient_value_stays_a_value_in_any_charset(options, setup, value):
+    try:
+        db = Database(util.MYSQL_URI, **options)
+        with db.cursor as cur:
+            for statement in setup:
+                cur.execute(statement)
+            # The driver may not be able to decode the result as it thinks
+            # it's encoded. That's an error, not a value that ran as SQL.
+            with contextlib.suppress(exc.DataError):
+                rows_stay_one(cur.query("SELECT :v AS a", v=value).all())
+        db.close()
+    except exc.ConnectionError as e:
+        pytest.skip(str(e))
+
+
+@pytest.mark.mysql
+@pytest.mark.anyio
+@pytest.mark.parametrize("options, setup, value", BREAKOUTS)
+async def test_asyncmy_value_stays_a_value_in_any_charset(
+    options, setup, value
+):
+    db = AsyncDatabase(ASYNCMY_URI, **options)
+    try:
+        async with db.cursor as cur:
+            for statement in setup:
+                await cur.execute(statement)
+            rows_stay_one(await cur.query("SELECT :v AS a", v=value).all())
+    except exc.ConnectionError as e:
+        pytest.skip(str(e))
+    finally:
+        await db.close()
+
+
+TEXT = "é'\\ü"
+COLUMNS = (
+    "CREATE TEMPORARY TABLE cols (t TEXT, l TEXT CHARACTER SET latin1,"
+    " b LONGBLOB, j JSON)"
+)
+
+
+@pytest.mark.mysql
+def test_mysqlclient_hex_literals_behave_like_strings():
+    db = Database(util.MYSQL_URI)
+    with db.cursor as cur:
+        assert cur.query("SELECT :v AS a", v=TEXT).value() == TEXT
+        assert cur.query("SELECT :v = :w AS a", v=TEXT, w=TEXT).value() == 1
+        assert cur.query("SELECT 'é' LIKE :v AS a", v="é''").value() == 0
+        cur.execute(COLUMNS)
+        cur.query(
+            "INSERT INTO cols (t, l, b, j) VALUES (:v, :v, :v, :j)",
+            v=TEXT,
+            j='{"a": "é\'"}',
+        ).run()
+        row = cur.query("SELECT t, l, b, j FROM cols").one()
+        assert row[0] == TEXT
+        assert row[1] == TEXT
+        assert row[2] == TEXT.encode()
+        assert "é'" in row[3]
+    db.close()
+
+
+@pytest.mark.mysql
+@pytest.mark.anyio
+async def test_asyncmy_hex_literals_behave_like_strings():
+    db = AsyncDatabase(ASYNCMY_URI)
+    async with db.cursor as cur:
+        assert await cur.query("SELECT :v AS a", v=TEXT).value() == TEXT
+        query = cur.query("SELECT :v = :w AS a", v=TEXT, w=TEXT)
+        assert await query.value() == 1
+        await cur.execute(COLUMNS)
+        await cur.query(
+            "INSERT INTO cols (t, l, b, j) VALUES (:v, :v, :v, :j)",
+            v=TEXT,
+            j='{"a": "é\'"}',
+        ).run()
+        row = await cur.query("SELECT t, l, b, j FROM cols").one()
+        assert row[0] == TEXT
+        assert row[1] == TEXT
+        assert row[2] == TEXT.encode()
+        assert "é'" in row[3]
+    await db.close()
+
+
+@pytest.mark.mysql
+@pytest.mark.parametrize(
+    "value", [b"\xff'\\", b"\xc3\xa9'\\", b"\xff", b"\xc3\xa9", b"plain'"]
+)
+def test_mysqlclient_bytes_keep_their_value(value):
+    db = Database(util.MYSQL_URI)
+    with db.cursor as cur:
+        cur.execute(BLOB)
+        cur.query("INSERT INTO blobs VALUES (:v)", v=value).run()
+        assert cur.query("SELECT a FROM blobs").value() == value
+    db.close()
+
+
+@pytest.mark.mysql
+def test_mysqlclient_valid_bytes_still_fill_a_json_column():
+    value = '{"a": "é\'"}'.encode()
+    db = Database(util.MYSQL_URI)
+    with db.cursor as cur:
+        cur.execute("CREATE TEMPORARY TABLE docs (j JSON)")
+        cur.query("INSERT INTO docs VALUES (:v)", v=value).run()
+        assert "é'" in cur.query("SELECT j FROM docs").value()
     db.close()

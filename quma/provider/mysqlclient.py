@@ -60,8 +60,19 @@ class ChangelingStreamCursor(RowStreamCursor):
 
 
 class EscapingConnection(DriverConnection):
+    def set_character_set(self, charset, collation=None):
+        super().set_character_set(charset, collation)
+        self._text_charset = charset
+
     def literal(self, o):
-        return super().literal(values.plain(o, self.encoders))
+        o = values.plain(o, self.encoders)
+        literal = None
+        if isinstance(o, str):
+            literal = values.hex_text(o, self.encoding, self._text_charset)
+        elif isinstance(o, bytes):
+            charset = "binary" if self._binary_prefix else self._text_charset
+            literal = values.hex_bytes(o, self.encoding, charset)
+        return literal.encode() if literal else super().literal(o)
 
 
 class Connection(conn.Connection):

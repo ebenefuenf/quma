@@ -65,6 +65,10 @@ class EscapingConnection(asyncmy.Connection):
         # Without _binary, MySQL reads a hex literal as a number in arithmetic.
         if isinstance(obj, bytes):
             return f"_binary X'{obj.hex()}'"
+        if isinstance(obj, str):
+            literal = values.hex_text(obj, self._encoding, self._charset)
+            if literal:
+                return literal
         if isinstance(obj, (tuple, list)) and not isinstance(obj, struct_time):
             items = ",".join(self.escape(item, mapping) for item in obj)
             return f"({items})"
