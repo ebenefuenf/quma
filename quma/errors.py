@@ -99,9 +99,20 @@ _CATEGORIES = {
     "ProgrammingError": exc.ProgrammingError,
 }
 
+# What drivers raise for a value they can't send: text their charset can't
+# hold, or too large an integer. psycopg2 raises a plain ValueError for NUL.
+_VALUE_ERRORS = (ValueError, OverflowError)
+
 _MYSQL_LAST_QUOTED = re.compile(r"'([^']*)'\Z")
 _MYSQL_CONSTRAINT = re.compile(r"CONSTRAINT `((?:[^`]|``)*)`")
 _MYSQL_CHECK = re.compile(r"'([^']*)' is violated")
+
+
+def _bad_value(error: Exception) -> bool:
+    # Other ValueErrors may be about the SQL, like a bad format character.
+    return isinstance(error, (UnicodeError, OverflowError)) or (
+        "NUL" in str(error)
+    )
 
 
 def translate(
@@ -133,6 +144,10 @@ def translating(
             result = call(*args, **kwargs)
         except conn.driver_error as e:
             raise conn.translate(e, script) from e
+        except _VALUE_ERRORS as e:
+            if _bad_value(e):
+                raise exc.DataError(str(e), script=script) from e
+            raise
         # inspect.isawaitable() would cost more than the rest of this.
         if hasattr(type(result), "__await__"):
             return _awaited(conn, result, script)
@@ -157,6 +172,10 @@ async def _awaited(
         return await result
     except conn.driver_error as e:
         raise conn.translate(e, script) from e
+    except _VALUE_ERRORS as e:
+        if _bad_value(e):
+            raise exc.DataError(str(e), script=script) from e
+        raise
 
 
 def _code(error: Exception, dialect: str) -> Any:

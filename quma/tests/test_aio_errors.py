@@ -389,3 +389,21 @@ async def test_asyncmy_closed_connection():
         with pytest.raises(exc.ConnectionLost):
             await cur.query("SELECT 1").run()
     await db.close()
+
+
+@pytest.mark.parametrize("uri", BASE)
+async def test_text_the_connection_cant_encode(uri):
+    db = AsyncDatabase(uri)
+    async with db.cursor as cur:
+        with pytest.raises(exc.DataError) as error:
+            await cur.query("SELECT :v AS a", v="\ud800").all()
+    assert isinstance(error.value.__cause__, UnicodeError)
+    await db.close()
+
+
+async def test_aiosqlite_text_it_cant_encode():
+    db = AsyncDatabase("aiosqlite:///:memory:")
+    async with db.cursor as cur:
+        with pytest.raises(exc.DataError):
+            await cur.query("SELECT :v AS a", v="\ud800").all()
+    await db.close()

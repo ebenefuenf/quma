@@ -55,6 +55,8 @@ class Cursor:
             with suppress(ValueError):
                 self.connection._conn.interrupt()
             raise
+        except UnicodeError:
+            raise
         except ValueError as e:
             # aiosqlite's error for a closed connection, sqlite3's is this.
             raise sqlite3.ProgrammingError(str(e)) from e

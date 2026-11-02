@@ -2,6 +2,7 @@ import pickle
 import sqlite3
 import threading
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -9,7 +10,10 @@ from .. import (
     Database,
     exc,
 )
-from ..errors import translate
+from ..errors import (
+    translate,
+    translating,
+)
 from . import util
 from .test_transaction import (
     DRIVERS,
@@ -320,6 +324,45 @@ def test_lock_wait_timeout(db, driver):
                 cur.execute("UPDATE err_parent SET age = 6 WHERE id = 1")
             cur.rollback()
         holder.rollback()
+
+
+@pytest.mark.parametrize("driver", DRIVERS)
+def test_text_the_connection_cant_encode(db, driver):
+    with db.cursor as cur, pytest.raises(exc.DataError) as error:
+        cur.query("SELECT :v AS a", v="\ud800").all()
+    assert isinstance(error.value.__cause__, UnicodeError)
+
+
+@pytest.mark.mysql
+@pytest.mark.parametrize("driver", ["mysqlclient"])
+def test_result_the_connection_cant_decode(db, driver):
+    with db.cursor as cur:
+        cur.execute("SET character_set_results = latin1")
+        with pytest.raises(exc.DataError) as error:
+            cur.query("SELECT 'é' AS a").all()
+    assert isinstance(error.value.__cause__, UnicodeError)
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize("driver", ["psycopg2", "psycopg"])
+def test_nul_in_a_value(db, driver):
+    with db.cursor as cur, pytest.raises(exc.DataError):
+        cur.query("SELECT :v AS a", v="a\0b").all()
+
+
+@pytest.mark.parametrize("driver", [pytest.param("sqlite3", id="sqlite3")])
+def test_integer_too_large_for_the_server(db, driver):
+    with db.cursor as cur, pytest.raises(exc.DataError):
+        cur.query("SELECT :v AS a", v=2**70).all()
+
+
+def test_value_errors_about_the_sql_stay_value_errors():
+    def fail():
+        raise ValueError("unsupported format character")
+
+    conn = SimpleNamespace(driver_error=KeyError)
+    with pytest.raises(ValueError, match="format character"):
+        translating(conn, fail)()
 
 
 @pytest.mark.parametrize("driver", BASE)
