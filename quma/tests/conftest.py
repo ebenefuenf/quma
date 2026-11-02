@@ -204,6 +204,14 @@ def dbseqcb(qmark_sqldirs):
     db.close()
 
 
+@pytest.fixture
+def clock(monkeypatch):
+    """The time the pools see: move it with ``clock.now += seconds``."""
+    clock = SimpleNamespace(now=1000.0)
+    monkeypatch.setattr("quma.pool.monotonic", lambda: clock.now)
+    return clock
+
+
 @pytest.fixture(params=["psycopg2", "psycopg"])
 def pgdriver(request):
     dbapi = pytest.importorskip(request.param)

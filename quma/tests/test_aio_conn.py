@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 import pytest
 
-from .. import exc
+from .. import AsyncDatabase, exc
 from . import util
 
 pytestmark = pytest.mark.anyio
@@ -189,6 +189,8 @@ async def test_pool_reuses_connections(driver):
     await p.put(raw)
     await p.close()
     assert driver.closed(raw)
+    assert p.checkedin == 0
+    assert p.checkedout == 0
 
 
 async def test_pool_closes_surplus_connections(driver):
@@ -323,6 +325,131 @@ async def test_pool_discards_connections_returned_after_close(driver):
     await p.put(raw)
     assert driver.closed(raw)
     assert p.checkedin == 0
+
+
+async def test_pool_replaces_connection_past_max_lifetime(driver, clock):
+    p = pool(driver, size=1, overflow=0, timeout=1, max_lifetime=100)
+    raw = await p.get()
+    await p.put(raw)
+    clock.now += 94
+    assert await p.get() is raw
+    await p.put(raw)
+    clock.now += 6
+    fresh = await p.get()
+    assert fresh is not raw
+    assert driver.closed(raw)
+    assert p.checkedout == 1
+    assert p.checkedin == 0
+    await p.put(fresh)
+    assert p.checkedin == 1
+    assert p.checkedout == 0
+    await p.close()
+
+
+async def test_pool_closes_returned_connection_past_max_lifetime(
+    driver, clock
+):
+    p = pool(driver, size=1, overflow=0, timeout=1, max_lifetime=100)
+    raw = await p.get()
+    clock.now += 100
+    assert not driver.closed(raw)
+    await p.put(raw)
+    assert driver.closed(raw)
+    assert p.checkedin == 0
+    assert p.checkedout == 0
+    await p.close()
+
+
+@pytest.mark.parametrize("limits", [{}, {"max_lifetime": 100}])
+async def test_pool_reuses_in_order_of_return_without_max_idle(driver, limits):
+    p = pool(driver, size=2, **limits)
+    first, second = await p.get(), await p.get()
+    await p.put(first)
+    await p.put(second)
+    assert await p.get() is first
+    await p.put(first)
+    await p.close()
+    await p.put(await p.get())
+    await driver.close(second)
+
+
+async def test_pool_surplus_connections_reach_max_idle(driver, clock):
+    p = pool(driver, size=3, max_idle=100)
+    raws = [await p.get() for _ in range(3)]
+    for raw in raws:
+        await p.put(raw)
+    busy = raws[-1]
+    for _ in range(3):
+        clock.now += 40
+        assert await p.get() is busy
+        await p.put(busy)
+    assert [driver.closed(raw) for raw in raws] == [True, True, False]
+    assert p.checkedin == 1
+    assert p.checkedout == 0
+    assert p.overflow == -2
+    await p.close()
+
+
+async def test_pool_closes_idle_connections_on_return(driver, clock):
+    p = pool(driver, size=2, max_idle=100)
+    first, second = await p.get(), await p.get()
+    await p.put(first)
+    clock.now += 100
+    await p.put(second)
+    assert driver.closed(first)
+    assert not driver.closed(second)
+    assert p.checkedin == 1
+    await p.close()
+
+
+async def test_pool_cancelled_discard_of_expired_frees_slot(
+    driver, clock, monkeypatch
+):
+    p = pool(driver, size=2, overflow=0, max_idle=100)
+    first, second = await p.get(), await p.get()
+    await p.put(first)
+    await p.put(second)
+    clock.now += 100
+
+    async def cancelled(conn):
+        raise asyncio.CancelledError
+
+    with monkeypatch.context() as patch:
+        patch.setattr(p._conn, "discard", cancelled)
+        with pytest.raises(asyncio.CancelledError):
+            await p.get()
+    assert p.checkedout == 0
+    assert p.checkedin == 1
+    await driver.close(first)
+    async with asyncio.timeout(1):
+        fresh = await p.get()
+    assert driver.closed(second)
+    await p.put(fresh)
+    await p.close()
+
+
+@pytest.mark.parametrize("option", ["max_lifetime", "max_idle"])
+async def test_pool_rejects_limits_that_are_not_positive(driver, option):
+    with pytest.raises(ValueError, match=option):
+        pool(driver, **{option: 0})
+
+
+async def test_database_replaces_connection(driver, clock):
+    sql = (
+        "SELECT pg_backend_pid()"
+        if "psycopg" in driver.uri
+        else "SELECT CONNECTION_ID()"
+    )
+    uri = driver.uri.replace("://", "+pool://", 1)
+    db = AsyncDatabase(uri, max_lifetime=100)
+    async with db.cursor as cur:
+        pid = await cur.query(sql).value()
+    async with db.cursor as cur:
+        assert await cur.query(sql).value() == pid
+    clock.now += 100
+    async with db.cursor as cur:
+        assert await cur.query(sql).value() != pid
+    await db.close()
 
 
 def test_pool_refuses_persistent_connections(driver):

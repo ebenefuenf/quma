@@ -310,6 +310,11 @@ class Database(BaseDatabase[ConnectionLike]):
         to indicate no overflow limit. Defaults to 10.
     :param timeout: The number of seconds to wait before giving
         up on returning a connection. Defaults to None.
+    :param max_lifetime: The age in seconds at which a connection is
+        replaced. Defaults to None.
+    :param max_idle: The number of seconds a connection may stay unused in
+        the pool. The pool then reuses the most recently returned connection
+        first. Defaults to None.
     """
 
     def __init__(

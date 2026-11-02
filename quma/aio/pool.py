@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-from collections import deque
 from typing import Any
 from urllib.parse import ParseResult
 
@@ -12,6 +11,7 @@ from ..conn import (
     RawConnection,
     RawCursor,
 )
+from ..pool import Connections
 
 
 class AsyncPool:
@@ -27,6 +27,9 @@ class AsyncPool:
         self._max_overflow: int = kwargs.pop("overflow", 10)
         self._timeout: float | None = kwargs.pop("timeout", None)
         self._pessimistic = kwargs.get("pessimistic", False)
+        self._conns = Connections(
+            kwargs.pop("max_lifetime", None), kwargs.pop("max_idle", None)
+        )
         # A semaphore, not a full queue, limits the connections: a waiting
         # task also wakes when a broken connection was discarded.
         self._slots = (
@@ -34,8 +37,6 @@ class AsyncPool:
             if self._max_overflow == -1
             else asyncio.Semaphore(self._size + self._max_overflow)
         )
-        self._idle: deque[RawConnection] = deque()
-        self._opened = 0
         self._closed = False
         self._conn = conn_class(url, **kwargs)
         if self._conn.persist:
@@ -57,23 +58,23 @@ class AsyncPool:
             reusable = await self._conn.reset(conn)
         except BaseException:
             # A cancelled reset has discarded the connection.
-            self._opened -= 1
+            self._conns.remove(conn)
             self._release()
             raise
-        if reusable and not self._closed and len(self._idle) < self._size:
-            self._idle.append(conn)
-            self._release()
-            return
-        self._opened -= 1
+        keep = reusable and not self._closed and self._conns.idle < self._size
+        if keep:
+            self._conns.returned(conn)
+        else:
+            self._conns.remove(conn)
         self._release()
-        if reusable:
+        if reusable and not keep:
             await self._conn.discard(conn)
+        await self._discard_expired()
 
     async def close(self) -> None:
         self._closed = True
-        while self._idle:
-            conn = self._idle.popleft()
-            self._opened -= 1
+        while (conn := self._conns.take()) is not None:
+            self._conns.remove(conn)
             await self._conn.discard(conn)
 
     async def _acquire(self) -> None:
@@ -92,10 +93,15 @@ class AsyncPool:
         if self._slots is not None:
             self._slots.release()
 
+    async def _discard_expired(self) -> None:
+        while (conn := self._conns.pop_expired()) is not None:
+            await self._conn.discard(conn)
+
     async def _checkout(self, autocommit: bool) -> RawConnection:
-        if not self._idle:
+        await self._discard_expired()
+        conn = self._conns.take()
+        if conn is None:
             return await self._new(autocommit)
-        conn = self._idle.popleft()
         try:
             if self._pessimistic:
                 await self._conn.check(conn)
@@ -109,11 +115,11 @@ class AsyncPool:
 
     async def _new(self, autocommit: bool) -> RawConnection:
         conn = await self._conn.get(autocommit=autocommit)
-        self._opened += 1
+        self._conns.add(conn)
         return conn
 
     async def _drop(self, conn: RawConnection) -> None:
-        self._opened -= 1
+        self._conns.remove(conn)
         await self._conn.discard(conn)
 
     @property
@@ -167,12 +173,12 @@ class AsyncPool:
 
     @property
     def checkedin(self) -> int:
-        return len(self._idle)
+        return self._conns.idle
 
     @property
     def overflow(self) -> int:
-        return self._opened - self._size
+        return self._conns.open - self._size
 
     @property
     def checkedout(self) -> int:
-        return self._opened - len(self._idle)
+        return self._conns.open - self._conns.idle

@@ -75,6 +75,10 @@ Unreleased
   ``AsyncDatabase`` calls a plain function with an ``Execution`` after every
   statement, also failed ones, for metrics, tracing or finding slow scripts.
   ``echo`` still prints to stdout. See "Logging and hooks".
+- Connection pools take ``max_lifetime`` and ``max_idle``, in seconds and off
+  by default: they replace connections past that age or unused for that long,
+  when a connection is checked out or returned. With ``max_idle``, a pool
+  reuses the most recently returned connection first. See "Connection pool".
 - With ``contextcommit``, a cursor's ``with`` block now rolls back when it
   raises. Before, quma committed the statements that ran before the
   error. If the block raises to signal success, such as a redirect, call

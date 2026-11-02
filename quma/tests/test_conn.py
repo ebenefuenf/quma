@@ -453,6 +453,239 @@ def test_pool_closes_connections_returned_after_close():
         cn.execute("SELECT 1")
 
 
+def is_closed(raw):
+    if isinstance(raw, sqlite3.Connection):
+        try:
+            raw.execute("SELECT 1")
+        except sqlite3.ProgrammingError:
+            return True
+        return False
+    # MySQLdb has open, psycopg2 and psycopg have closed.
+    return not raw.open if hasattr(raw, "open") else bool(raw.closed)
+
+
+@pytest.fixture(
+    params=[
+        "sqlite3",
+        pytest.param("psycopg2", marks=pytest.mark.postgres),
+        pytest.param("psycopg", marks=pytest.mark.postgres),
+        pytest.param("mysqlclient", marks=pytest.mark.mysql),
+    ]
+)
+def limited(request, clock):
+    uri = {
+        "sqlite3": f"sqlite3+pool:///{util.SQLITE_FILE}",
+        "mysqlclient": util.MYSQL_POOL_URI,
+    }.get(request.param) or util.pg_uri(f"{request.param}+pool")
+    pools = []
+
+    def create(**kwargs):
+        pools.append(connect_pool(uri, **kwargs))
+        return pools[-1]
+
+    yield create
+    for pool in pools:
+        pool.close()
+
+
+def test_pool_replaces_connection_past_max_lifetime(limited, clock):
+    pool = limited(size=1, overflow=0, timeout=0.01, max_lifetime=100)
+    raw = pool.get()
+    pool.put(raw)
+    clock.now += 94
+    assert pool.get() is raw
+    pool.put(raw)
+    clock.now += 6
+    fresh = pool.get()
+    assert fresh is not raw
+    assert is_closed(raw)
+    assert pool.checkedout == 1
+    assert pool.checkedin == 0
+    pool.put(fresh)
+    assert pool.checkedin == 1
+    assert pool.checkedout == 0
+
+
+def test_pool_closes_returned_connection_past_max_lifetime(limited, clock):
+    pool = limited(size=1, overflow=0, timeout=0.01, max_lifetime=100)
+    raw = pool.get()
+    clock.now += 100
+    assert not is_closed(raw)
+    pool.put(raw)
+    assert is_closed(raw)
+    assert pool.checkedin == 0
+    assert pool.checkedout == 0
+    pool.put(pool.get())
+    assert pool.checkedin == 1
+
+
+def test_pool_lifetimes_differ_but_stay_within_max_lifetime(clock):
+    pool = connect_pool(
+        f"sqlite3+pool:///{util.SQLITE_FILE}", size=40, max_lifetime=100
+    )
+    raws = [pool.get() for _ in range(40)]
+    for raw in raws:
+        pool.put(raw)
+    clock.now += 97.5
+    survivor = pool.get()
+    assert survivor in raws
+    assert 0 < sum(is_closed(raw) for raw in raws) < 40
+    pool.put(survivor)
+    clock.now += 2.5
+    fresh = pool.get()
+    assert fresh not in raws
+    assert all(is_closed(raw) for raw in raws)
+    pool.put(fresh)
+    pool.close()
+
+
+def test_pool_closes_every_idle_connection_past_max_lifetime(limited, clock):
+    pool = limited(size=2, max_lifetime=100, max_idle=1000)
+    older = pool.get()
+    clock.now += 50
+    newer = pool.get()
+    pool.put(older)
+    pool.put(newer)
+    clock.now += 50
+    assert pool.get() is newer
+    assert is_closed(older)
+    pool.put(newer)
+    assert pool.checkedin == 1
+
+
+@pytest.mark.parametrize("limits", [{}, {"max_lifetime": 100}])
+def test_pool_reuses_in_order_of_return_without_max_idle(limited, limits):
+    pool = limited(size=2, **limits)
+    first, second = pool.get(), pool.get()
+    pool.put(first)
+    pool.put(second)
+    assert pool.get() is first
+    assert pool.get() is second
+    pool.put(first)
+    pool.put(second)
+
+
+def test_pool_reuses_most_recent_with_max_idle(limited):
+    pool = limited(size=2, max_idle=100)
+    first, second = pool.get(), pool.get()
+    pool.put(first)
+    pool.put(second)
+    assert pool.get() is second
+    assert pool.get() is first
+    pool.put(first)
+    pool.put(second)
+
+
+def test_pool_surplus_connections_reach_max_idle(limited, clock):
+    pool = limited(size=3, max_idle=100)
+    raws = [pool.get() for _ in range(3)]
+    for raw in raws:
+        pool.put(raw)
+    busy = raws[-1]
+    for _ in range(3):
+        clock.now += 40
+        assert pool.get() is busy
+        pool.put(busy)
+    assert [is_closed(raw) for raw in raws] == [True, True, False]
+    assert pool.checkedin == 1
+    assert pool.checkedout == 0
+    assert pool.overflow == -2
+
+
+def test_pool_closes_idle_connections_on_return(limited, clock):
+    pool = limited(size=2, max_idle=100)
+    first, second = pool.get(), pool.get()
+    pool.put(first)
+    clock.now += 100
+    pool.put(second)
+    assert is_closed(first)
+    assert not is_closed(second)
+    assert pool.checkedin == 1
+
+
+def test_pool_replaces_connections_after_a_quiet_period(limited, clock):
+    pool = limited(size=2, overflow=0, timeout=0.01, max_idle=100)
+    first, second = pool.get(), pool.get()
+    pool.put(first)
+    pool.put(second)
+    clock.now += 100
+    assert pool.checkedin == 2
+    fresh = pool.get()
+    assert fresh is not first
+    assert fresh is not second
+    assert is_closed(first)
+    assert is_closed(second)
+    assert pool.checkedin == 0
+    assert pool.checkedout == 1
+    pool.put(fresh)
+
+
+@pytest.mark.parametrize("option", ["max_lifetime", "max_idle"])
+@pytest.mark.parametrize("value", [0, -1])
+def test_pool_rejects_limits_that_are_not_positive(option, value):
+    with pytest.raises(ValueError, match=option):
+        connect_pool(f"sqlite3+pool:///{util.SQLITE_FILE}", **{option: value})
+
+
+def test_pool_limits_keep_slots_correct_across_threads():
+    pool = connect_pool(
+        f"sqlite3+pool:///{util.SQLITE_FILE}",
+        size=2,
+        overflow=2,
+        timeout=10,
+        max_lifetime=0.002,
+        max_idle=0.001,
+        check_same_thread=False,
+    )
+    errors = []
+
+    def work():
+        try:
+            for _ in range(100):
+                pool.put(pool.get())
+        except Exception as e:
+            errors.append(e)
+
+    threads = [threading.Thread(target=work) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(30)
+    assert not errors
+    assert not any(thread.is_alive() for thread in threads)
+    assert pool.checkedout == 0
+    assert pool.checkedin <= 2
+    pool.close()
+    assert pool.checkedin == 0
+    assert pool.checkedout == 0
+
+
+@pytest.mark.postgres
+def test_postgres_database_replaces_connection(pgdriver, clock):
+    db = Database(pgdriver.pool_uri, max_lifetime=100)
+    with db.cursor as cur:
+        pid = cur.query("SELECT pg_backend_pid()").value()
+    with db.cursor as cur:
+        assert cur.query("SELECT pg_backend_pid()").value() == pid
+    clock.now += 100
+    with db.cursor as cur:
+        assert cur.query("SELECT pg_backend_pid()").value() != pid
+    db.close()
+
+
+@pytest.mark.mysql
+def test_mysql_database_replaces_connection(clock):
+    db = Database(util.MYSQL_POOL_URI, max_idle=100)
+    with db.cursor as cur:
+        pid = cur.query("SELECT CONNECTION_ID()").value()
+    with db.cursor as cur:
+        assert cur.query("SELECT CONNECTION_ID()").value() == pid
+    clock.now += 100
+    with db.cursor as cur:
+        assert cur.query("SELECT CONNECTION_ID()").value() != pid
+    db.close()
+
+
 def lost_connection(db, killer, pid_sql, kill_sql, error):
     with pytest.raises(error):
         with db.cursor as cur:
