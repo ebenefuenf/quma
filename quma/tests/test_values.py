@@ -9,6 +9,7 @@ import ipaddress
 import pathlib
 import time
 import uuid
+from typing import Any
 
 import pytest
 
@@ -349,4 +350,72 @@ def test_mysqlclient_valid_bytes_still_fill_a_json_column():
         cur.execute("CREATE TEMPORARY TABLE docs (j JSON)")
         cur.query("INSERT INTO docs VALUES (:v)", v=value).run()
         assert "é'" in cur.query("SELECT j FROM docs").value()
+    db.close()
+
+
+NONCONFORMING: dict[str, Any] = {
+    "options": "-c standard_conforming_strings=off"
+}
+HOSTILE = "\\'; SELECT 99 AS a; --"
+TURN_ON = "SET standard_conforming_strings = on"
+
+
+@pytest.fixture(params=[False, True], ids=["plain", "changeling"])
+def nonconforming(request):
+    db = Database(
+        util.pg_uri("psycopg2"), changeling=request.param, **NONCONFORMING
+    )
+    with db.cursor as cur:
+        yield cur
+    db.close()
+
+
+@pytest.mark.postgres
+def test_psycopg2_refuses_values_after_the_setting_went_on(nonconforming):
+    nonconforming.execute(TURN_ON)
+    query = nonconforming.query("SELECT :v AS a", v=HOSTILE)
+    with pytest.raises(exc.APIError, match="standard_conforming_strings"):
+        query.all()
+    with pytest.raises(exc.APIError, match="standard_conforming_strings"):
+        nonconforming.execute("SELECT %s", (HOSTILE,))
+    with pytest.raises(exc.APIError, match="standard_conforming_strings"):
+        nonconforming.executemany("SELECT %s", [(HOSTILE,)])
+    with pytest.raises(exc.APIError, match="standard_conforming_strings"):
+        nonconforming.callproc("length", (HOSTILE,))
+    with pytest.raises(exc.APIError, match="standard_conforming_strings"):
+        list(nonconforming.query("SELECT :v AS a", v=HOSTILE).stream())
+
+
+@pytest.mark.postgres
+def test_psycopg2_runs_statements_without_values_after_it_went_on(
+    nonconforming,
+):
+    nonconforming.execute(TURN_ON)
+    assert nonconforming.query("SELECT 1 AS a").value() == 1
+
+
+@pytest.mark.postgres
+def test_psycopg2_keeps_values_while_the_setting_stays_off(nonconforming):
+    query = nonconforming.query("SELECT :v AS a", v=HOSTILE)
+    assert [list(row) for row in query.all()] == [[HOSTILE]]
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize("driver", ["psycopg2", "psycopg"])
+def test_values_stay_values_when_the_setting_goes_off(driver):
+    db = Database(util.pg_uri(driver))
+    with db.cursor as cur:
+        cur.execute("SET standard_conforming_strings = off")
+        query = cur.query("SELECT :v AS a", v=HOSTILE)
+        assert [list(row) for row in query.all()] == [[HOSTILE]]
+    db.close()
+
+
+@pytest.mark.postgres
+def test_psycopg_keeps_values_when_the_setting_goes_on():
+    db = Database(util.pg_uri("psycopg"), **NONCONFORMING)
+    with db.cursor as cur:
+        cur.execute(TURN_ON)
+        query = cur.query("SELECT :v AS a", v=HOSTILE)
+        assert [list(row) for row in query.all()] == [[HOSTILE]]
     db.close()

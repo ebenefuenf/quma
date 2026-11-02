@@ -6,6 +6,8 @@ except ImportError as e:
     ) from e
 
 
+from typing import Any
+
 from psycopg2.extensions import TRANSACTION_STATUS_IDLE
 from psycopg2.extras import (
     DictCursor,
@@ -81,6 +83,49 @@ class PostgresChangelingCursor(DictCursor):
         self._prefetch = 1
 
 
+class StartedNonConforming:
+    """For a connection that started with standard_conforming_strings off.
+    psycopg2 chooses its E'' prefix once, while connecting, but libpq stops
+    doubling backslashes when the setting goes on, so ``\\'`` in a value would end
+    its string. Costs a check per statement, on these connections only."""
+
+    def _check_values(self: Any, values):
+        status = self.connection.info.parameter_status
+        if values and status("standard_conforming_strings") == "on":
+            raise exc.APIError(
+                "This connection started with standard_conforming_strings = "
+                "off, and it's on now, so psycopg2 can't escape values: one "
+                "could run as SQL. Set it while connecting, with options='-c "
+                "standard_conforming_strings=on'."
+            )
+
+    def execute(self: Any, query, vars=None):
+        self._check_values(vars)
+        return super().execute(query, vars)
+
+    def executemany(self: Any, query, vars_list):
+        self._check_values(vars_list)
+        return super().executemany(query, vars_list)
+
+    def callproc(self: Any, procname, vars=None):
+        self._check_values(vars)
+        return super().callproc(procname, vars)
+
+    def mogrify(self: Any, query, vars=None):
+        self._check_values(vars)
+        return super().mogrify(query, vars)
+
+
+class NonConformingCursor(StartedNonConforming, DictCursor):
+    pass
+
+
+class NonConformingChangelingCursor(
+    StartedNonConforming, PostgresChangelingCursor
+):
+    pass
+
+
 class Connection(conn.PostgresTransactions, conn.Connection):
     dialect = "postgresql"
     driver_error = psycopg2.Error
@@ -92,8 +137,10 @@ class Connection(conn.PostgresTransactions, conn.Connection):
         self.port = self.url.port or 5432
         if self.changeling:
             self.factory = PostgresChangelingCursor
+            self.nonconforming_factory = NonConformingChangelingCursor
         else:
             self.factory = DictCursor
+            self.nonconforming_factory = NonConformingCursor
         self._init_conn()
 
     def get_cursor_attr(self, cursor, key):
@@ -117,7 +164,7 @@ class Connection(conn.PostgresTransactions, conn.Connection):
 
     def create_conn(self, **kwargs):
         try:
-            return psycopg2.connect(
+            conn = psycopg2.connect(
                 database=self.database,
                 user=self.username,
                 password=self.password,
@@ -128,6 +175,10 @@ class Connection(conn.PostgresTransactions, conn.Connection):
             )
         except psycopg2.Error as e:
             raise errors.connection_error(e, self.dialect) from e
+        status = conn.info.parameter_status("standard_conforming_strings")
+        if status == "off":
+            conn.cursor_factory = self.nonconforming_factory
+        return conn
 
     def enable_autocommit_if(self, autocommit, conn):
         if autocommit:

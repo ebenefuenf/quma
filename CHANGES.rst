@@ -5,6 +5,10 @@ quma Changelog
 Unreleased
 ----------
 
+- With psycopg2, a connection that starts with
+  ``standard_conforming_strings = off`` raises ``APIError`` for statements with
+  values after the session turns the setting on. psycopg2 no longer escaped
+  values correctly then, and they could run as SQL.
 - With mysqlclient, a ``set`` value can't run as SQL anymore. The driver quoted
   it with backslashes even under ``NO_BACKSLASH_ESCAPES``, so a value could end
   its string. quma now quotes it like a string.
