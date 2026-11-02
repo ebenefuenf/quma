@@ -450,6 +450,7 @@ def test_placeholders_and_quoting_settings(mydb):
             assert tuple(row) == ("it's :x", value)
 
 
+@pytest.mark.mysql
 def test_set_stays_a_value_without_backslash_escapes():
     value = "' UNION SELECT 99 #"
     db = Database(util.MYSQL_URI)
@@ -461,6 +462,7 @@ def test_set_stays_a_value_without_backslash_escapes():
     db.close()
 
 
+@pytest.mark.mysql
 def test_set_fills_a_set_column():
     db = Database(util.MYSQL_URI)
     with db.cursor as cur:
@@ -470,6 +472,7 @@ def test_set_fills_a_set_column():
     db.close()
 
 
+@pytest.mark.mysql
 def test_bytearray_is_stored_as_bytes():
     value = bytes(range(256))
     db = Database(util.MYSQL_URI)
