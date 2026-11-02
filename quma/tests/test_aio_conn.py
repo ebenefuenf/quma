@@ -272,6 +272,21 @@ async def test_pool_new_request_queues_behind_waiters(driver):
     await p.close()
 
 
+async def test_pool_new_request_behind_waiters_can_time_out(driver):
+    p = pool(driver, size=1, overflow=0, timeout=0.05)
+    raw = await p.get()
+    first = asyncio.create_task(p.get())
+    await asyncio.sleep(0)
+    await p.put(raw)
+    second = asyncio.create_task(p.get())
+    assert await first is raw
+    async with asyncio.timeout(2):
+        with pytest.raises(exc.TimeoutError):
+            await second
+    await p.put(raw)
+    await p.close()
+
+
 async def test_pool_timed_out_waiter_frees_its_place(driver):
     p = pool(driver, size=1, overflow=0, timeout=0.01)
     raw = await p.get()
@@ -281,6 +296,67 @@ async def test_pool_timed_out_waiter_frees_its_place(driver):
     assert await p.get() is raw
     await p.put(raw)
     await p.close()
+
+
+async def test_pool_refuses_requests_beyond_max_waiting(driver):
+    p = pool(driver, size=1, overflow=0, timeout=5, max_waiting=1)
+    raw = await p.get()
+    waiter = asyncio.create_task(p.get())
+    await asyncio.sleep(0)
+    with pytest.raises(exc.TooManyWaiting):
+        await p.get()
+    assert not waiter.done()
+    await p.put(raw)
+    assert await waiter is raw
+    await p.put(raw)
+    await p.close()
+
+
+async def test_pool_max_waiting_zero_never_waits(driver):
+    p = pool(driver, size=1, overflow=0, timeout=5, max_waiting=0)
+    raw = await p.get()
+    with pytest.raises(exc.TooManyWaiting):
+        await p.get()
+    await p.put(raw)
+    assert await p.get() is raw
+    await p.put(raw)
+    await p.close()
+
+
+async def test_pool_timed_out_waiter_makes_room_for_the_next(driver):
+    p = pool(driver, size=1, overflow=0, timeout=0.01, max_waiting=1)
+    raw = await p.get()
+    for _ in range(2):
+        with pytest.raises(exc.TimeoutError) as info:
+            await p.get()
+        assert not isinstance(info.value, exc.TooManyWaiting)
+    await p.put(raw)
+    await p.close()
+
+
+async def test_pool_cancelled_waiter_makes_room_for_the_next(driver):
+    p = pool(driver, size=1, overflow=0, timeout=5, max_waiting=1)
+    raw = await p.get()
+    cancelled = asyncio.create_task(p.get())
+    await asyncio.sleep(0)
+    cancelled.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await cancelled
+    waiter = asyncio.create_task(p.get())
+    await asyncio.sleep(0)
+    await p.put(raw)
+    assert await waiter is raw
+    await p.put(raw)
+    await p.close()
+
+
+@pytest.mark.parametrize(
+    "options",
+    [{"max_waiting": -1}, {"max_waiting": 1, "overflow": -1}],
+)
+async def test_pool_rejects_pointless_max_waiting(driver, options):
+    with pytest.raises(ValueError, match="max_waiting"):
+        pool(driver, **options)
 
 
 async def test_pool_unlimited_overflow(driver):

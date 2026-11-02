@@ -14,6 +14,7 @@ from ..conn import (
 from ..pool import (
     DEFAULT_TIMEOUT,
     Connections,
+    max_waiting,
 )
 
 
@@ -29,6 +30,8 @@ class AsyncPool:
         self._size: int = kwargs.pop("size", 5)
         self._max_overflow: int = kwargs.pop("overflow", 10)
         self._timeout: float | None = kwargs.pop("timeout", DEFAULT_TIMEOUT)
+        self._max_waiting = max_waiting(kwargs, self._max_overflow)
+        self._waiting = 0
         self._pessimistic = kwargs.get("pessimistic", False)
         self._conns = Connections(
             kwargs.pop("max_lifetime", None), kwargs.pop("max_idle", None)
@@ -89,6 +92,14 @@ class AsyncPool:
             # A timeout would set and cancel a timer on every checkout.
             await self._slots.acquire()
             return
+        if self._max_waiting is not None:
+            if self._waiting >= self._max_waiting:
+                raise exc.TooManyWaiting(
+                    f"Pool limit of size {self._size} overflow "
+                    f"{self._max_overflow} reached, {self._waiting} waiting, "
+                    f"max_waiting {self._max_waiting}"
+                )
+        self._waiting += 1
         try:
             async with asyncio.timeout(self._timeout):
                 await self._slots.acquire()
@@ -97,6 +108,8 @@ class AsyncPool:
                 f"Pool limit of size {self._size} overflow {self._max_overflow} "
                 f"reached, connection timed out, timeout {self._timeout}"
             ) from e
+        finally:
+            self._waiting -= 1
 
     def _release(self) -> None:
         if self._slots is not None:

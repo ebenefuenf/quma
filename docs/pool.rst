@@ -31,6 +31,18 @@ come back. After ``timeout`` seconds, 30 by default, it gets
 take longer and has its own setting in the driver, like ``connect_timeout`` on
 PostgreSQL and MySQL.
 
+``max_waiting`` limits how many requests may wait. Further ones get
+:class:`quma.TooManyWaiting` at once, a subclass of :class:`quma.TimeoutError`, so
+under overload they fail fast instead of piling up. With ``max_waiting=0`` nobody
+waits. It's off by default, and it matters most with the :doc:`async API <async>`,
+where waiting tasks are cheap and nothing else limits them. In a threaded server
+each waiter already takes up a thread.
+
+.. code-block:: python
+
+    db = AsyncDatabase('psycopg+pool://username:password@/db_name', sqldir,
+                       size=10, timeout=5, max_waiting=50)
+
 Limiting how long connections live
 ----------------------------------
 

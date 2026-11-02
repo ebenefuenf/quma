@@ -656,6 +656,73 @@ def test_pool_timeout_none_waits_for_a_connection(monkeypatch):
     pool.close()
 
 
+def waiting_pool(**kwargs):
+    return connect_pool(
+        f"sqlite3+pool:///{util.SQLITE_FILE}",
+        size=1,
+        overflow=0,
+        check_same_thread=False,
+        **kwargs,
+    )
+
+
+def test_pool_refuses_requests_beyond_max_waiting():
+    pool = waiting_pool(timeout=5, max_waiting=1)
+    raw = pool.get()
+    results = queue.Queue()
+    waiter = threading.Thread(target=lambda: results.put(pool.get()))
+    waiter.start()
+    time.sleep(0.05)
+    with pytest.raises(exc.TooManyWaiting):
+        pool.get()
+    assert waiter.is_alive()
+    pool.put(raw)
+    waiter.join(5)
+    assert results.get(timeout=1) is raw
+    pool.put(raw)
+    pool.close()
+
+
+def test_pool_max_waiting_zero_never_waits():
+    pool = waiting_pool(timeout=5, max_waiting=0)
+    raw = pool.get()
+    with pytest.raises(exc.TooManyWaiting):
+        pool.get()
+    pool.put(raw)
+    assert pool.get() is raw
+    pool.put(raw)
+    pool.close()
+
+
+def test_pool_timed_out_waiter_makes_room_for_the_next():
+    pool = waiting_pool(timeout=0.01, max_waiting=1)
+    raw = pool.get()
+    for _ in range(2):
+        with pytest.raises(exc.TimeoutError) as info:
+            pool.get()
+        assert not isinstance(info.value, exc.TooManyWaiting)
+    pool.put(raw)
+    pool.close()
+
+
+def test_too_many_waiting_is_a_timeout_error():
+    pool = waiting_pool(max_waiting=0)
+    raw = pool.get()
+    with pytest.raises(exc.TimeoutError):
+        pool.get()
+    pool.put(raw)
+    pool.close()
+
+
+@pytest.mark.parametrize(
+    "options",
+    [{"max_waiting": -1}, {"max_waiting": 1, "overflow": -1}],
+)
+def test_pool_rejects_pointless_max_waiting(options):
+    with pytest.raises(ValueError, match="max_waiting"):
+        connect_pool(f"sqlite3+pool:///{util.SQLITE_FILE}", **options)
+
+
 def test_pool_keeps_autocommit_until_a_checkout_needs_another_mode(limited):
     pool = limited(size=1)
     raw = pool.get(autocommit=True)

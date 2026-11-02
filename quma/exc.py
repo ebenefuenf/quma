@@ -17,6 +17,11 @@ class TimeoutError(Exception):
     """Raised when a connection pool times out on getting a connection."""
 
 
+class TooManyWaiting(TimeoutError):
+    """Raised at once when ``max_waiting`` requests already wait for a
+    connection."""
+
+
 class DatabaseError(Exception):
     """Anything the database or the driver reports. See
     :doc:`Handling errors <errors>`.

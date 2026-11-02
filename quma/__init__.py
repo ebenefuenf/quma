@@ -27,6 +27,7 @@ from .exc import (  # noqa: F401
     ProgrammingError,
     RaisedError,
     TimeoutError,
+    TooManyWaiting,
     TransactionConflict,
     UniqueViolation,
 )
@@ -62,6 +63,7 @@ __all__ = [
     "ProgrammingError",
     "RaisedError",
     "TimeoutError",
+    "TooManyWaiting",
     "TransactionConflict",
     "UniqueViolation",
 ]

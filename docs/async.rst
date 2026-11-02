@@ -86,7 +86,8 @@ a database shared by several event loops (as in test suites that run each
 test in a new loop) fails with "attached to a different loop".
 
 The pool takes the options of the sync :doc:`pool <pool>`: ``size``,
-``overflow``, ``timeout``, ``pessimistic``, ``max_lifetime`` and ``max_idle``.
+``overflow``, ``timeout``, ``max_waiting``, ``pessimistic``, ``max_lifetime`` and
+``max_idle``.
 A task waiting for a free connection awaits instead of blocking a thread.
 
 With ``persist=True`` all tasks share one connection and their

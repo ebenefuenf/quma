@@ -23,6 +23,17 @@ from .conn import (
 DEFAULT_TIMEOUT = 30.0
 
 
+def max_waiting(kwargs: dict[str, Any], overflow: int) -> int | None:
+    limit = kwargs.pop("max_waiting", None)
+    if limit is None:
+        return None
+    if limit < 0:
+        raise ValueError("max_waiting must not be negative")
+    if overflow == -1:
+        raise ValueError("max_waiting has no effect with overflow=-1")
+    return limit
+
+
 class Connections:
     """The connections a pool has open, and which of them are idle."""
 
@@ -94,6 +105,8 @@ class Pool:
         self._size: int = kwargs.pop("size", 5)
         self._max_overflow: int = kwargs.pop("overflow", 10)
         self._timeout: float | None = kwargs.pop("timeout", DEFAULT_TIMEOUT)
+        self._max_waiting = max_waiting(kwargs, self._max_overflow)
+        self._waiting = 0
         self._pessimistic = kwargs.get("pessimistic", False)
         self._conns = Connections(
             kwargs.pop("max_lifetime", None), kwargs.pop("max_idle", None)
@@ -156,14 +169,27 @@ class Pool:
             self._conn.discard(conn)
 
     def _acquire(self) -> None:
-        if self._slots is None:
+        if self._slots is None or self._slots.acquire(blocking=False):
             return
-        if not self._slots.acquire(timeout=self._timeout):
-            raise exc.TimeoutError(
-                f"QueuePool limit of size {self._size} overflow "
-                f"{self._max_overflow} reached, connection timed out, "
-                f"timeout {self._timeout}"
-            )
+        with self._lock:
+            if self._max_waiting is not None:
+                if self._waiting >= self._max_waiting:
+                    raise exc.TooManyWaiting(
+                        f"QueuePool limit of size {self._size} overflow "
+                        f"{self._max_overflow} reached, {self._waiting} "
+                        f"waiting, max_waiting {self._max_waiting}"
+                    )
+            self._waiting += 1
+        try:
+            if not self._slots.acquire(timeout=self._timeout):
+                raise exc.TimeoutError(
+                    f"QueuePool limit of size {self._size} overflow "
+                    f"{self._max_overflow} reached, connection timed out, "
+                    f"timeout {self._timeout}"
+                )
+        finally:
+            with self._lock:
+                self._waiting -= 1
 
     def _release(self) -> None:
         if self._slots is not None:

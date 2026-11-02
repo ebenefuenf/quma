@@ -315,6 +315,9 @@ class Database(BaseDatabase[ConnectionLike]):
     :param timeout: The number of seconds to wait for a free connection
         before raising :class:`quma.TimeoutError`. ``None`` waits forever.
         Defaults to 30.
+    :param max_waiting: How many requests may wait for a free connection.
+        Others get :class:`quma.TooManyWaiting` at once, and 0 means none may
+        wait. Defaults to None, without a limit.
     :param max_lifetime: The age in seconds at which a connection is
         replaced. Defaults to None.
     :param max_idle: The number of seconds a connection may stay unused in
