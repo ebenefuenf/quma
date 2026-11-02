@@ -1,6 +1,7 @@
 import pickle
 import sqlite3
 import threading
+import time
 
 import pytest
 
@@ -319,6 +320,53 @@ def test_lock_wait_timeout(db, driver):
                 cur.execute("UPDATE err_parent SET age = 6 WHERE id = 1")
             cur.rollback()
         holder.rollback()
+
+
+@pytest.mark.parametrize("driver", BASE)
+def test_nowait(db, driver):
+    with db.cursor as holder:
+        holder.execute("UPDATE err_parent SET age = 5 WHERE id = 1")
+        with db.cursor as cur:
+            with pytest.raises(exc.TransactionConflict):
+                cur.execute(
+                    "SELECT * FROM err_parent WHERE id = 1 FOR UPDATE NOWAIT"
+                )
+            cur.rollback()
+        holder.rollback()
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize("driver", ["psycopg2", "psycopg"])
+@pytest.mark.parametrize(
+    "setting, begin",
+    [
+        ("idle_session_timeout", False),
+        ("idle_in_transaction_session_timeout", True),
+    ],
+)
+def test_server_timeouts(uri, setting, begin):
+    db = Database(uri)
+    with db.cursor(autocommit=True) as cur:
+        cur.execute(f"SET {setting} = 50")
+        if begin:
+            cur.execute("BEGIN")
+        time.sleep(0.2)
+        with pytest.raises(exc.ConnectionLost):
+            cur.execute("SELECT 1")
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize("driver", ["psycopg2", "psycopg"])
+def test_cursor_on_a_lost_persistent_connection(uri):
+    db = Database(uri, persist=True)
+    with db.cursor as cur:
+        raw_conn = cur.raw_conn
+        assert raw_conn is not None
+        raw_conn.close()
+    for _ in range(2):
+        with pytest.raises(exc.ConnectionLost), db.cursor:
+            pass
+    db.close()
 
 
 def test_sqlite_busy(tmp_path):
@@ -727,6 +775,9 @@ def fake(name, *args, **attrs):
         ("57P01", exc.ConnectionLost),
         ("57P02", exc.ConnectionLost),
         ("57P03", exc.ConnectionLost),
+        ("57P05", exc.ConnectionLost),
+        ("25P03", exc.ConnectionLost),
+        ("25P04", exc.ConnectionLost),
         ("22012", exc.DataError),
         ("23000", exc.IntegrityError),
         ("23P01", exc.ExclusionViolation),
@@ -777,6 +828,8 @@ def test_postgres_errors_without_a_code(name, expected):
         (2006, exc.ConnectionLost),
         (2013, exc.ConnectionLost),
         (2055, exc.ConnectionLost),
+        (3572, exc.TransactionConflict),
+        (4031, exc.ConnectionLost),
     ],
 )
 def test_mysql_codes(code, expected):
@@ -784,6 +837,22 @@ def test_mysql_codes(code, expected):
     assert type(error) is expected
     assert error.code == code
     assert str(error) == "m"
+
+
+@pytest.mark.parametrize(
+    "dialect, args, expected",
+    [
+        ("postgresql", ["connection already closed"], exc.ConnectionLost),
+        ("postgresql", ["cursor already closed"], exc.DatabaseError),
+        ("mysql", [0, "Not connected"], exc.ConnectionLost),
+        ("mysql", [0, ""], exc.ConnectionLost),
+        ("mysql", [9999, "m"], exc.DatabaseError),
+        ("mysql", ["m"], exc.DatabaseError),
+    ],
+)
+def test_interface_errors(dialect, args, expected):
+    error = translate(fake("InterfaceError", *args), dialect)
+    assert type(error) is expected
 
 
 @pytest.mark.parametrize(

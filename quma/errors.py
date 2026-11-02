@@ -23,6 +23,8 @@ _POSTGRESQL: dict[Any, type[exc.DatabaseError]] = {
     "23505": exc.UniqueViolation,
     "23514": exc.CheckViolation,
     "23P01": exc.ExclusionViolation,
+    "25P03": exc.ConnectionLost,  # idle_in_transaction_session_timeout
+    "25P04": exc.ConnectionLost,  # transaction_timeout
     "40001": exc.TransactionConflict,
     "40P01": exc.TransactionConflict,
     "42": exc.ProgrammingError,
@@ -30,6 +32,7 @@ _POSTGRESQL: dict[Any, type[exc.DatabaseError]] = {
     "57P01": exc.ConnectionLost,
     "57P02": exc.ConnectionLost,
     "57P03": exc.ConnectionLost,
+    "57P05": exc.ConnectionLost,  # idle_session_timeout
     "P0001": exc.RaisedError,
 }
 
@@ -64,8 +67,10 @@ _MYSQL: dict[Any, type[exc.DatabaseError]] = {
     2006: exc.ConnectionLost,  # server has gone away
     2013: exc.ConnectionLost,  # lost during the query
     2055: exc.ConnectionLost,
+    3572: exc.TransactionConflict,  # NOWAIT, MySQL
     3819: exc.CheckViolation,  # MySQL
     4025: exc.CheckViolation,  # MariaDB
+    4031: exc.ConnectionLost,  # wait_timeout, MySQL
 }
 
 _SQLITE: dict[Any, type[exc.DatabaseError]] = {
@@ -186,10 +191,20 @@ def _class(
     # Both drivers report a connection that broke without a server's code.
     if dialect == "postgresql" and not code and "OperationalError" in names:
         return exc.ConnectionLost
+    if "InterfaceError" in names and _not_connected(error, dialect, code):
+        return exc.ConnectionLost
     for name in names:
         if name in _CATEGORIES:
             return _CATEGORIES[name]
     return exc.DatabaseError
+
+
+def _not_connected(error: Exception, dialect: str, code: Any) -> bool:
+    # psycopg2's "cursor already closed" stays: it can't tell a lost connection
+    # from a cursor that was closed on a working one.
+    if dialect == "postgresql":
+        return str(error) == "connection already closed"
+    return dialect == "mysql" and code == 0
 
 
 def _message(error: Exception, dialect: str) -> str:

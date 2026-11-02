@@ -377,3 +377,15 @@ async def test_failing_connection(uri):
     assert not isinstance(raised.value, exc.ConnectionLost)
     assert raised.value.__cause__ is not None
     await db.close()
+
+
+@pytest.mark.mysql
+async def test_asyncmy_closed_connection():
+    db = AsyncDatabase(MY_URI)
+    async with db.cursor as cur:
+        raw_conn = cur.raw_conn
+        assert raw_conn is not None
+        await raw_conn.ensure_closed()
+        with pytest.raises(exc.ConnectionLost):
+            await cur.query("SELECT 1").run()
+    await db.close()
