@@ -45,6 +45,10 @@ if TYPE_CHECKING:
     )
 
 
+# The event loop only holds weak references to its tasks.
+_finishing: set[asyncio.Task[None]] = set()
+
+
 class AsyncCursor(BaseCursor[AsyncConnectionLike]):
     def __init__(
         self,
@@ -145,9 +149,21 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         """
         if self.raw_conn is None or self.raw_cursor is None:
             return
+        try:
+            await self._put_when_idle(force)
+        except asyncio.CancelledError:
+            # Still waiting for the operation, and only put() returns the
+            # connection to its pool.
+            if self._open:
+                task = asyncio.create_task(self._put_when_idle(force))
+                _finishing.add(task)
+                task.add_done_callback(_finishing.discard)
+            raise
+
+    async def _put_when_idle(self, force: bool) -> None:
         # Waits for a running operation instead of closing under it.
         async with self._busy, self._shared():
-            if self.raw_conn is None:
+            if self.raw_conn is None or self.raw_cursor is None:
                 return
             self._open = False
             try:

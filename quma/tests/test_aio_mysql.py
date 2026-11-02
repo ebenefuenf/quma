@@ -401,3 +401,26 @@ async def test_cancelled_query_returns_connection(apooldb):
     async with asyncio.timeout(1):
         async with apooldb.cursor as cur:
             assert await cur.users.all().count() == 7
+
+
+async def test_cancelled_put_still_returns_connection(apooldb):
+    running = []
+
+    async def leave_while_query_runs():
+        async with apooldb.cursor as cur:
+            running.append(
+                asyncio.create_task(cur.query("SELECT SLEEP(0.2)").run())
+            )
+            await asyncio.sleep(0.01)
+
+    leaving = asyncio.create_task(leave_while_query_runs())
+    await asyncio.sleep(0.05)
+    leaving.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await leaving
+    await running[0]
+    async with asyncio.timeout(1):
+        while apooldb.conn.checkedout:
+            await asyncio.sleep(0.01)
+        async with apooldb.cursor as cur:
+            assert await cur.query("SELECT 1").value() == 1
