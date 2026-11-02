@@ -356,6 +356,31 @@ def test_integer_too_large_for_the_server(db, driver):
         cur.query("SELECT :v AS a", v=2**70).all()
 
 
+@pytest.mark.mysql
+@pytest.mark.parametrize("driver", ["mysqlclient", "mysqlclient+pool"])
+def test_message_that_isnt_utf8(uri, driver):
+    db = Database(uri, charset="latin1")
+    with db.cursor as cur:
+        cur.execute("CREATE TEMPORARY TABLE latin (a VARCHAR(20) PRIMARY KEY)")
+        cur.query("INSERT INTO latin VALUES (:v)", v="é").run()
+        with pytest.raises(exc.UniqueViolation) as error:
+            cur.query("INSERT INTO latin VALUES (:v)", v="é").run()
+    assert error.value.code == 1062
+    assert "1062" in str(error.value)
+    cause = error.value.__cause__
+    assert cause is not None
+    assert cause.args[0] == 1062
+    assert "1062" in cause.args[1]
+    assert "1062" in str(cause)
+    db.close()
+
+
+def test_a_message_without_a_null_stays():
+    error = translate(fake("OperationalError", 1062, "the message"), "mysql")
+    assert str(error) == "the message"
+    assert type(error) is exc.UniqueViolation
+
+
 def test_value_errors_about_the_sql_stay_value_errors():
     def fail():
         raise ValueError("unsupported format character")

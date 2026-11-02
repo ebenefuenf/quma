@@ -8,6 +8,7 @@ on psycopg2 and a ``ProgrammingError`` on psycopg.
 
 from __future__ import annotations
 
+import gc
 import re
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -228,6 +229,14 @@ def _not_connected(error: Exception, dialect: str, code: Any) -> bool:
 
 def _message(error: Exception, dialect: str) -> str:
     if dialect == "mysql" and len(error.args) > 1:
+        # mysqlclient leaves a NULL in args if the server's message isn't UTF-8,
+        # like a duplicate key on charset latin1, and reading it crashes Python.
+        if len(gc.get_referents(error.args)) < len(error.args):
+            code = error.args[0]
+            error.args = (
+                code,
+                f"Error {code}, its message isn't valid UTF-8.",
+            )
         return str(error.args[1])
     return str(error).strip()
 
