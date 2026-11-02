@@ -10,12 +10,14 @@ except ImportError as e:
         "In order to use quma with asyncmy you need to install asyncmy"
     ) from e
 
+from time import struct_time
 from typing import Any
 
 from .. import (
     conn,
     errors,
     exc,
+    values,
 )
 from ..rows import (
     ChangelingRow,
@@ -56,13 +58,14 @@ class ChangelingStreamCursor(RowStreamCursor):
 
 
 class EscapingConnection(asyncmy.Connection):
-    def escape(self, obj, mapping=None):
+    def escape(self: Any, obj, mapping=None):
+        obj = values.plain(obj, self._encoders if mapping is None else mapping)
         # asyncmy escapes these with backslashes byte by byte: under
         # NO_BACKSLASH_ESCAPES or a charset like gbk, a value can end its string.
         # Without _binary, MySQL reads a hex literal as a number in arithmetic.
-        if isinstance(obj, (bytes, bytearray)):
+        if isinstance(obj, bytes):
             return f"_binary X'{obj.hex()}'"
-        if isinstance(obj, tuple):
+        if isinstance(obj, (tuple, list)) and not isinstance(obj, struct_time):
             items = ",".join(self.escape(item, mapping) for item in obj)
             return f"({items})"
         return super().escape(obj, mapping)

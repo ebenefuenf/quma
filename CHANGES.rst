@@ -8,11 +8,13 @@ Unreleased
 - With mysqlclient, a ``set`` value can't run as SQL anymore. The driver quoted
   it with backslashes even under ``NO_BACKSLASH_ESCAPES``, so a value could end
   its string. quma now quotes it like a string.
-- With mysqlclient, a ``frozenset`` value works like a ``set``, for example for
-  a ``SET`` column. Before, the driver stored its Python text, like
-  ``frozenset({'a'})``.
-- With mysqlclient, a ``bytearray`` value is stored as its bytes. Before, the
-  driver stored its Python text, like ``bytearray(b'abc')``.
+- **Breaking:** mysqlclient no longer stores a Python ``repr()`` as if it were
+  data. A value whose only text is its ``repr()``, like a ``dict``, a ``range`` or
+  a plain object, raises ``ProgrammingError``, as it does with the other drivers.
+  A ``bytearray``, ``memoryview`` or ``array`` is stored as its bytes, a
+  ``frozenset`` works like a ``set``, a subclass of ``int``, ``float`` or
+  ``Decimal`` is sent as a number. A type with a text of its own, like ``UUID`` or
+  ``PurePath``, is still stored as that text. asyncmy treats values the same.
 - Script names can't leave their SQL directory: without ``cache=True``,
   ``getattr(db.users, '../../other/script')`` or an absolute path read that
   file, and ran a ``.msql`` file as a template, so an application that passed

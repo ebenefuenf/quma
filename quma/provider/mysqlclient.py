@@ -16,6 +16,7 @@ from .. import (
     conn,
     errors,
     exc,
+    values,
 )
 from ..rows import (
     ChangelingRow,
@@ -60,14 +61,7 @@ class ChangelingStreamCursor(RowStreamCursor):
 
 class EscapingConnection(DriverConnection):
     def literal(self, o):
-        # MySQLdb quotes a set without its connection, with backslashes whatever
-        # the sql_mode: under NO_BACKSLASH_ESCAPES, a value can end its string.
-        if isinstance(o, (set, frozenset)):
-            o = ",".join(o)
-        elif isinstance(o, bytearray):
-            # string_literal() takes bytes only, and quotes the text of others.
-            o = bytes(o)
-        return super().literal(o)
+        return super().literal(values.plain(o, self.encoders))
 
 
 class Connection(conn.Connection):
