@@ -220,7 +220,7 @@ class Connection(BaseConnection):
         try:
             close_streams(conn)
             end_blocks(conn)
-            conn.rollback()
+            self.rollback(conn)
             if not keep_autocommit:
                 self.disable_autocommit(conn)
         except Exception:
@@ -229,6 +229,9 @@ class Connection(BaseConnection):
             self.discard(conn)
             return False
         return True
+
+    def rollback(self, conn: RawConnection) -> None:
+        conn.rollback()
 
     def put(self, conn: RawConnection) -> None:
         if self.reset(conn) and not self.persist:

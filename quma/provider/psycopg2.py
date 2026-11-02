@@ -138,6 +138,15 @@ class Connection(conn.PostgresTransactions, conn.Connection):
         conn.autocommit = False
         return conn
 
+    def rollback(self, conn):
+        # psycopg2's rollback() does nothing in autocommit, also if a BEGIN
+        # statement opened a transaction.
+        if not conn.autocommit:
+            conn.rollback()
+        elif conn.get_transaction_status() != TRANSACTION_STATUS_IDLE:
+            with conn.cursor() as cursor:
+                cursor.execute("ROLLBACK")
+
     def mogrify(self, cursor, content, params):
         return cursor.mogrify(content, params).decode("utf-8")
 

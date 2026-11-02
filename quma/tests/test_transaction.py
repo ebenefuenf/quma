@@ -528,3 +528,54 @@ def test_mysql_exception_with_open_stream_rolls_back(my):
     finally:
         my.release(carrier)
     assert rows is not None
+
+
+def committed_ids(driver):
+    """What another connection sees."""
+    other = Database(util.pg_uri(driver))
+    with other.cursor as cur:
+        return [row[0] for row in cur.query("SELECT a FROM reset_test").all()]
+
+
+@pytest.fixture
+def reset_table(pgdriver):
+    db = Database(pgdriver.uri)
+    db.execute("DROP TABLE IF EXISTS reset_test")
+    db.execute("CREATE TABLE reset_test (a integer)")
+    yield pgdriver.name
+    db.execute("DROP TABLE reset_test")
+
+
+@pytest.mark.postgres
+def test_pool_ends_a_block_a_closed_cursor_left_open(reset_table):
+    db = Database(
+        util.pg_uri(f"{reset_table}+pool"), size=1, overflow=0, autocommit=True
+    )
+    cur = db.cursor()
+    with pytest.raises(APIError, match=RETURNED), cur.transaction():
+        cur.query("INSERT INTO reset_test VALUES (1)").run()
+        cur.close()
+
+    with db.cursor as cur:
+        cur.query("INSERT INTO reset_test VALUES (2)").run()
+    db.close()
+    assert committed_ids(reset_table) == [2]
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize(
+    "options", [{"size": 1, "overflow": 0}, {"persist": True}]
+)
+def test_connection_ends_a_transaction_begun_in_autocommit(
+    reset_table, options
+):
+    scheme = f"{reset_table}+pool" if "size" in options else reset_table
+    db = Database(util.pg_uri(scheme), **options)
+    with db.cursor(autocommit=True) as cur:
+        cur.execute("BEGIN")
+        cur.execute("INSERT INTO reset_test VALUES (1)")
+
+    with db.cursor(autocommit=True) as cur:
+        cur.execute("INSERT INTO reset_test VALUES (2)")
+    db.close()
+    assert committed_ids(reset_table) == [2]
