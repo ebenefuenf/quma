@@ -451,23 +451,26 @@ def test_placeholders_and_quoting_settings(mydb):
 
 
 @pytest.mark.mysql
-def test_set_stays_a_value_without_backslash_escapes():
+@pytest.mark.parametrize("kind", [set, frozenset])
+def test_set_stays_a_value_without_backslash_escapes(kind):
     value = "' UNION SELECT 99 #"
     db = Database(util.MYSQL_URI)
     with db.cursor as cur:
         cur.execute("SET SESSION sql_mode = 'NO_BACKSLASH_ESCAPES'")
         assert [
-            list(row) for row in cur.query("SELECT :v AS a", v={value}).all()
+            list(row)
+            for row in cur.query("SELECT :v AS a", v=kind({value})).all()
         ] == [[value]]
     db.close()
 
 
 @pytest.mark.mysql
-def test_set_fills_a_set_column():
+@pytest.mark.parametrize("kind", [set, frozenset])
+def test_set_fills_a_set_column(kind):
     db = Database(util.MYSQL_URI)
     with db.cursor as cur:
         cur.execute("CREATE TEMPORARY TABLE flags (f SET('a', 'b', 'c'))")
-        cur.query("INSERT INTO flags VALUES (:f)", f={"a", "c"}).run()
+        cur.query("INSERT INTO flags VALUES (:f)", f=kind({"a", "c"})).run()
         assert cur.query("SELECT f FROM flags").value() == "a,c"
     db.close()
 
