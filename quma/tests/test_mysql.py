@@ -82,10 +82,10 @@ def test_query_cache(mydb, mypooldb):
 
 
 @pytest.mark.mysql
-def test_first(mydb_dict, mypooldb_dict):
+def test_first(mydb_changeling, mypooldb_changeling):
     from .test_db import first
 
-    for db in (mydb_dict, mypooldb_dict):
+    for db in (mydb_changeling, mypooldb_changeling):
         first(db)
 
 
@@ -98,34 +98,34 @@ def test_value(mydb_persist, mypooldb):
 
 
 @pytest.mark.mysql
-def test_value_str(mydb_dict, mypooldb_dict):
+def test_value_str(mydb_changeling, mypooldb_changeling):
     from .test_db import value_str
 
-    for db in (mydb_dict, mypooldb_dict):
+    for db in (mydb_changeling, mypooldb_changeling):
         value_str(db)
 
 
 @pytest.mark.mysql
-def test_query_attr(mydb, mypooldb_dict):
+def test_query_attr(mydb, mypooldb_changeling):
     from .test_db import query_attr
 
-    for db in (mydb, mypooldb_dict):
+    for db in (mydb, mypooldb_changeling):
         query_attr(db)
 
 
 @pytest.mark.mysql
-def test_get_item(mydb_dict, mypooldb_dict):
+def test_get_item(mydb_changeling, mypooldb_changeling):
     from .test_db import get_item
 
-    for db in (mydb_dict, mypooldb_dict):
+    for db in (mydb_changeling, mypooldb_changeling):
         get_item(db)
 
 
 @pytest.mark.mysql
-def test_bool(mydb, mypooldb_dict):
+def test_bool(mydb, mypooldb_changeling):
     from .test_db import tbool
 
-    for db in (mydb, mypooldb_dict):
+    for db in (mydb, mypooldb_changeling):
         tbool(db)
 
 
@@ -170,10 +170,10 @@ def test_rollback(mydb, mypooldb):
 
 
 @pytest.mark.mysql
-def test_multiple_records(mydb_dict, mypooldb):
+def test_multiple_records(mydb_changeling, mypooldb):
     from .test_db import multiple_records
 
-    multiple_records(mydb_dict, lambda user: user["name"])
+    multiple_records(mydb_changeling, lambda user: user["name"])
     multiple_records(mypooldb, lambda user: user[0])
 
 
@@ -183,28 +183,6 @@ def test_multiple_records_error(mydb, mypooldb):
 
     for db in (mydb, mypooldb):
         multiple_records_error(db)
-
-
-@pytest.mark.mysql
-def test_tuple_cursor(mydb_persist, mypooldb):
-    for db in (mydb_persist, mypooldb):
-        with db.cursor as cursor:
-            user = db.user.by_name(cursor, name="User 4").one()
-            assert user[0] == "user.4@example.com"
-            with pytest.raises(TypeError):
-                user["email"]
-            cursor.rollback()
-
-
-@pytest.mark.mysql
-def test_dict_cursor(mydb_dict, mypooldb_dict):
-    for db in (mydb_dict, mypooldb_dict):
-        with db.cursor as cursor:
-            user = db.user.by_name(cursor, name="User 3").one()
-            assert user["email"] == "user.3@example.com"
-            with pytest.raises(KeyError):
-                user[0]
-            cursor.rollback()
 
 
 @pytest.mark.mysql
@@ -224,12 +202,12 @@ def test_many_default(mydb, mypooldb):
 
 
 @pytest.mark.mysql
-def test_stream(mydb, mydb_persist, mypooldb, mydb_dict):
+def test_stream(mydb, mydb_persist, mypooldb, mydb_changeling):
     from .test_db import stream
 
     for db in (mydb, mydb_persist, mypooldb):
         stream(db)
-    with mydb_dict.cursor as cur:
+    with mydb_changeling.cursor as cur:
         names = [row["name"] for row in cur.users.all().stream()]
         assert names == [f"User {i}" for i in range(1, 8)]
 
@@ -321,18 +299,18 @@ def test_stream_echo(mydb_echo, capsys):
 
 
 @pytest.mark.mysql
-def test_mapping(mydb, mydb_dict, mypooldb):
+def test_mapping(mydb, mydb_changeling, mypooldb):
     from .test_mapping import map_all
 
-    for db in (mydb, mydb_dict, mypooldb):
+    for db in (mydb, mydb_changeling, mypooldb):
         map_all(db)
 
 
 @pytest.mark.mysql
-def test_execute(mydb, mypooldb_dict):
+def test_execute(mydb, mypooldb_changeling):
     from .test_db import execute
 
-    for db in (mydb, mypooldb_dict):
+    for db in (mydb, mypooldb_changeling):
         execute(db, exc.ProgrammingError)
 
 

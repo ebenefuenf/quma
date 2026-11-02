@@ -2,9 +2,7 @@ try:
     import asyncmy
     from asyncmy.cursors import (
         Cursor,
-        DictCursor,
         SSCursor,
-        SSDictCursor,
     )
     from asyncmy.errors import Error
 except ImportError as e:
@@ -12,11 +10,49 @@ except ImportError as e:
         "In order to use quma with asyncmy you need to install asyncmy"
     ) from e
 
+from typing import Any
+
 from .. import (
     conn,
     errors,
     exc,
 )
+from ..rows import (
+    ChangelingRow,
+    Row,
+    column_index,
+)
+
+
+class Rows:
+    row_class = Row
+
+    async def _do_get_result(self: Any):
+        await super()._do_get_result()
+        self._index = column_index(self.description)
+        if self._rows:
+            self._rows = [self._conv_row(row) for row in self._rows]
+
+    def _conv_row(self: Any, row):
+        if row is None:
+            return None
+        return self.row_class(row, self._index)
+
+
+class RowCursor(Rows, Cursor):
+    pass
+
+
+class RowStreamCursor(Rows, SSCursor):
+    pass
+
+
+class ChangelingCursor(RowCursor):
+    row_class = ChangelingRow
+
+
+class ChangelingStreamCursor(RowStreamCursor):
+    row_class = ChangelingRow
 
 
 class AsyncConnection(conn.AsyncConnection):
@@ -27,12 +63,12 @@ class AsyncConnection(conn.AsyncConnection):
         super().__init__(url, kwargs)
         self.hostname = self.url.hostname or "localhost"
         self.port = self.url.port or 3306
-        if kwargs.pop("dict_cursor", False):
-            self.cursor_factory = DictCursor
-            self.stream_factory = SSDictCursor
+        if self.changeling:
+            self.cursor_factory = ChangelingCursor
+            self.stream_factory = ChangelingStreamCursor
         else:
-            self.cursor_factory = Cursor
-            self.stream_factory = SSCursor
+            self.cursor_factory = RowCursor
+            self.stream_factory = RowStreamCursor
 
     def stream_cursor(self, conn):
         return conn.cursor(self.stream_factory)

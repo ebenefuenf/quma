@@ -43,9 +43,9 @@ async def adb(request, named_sqldirs):
 
 
 @pytest.fixture(params=["plain", "pool"])
-async def adb_dict(request, named_sqldirs):
+async def adb_changeling(request, named_sqldirs):
     uri = POOL_URI if request.param == "pool" else URI
-    db = AsyncDatabase(uri, named_sqldirs, dict_cursor=True)
+    db = AsyncDatabase(uri, named_sqldirs, changeling=True)
     yield db
     await db.close()
 
@@ -84,17 +84,6 @@ async def test_query_methods(adb):
         assert (await query.one())[0] == "user.3@example.com"
 
 
-async def test_dict_rows(adb_dict):
-    async with adb_dict.cursor as cur:
-        user = await cur.users.by_name(name="User 3").one()
-        assert user["email"] == "user.3@example.com"
-        with pytest.raises(KeyError):
-            user[0]
-        assert await cur.users.by_name(name="User 3").value("city") == (
-            "City B"
-        )
-
-
 async def test_iteration(adb):
     async with adb.cursor as cur:
         names = [row[1] async for row in cur.users.all()]
@@ -107,8 +96,8 @@ async def test_iteration(adb):
         assert not await many.get(4)
 
 
-async def test_mapping(adb, adb_dict):
-    for db in (adb, adb_dict):
+async def test_mapping(adb, adb_changeling):
+    for db in (adb, adb_changeling):
         async with db.cursor as cur:
             users = await cur.query(
                 "SELECT name, email, city FROM users ORDER BY id"
@@ -332,7 +321,7 @@ async def test_lost_connection(pooled, contextcommit):
     await killer.close()
 
 
-async def test_stream(adb, adb_dict):
+async def test_stream(adb, adb_changeling):
     async with adb.cursor as cur:
         users = cur.users.all()
         rows = await users.all()
@@ -345,7 +334,7 @@ async def test_stream(adb, adb_dict):
             ).stream(2, User)
         ]
         assert mapped[0] == User("User 1", "user.1@example.com", "City A")
-    async with adb_dict.cursor as cur:
+    async with adb_changeling.cursor as cur:
         names = [row["name"] async for row in cur.users.all().stream()]
         assert names == [f"User {i}" for i in range(1, 8)]
 

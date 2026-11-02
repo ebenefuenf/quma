@@ -1,34 +1,45 @@
-================
-Changling cursor
-================
+====
+Rows
+====
 
-If you are using **SQLite** or **PostgreSQL** you can access result 
-object attributes using three different methods if you pass 
-``changling=True`` on *db* initialization. (**MySQL** does not support it. See below)
+Rows work the same with every driver: by index and by key. Pass ``changeling=True``
+when you create the database to also reach columns as attributes:
 
 .. code-block:: python
 
     db = Database('sqlite3:///:memory:', sqldir, changeling=True)
 
-    with db.cursor as c:
-        user = db.users.by_id(c, 13).one()
+    with db.cursor as cur:
+        user = cur.users.by_id(id=13).one()
         name = user[0]       # by index
         name = user['name']  # by key
-        name = user.name     # by attribute
+        name = user.name     # by attribute, with changeling=True only
 
-Shadowed superclass members
----------------------------
+A row is a list with some methods of a dict, so these work too:
 
-If a query result has a field with the same name as a member of the superclass
-of the changeling (`sqlite`: :class:`sqlite3.Row`, `psycopg2`:
-:class:`psycopg2.extras.DictRow`, `psycopg`: :class:`list` with the same
-methods as :class:`psycopg2.extras.DictRow`) it shadows the original member. This means
-the original member isn't accessible. You can access it anyway if you 
-prefix it with an underscore '_'. 
+.. code-block:: python
 
-The :class:`sqlite3.Row`, for example, has a method :func:`keys` which
-lists all field names. If a query returns a field with the name 'keys'
-the method is shadowed:
+    email, name = user
+    user['name'] = 'New Name'
+    'name' in user       # looks for a column, not for a value
+    user.keys()          # the column names
+    user.values()
+    user.items()
+    user.get('nope', 13)
+    user.copy()          # a dict of the row
+    dict(user)
+
+A missing key raises :exc:`KeyError`, and a missing attribute
+:exc:`AttributeError`. If two columns have the same name, the last one wins.
+
+To get other types than rows, like real dicts or your own classes, see
+:doc:`mapping <mapping>`: ``cur.users.list().all(dict)``.
+
+Shadowed list members
+---------------------
+
+With ``changeling=True``, a column with the name of a member of the row shadows that
+member. You can reach the member anyway if you prefix it with an underscore:
 
 .. code-block:: sql
 
@@ -37,23 +48,22 @@ the method is shadowed:
 
 .. code-block:: python
 
-    row = cur.users.by_id(13).one()
+    row = cur.users.by_id(id=13).one()
     assert row.keys == 'the keys'
-    
+
     # If you want to call the keys method of row prefix it with _
-    print(row._keys()) # ['name', 'email', 'keys']
+    print(list(row._keys())) # ['name', 'email', 'keys']
+
+Setting an attribute changes the column of that name. An unknown name raises
+:exc:`KeyError`, because a row has no room for new columns.
 
 Performance
 -----------
 
-By default, changling is *False* which is slightly faster. Then SQLite 
-supports access by index only. PostgreSQL by key and index (with psycopg2
-we use :class:`psycopg2.extras.DictCursor` internally).
+Building rows costs 0.5 to 0.7 microseconds per row more than the plain tuples that
+sqlite3 and mysqlclient produce, measured with four columns. It hardly matters next
+to the query. For a large result, :meth:`stream() <quma.query.Query.stream>` saves
+more than any row type can.
 
-MySQL/MariaDB
--------------
-
-MySQL/MariaDB supports access by index only, except you pass 
-``dict_cursor=True`` on initialization. Then it supports access by 
-key only.
-
+psycopg2's rows are its own :class:`psycopg2.extras.DictRow`, which the rows of the
+other drivers imitate.

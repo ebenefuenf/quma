@@ -56,7 +56,7 @@ You can access these scripts after connecting to the database:
 
     # An in-memory database lives as long as its connection, so keep it.
     db = Database('sqlite3:///:memory:', '/path/to/sql/scripts',
-                  persist=True, changeling=True)
+                  persist=True)
 
     db.execute('CREATE TABLE users ...')
 

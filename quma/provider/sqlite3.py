@@ -5,54 +5,27 @@ from .. import (
     errors,
     exc,
 )
+from ..rows import (
+    ChangelingRow,
+    Row,
+    column_index,
+)
 
 
-class SQLiteChangelingRow(sqlite3.Row):
-    """
-    A row object that allows by-column-name access to data.
+def row_factory(row_class):
+    last = (None, {})
 
-    Either by index (row[0], row['field']) or by attr (row.field).
-    """
+    def factory(cursor, values):
+        nonlocal last
+        description, index = last
+        # sqlite3 calls this for every row, and building the index would be
+        # the larger part of its cost. Reading ``last`` once keeps it atomic.
+        if description is not cursor.description:
+            index = column_index(cursor.description)
+            last = (cursor.description, index)
+        return row_class(values, index)
 
-    def __init__(self, *args, **kwargs):
-        super().__setattr__("_overwritten", {})
-        super().__init__()
-
-    def __getattribute__(self, attr):
-        # Lookup overwritten fields
-        try:
-            return super().__getattribute__("_overwritten")[attr]
-        except KeyError:
-            pass
-        # Lookup fields in the query result
-        try:
-            return super().__getitem__(attr)
-        except IndexError:
-            pass
-        # Try to return members of sqlite3.Row itself. For example .keys()
-        try:
-            return super().__getattribute__(attr)
-        except AttributeError:
-            pass
-        # Try to return "hidden" sqlite3.Row members.
-        #
-        # Example: if there is a field 'keys' in the result
-        # row you can't access the original method 'keys' of
-        # the DictRow object. If the original name is prefixed
-        # with _ the underscore is removed tried again.
-        # e. g. row._keys() will be row.keys()
-        try:
-            if attr.startswith("_"):
-                attr = attr[1:]
-            else:
-                raise AttributeError
-            return super().__getattribute__(attr)
-        except AttributeError as e:
-            msg = f'Row has no field with the name "{attr}"'
-            raise AttributeError(msg) from e
-
-    def __setattr__(self, attr, value):
-        super().__getattribute__("_overwritten")[attr] = value
+    return factory
 
 
 class Connection(conn.Connection):
@@ -74,8 +47,9 @@ class Connection(conn.Connection):
             conn = sqlite3.connect(database=self.database, **kwargs)
         except sqlite3.Error as e:
             raise errors.connection_error(e, self.dialect) from e
-        if self.changeling:
-            conn.row_factory = SQLiteChangelingRow
+        conn.row_factory = row_factory(
+            ChangelingRow if self.changeling else Row
+        )
         return self.disable_autocommit(conn)
 
     def enable_autocommit_if(self, autocommit, conn):

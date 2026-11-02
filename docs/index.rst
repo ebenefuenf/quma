@@ -35,8 +35,8 @@ Learn more
 * :doc:`Connection pool <pool>`.
 * :doc:`Async <async>` shows the async API and how to use it with
   Starlette, FastAPI and Litestar.
-* Learn what a :doc:`changling cursor <changeling>` is and how it enables
-  you to access result data in three different ways.
+* :doc:`Rows <changeling>` work the same with every driver, by index, by key
+  and, with ``changeling=True``, by attribute.
 * :doc:`Passing parameters <parameters>` shows the ``:name`` placeholders,
   and how to use the driver's own placeholders instead.
 * SQL doesn't support every kind of dynamic queries. If you reach its limits

@@ -78,6 +78,14 @@ Unreleased
 - **Breaking:** a connection pool's ``timeout`` defaults to 30 seconds. Before, a
   request waited forever for a free connection. It now gets ``TimeoutError``. To
   keep the old behavior, pass ``timeout=None``.
+- **Breaking:** rows work the same with every driver: by index and by key, and also by
+  attribute with ``changeling=True``, which now works on MySQL and MariaDB too.
+  Before, a default row was a tuple on SQLite and MySQL, without access by key, and
+  ``changeling`` was silently ignored on MySQL. Rows are now lists, so ``row == (1, 2)``
+  is false on SQLite and MySQL, as it always was on PostgreSQL. The ``dict_cursor``
+  option is gone: use ``query.all(dict)``, which works with every driver. On
+  SQLite, setting an unknown attribute of a changeling row now raises ``KeyError``.
+  See "Rows".
 - ``db.pool_stats()`` returns a snapshot of the connection pool: connections open,
   idle and in use, requests waiting, how long they waited, and how many connections
   were opened and closed and why. See "Connection pool".

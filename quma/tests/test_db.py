@@ -568,9 +568,6 @@ def no_changeling_cursor(pgdb_persist, getter, error):
 
 def test_no_changeling_cursor(db_no_changeling):
     no_changeling_cursor(
-        db_no_changeling, lambda user: user["email"], TypeError
-    )
-    no_changeling_cursor(
         db_no_changeling, lambda user: user.email, AttributeError
     )
 

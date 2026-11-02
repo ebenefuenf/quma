@@ -305,6 +305,8 @@ class Database(BaseDatabase[ConnectionLike]):
         :class:`~quma.Execution` after every statement, also failed ones.
         See :doc:`Logging and hooks <logging>`. Defaults to ``None``.
 
+    :param changeling: Also give rows access to columns by attribute. See
+        :doc:`Rows <changeling>`. Defaults to ``False``.
     :param on_connect: A function called with the raw driver connection
         each time quma opens one. :class:`quma.AsyncDatabase` also takes an async
         function. See :ref:`on-connect`. Defaults to ``None``.

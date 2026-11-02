@@ -284,9 +284,9 @@ def mydb_native(pyformat_sqldirs):
 
 
 @pytest.fixture
-def mydb_dict(named_sqldirs):
+def mydb_changeling(named_sqldirs):
     db = Database(
-        util.MYSQL_URI, named_sqldirs, dict_cursor=True, charset="utf8"
+        util.MYSQL_URI, named_sqldirs, changeling=True, charset="utf8"
     )
     return db
 
@@ -296,7 +296,6 @@ def mydb_echo(named_sqldirs):
     db = Database(
         util.MYSQL_URI,
         named_sqldirs,
-        dict_cursor=True,
         echo=True,
         charset="utf8",
     )
@@ -327,9 +326,9 @@ def mypooldb_echo(named_sqldirs):
 
 
 @pytest.fixture
-def mypooldb_dict(named_sqldirs):
+def mypooldb_changeling(named_sqldirs):
     db = Database(
-        util.MYSQL_POOL_URI, named_sqldirs, dict_cursor=True, charset="utf8"
+        util.MYSQL_POOL_URI, named_sqldirs, changeling=True, charset="utf8"
     )
     yield db
     db.close()

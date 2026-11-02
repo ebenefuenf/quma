@@ -2,23 +2,57 @@ try:
     import MySQLdb
     from MySQLdb.cursors import (
         Cursor,
-        DictCursor,
         SSCursor,
-        SSDictCursor,
     )
 except ImportError as e:
     raise ImportError(
         "In order to use quma with MySQL you need to install mysqlclient"
     ) from e
 
+from typing import Any
+
 from .. import (
     conn,
     errors,
     exc,
 )
+from ..rows import (
+    ChangelingRow,
+    Row,
+    column_index,
+)
 
 # ER_CANT_CHANGE_TX_CHARACTERISTICS
 TRANSACTION_IN_PROGRESS = 1568
+
+
+class Rows:
+    row_class = Row
+    _indexed = None
+    _index = None
+
+    def _fetch_row(self: Any, size=1):
+        rows = super()._fetch_row(size)
+        if self._indexed is not self.description:
+            self._indexed = self.description
+            self._index = column_index(self.description)
+        return tuple(self.row_class(row, self._index) for row in rows)
+
+
+class RowCursor(Rows, Cursor):
+    pass
+
+
+class RowStreamCursor(Rows, SSCursor):
+    pass
+
+
+class ChangelingCursor(RowCursor):
+    row_class = ChangelingRow
+
+
+class ChangelingStreamCursor(RowStreamCursor):
+    row_class = ChangelingRow
 
 
 class Connection(conn.Connection):
@@ -29,12 +63,12 @@ class Connection(conn.Connection):
         super().__init__(url, kwargs)
         self.hostname = self.url.hostname or "localhost"
         self.port = self.url.port or 3306
-        if kwargs.pop("dict_cursor", False):
-            self.cursor_factory = DictCursor
-            self.stream_factory = SSDictCursor
+        if self.changeling:
+            self.cursor_factory = ChangelingCursor
+            self.stream_factory = ChangelingStreamCursor
         else:
-            self.cursor_factory = Cursor
-            self.stream_factory = SSCursor
+            self.cursor_factory = RowCursor
+            self.stream_factory = RowStreamCursor
         self._init_conn()
 
     def cursor(self, conn):
