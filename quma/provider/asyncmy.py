@@ -55,6 +55,19 @@ class ChangelingStreamCursor(RowStreamCursor):
     row_class = ChangelingRow
 
 
+class EscapingConnection(asyncmy.Connection):
+    def escape(self, obj, mapping=None):
+        # asyncmy escapes these with backslashes byte by byte: under
+        # NO_BACKSLASH_ESCAPES or a charset like gbk, a value can end its string.
+        # Without _binary, MySQL reads a hex literal as a number in arithmetic.
+        if isinstance(obj, (bytes, bytearray)):
+            return f"_binary X'{obj.hex()}'"
+        if isinstance(obj, tuple):
+            items = ",".join(self.escape(item, mapping) for item in obj)
+            return f"({items})"
+        return super().escape(obj, mapping)
+
+
 class AsyncConnection(conn.AsyncConnection):
     dialect = "mysql"
     driver_error = Error
@@ -98,7 +111,7 @@ class AsyncConnection(conn.AsyncConnection):
 
     async def create_conn(self, **kwargs):
         try:
-            conn = await asyncmy.connect(
+            conn = EscapingConnection(
                 database=self.database,
                 user=self.username,
                 password=self.password,
@@ -107,6 +120,7 @@ class AsyncConnection(conn.AsyncConnection):
                 cursor_cls=self.cursor_factory,
                 **kwargs,
             )
+            await conn.connect()
         except Error as e:
             raise errors.connection_error(e, self.dialect) from e
         return await self.disable_autocommit(conn)

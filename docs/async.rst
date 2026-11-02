@@ -244,6 +244,15 @@ but MySQL runs the query until it finishes.
 On SQLite, quma interrupts the running query.
 
 
+MySQL and MariaDB
+-----------------
+
+quma sends ``bytes`` values to asyncmy's server as hex literals, because
+asyncmy's own escaping is unsafe with ``NO_BACKSLASH_ESCAPES`` and with
+charsets like ``gbk``. A value takes up twice its size in the statement, which
+counts against ``max_allowed_packet``.
+
+
 SQLite
 ------
 

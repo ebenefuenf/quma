@@ -424,3 +424,60 @@ async def test_cancelled_put_still_returns_connection(apooldb):
             await asyncio.sleep(0.01)
         async with apooldb.cursor as cur:
             assert await cur.query("SELECT 1").value() == 1
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (b"' UNION SELECT 99 #", b"' UNION SELECT 99 #"),
+        (bytearray(b"' UNION SELECT 99 #"), b"' UNION SELECT 99 #"),
+        (("') UNION SELECT 99 #",), "') UNION SELECT 99 #"),
+        (((b"')) UNION SELECT 99 #",),), b"')) UNION SELECT 99 #"),
+    ],
+)
+async def test_value_stays_a_value_without_backslash_escapes(value, expected):
+    db = AsyncDatabase(URI)
+    async with db.cursor as cur:
+        await cur.execute("SET SESSION sql_mode = 'NO_BACKSLASH_ESCAPES'")
+        assert await cur.query("SELECT :v AS a", v=value).all() == [[expected]]
+    await db.close()
+
+
+async def test_list_in_parens_stays_a_value_without_backslash_escapes():
+    db = AsyncDatabase(URI)
+    async with db.cursor as cur:
+        await cur.execute("SET SESSION sql_mode = 'NO_BACKSLASH_ESCAPES'")
+        query = cur.query(
+            "SELECT 1 AS a WHERE 'x' IN (:v)", v=("')) UNION SELECT 99 #",)
+        )
+        assert not await query.all()
+    await db.close()
+
+
+async def test_bytes_stay_a_value_with_a_multibyte_charset():
+    value = b"\xbf' UNION SELECT 99 #"
+    db = AsyncDatabase(URI, charset="gbk")
+    async with db.cursor as cur:
+        assert await cur.query("SELECT :v AS a", v=value).all() == [[value]]
+    await db.close()
+
+
+@pytest.mark.parametrize("value", [bytes(range(256)), b""])
+async def test_bytes_round_trip(value):
+    db = AsyncDatabase(URI)
+    async with db.cursor as cur:
+        await cur.execute("CREATE TEMPORARY TABLE blobs (a BLOB)")
+        await cur.executemany("INSERT INTO blobs VALUES (%s)", [(value,)])
+        await cur.query("INSERT INTO blobs VALUES (:v)", v=value).run()
+        assert await cur.query("SELECT a FROM blobs").all() == [
+            [value],
+            [value],
+        ]
+    await db.close()
+
+
+async def test_bytes_are_strings_in_arithmetic():
+    db = AsyncDatabase(URI)
+    async with db.cursor as cur:
+        assert await cur.query("SELECT :v + 0 AS a", v=b"A").value() == 0
+    await db.close()
