@@ -11,7 +11,10 @@ from ..conn import (
     RawConnection,
     RawCursor,
 )
-from ..pool import Connections
+from ..pool import (
+    DEFAULT_TIMEOUT,
+    Connections,
+)
 
 
 class AsyncPool:
@@ -25,7 +28,7 @@ class AsyncPool:
     ) -> None:
         self._size: int = kwargs.pop("size", 5)
         self._max_overflow: int = kwargs.pop("overflow", 10)
-        self._timeout: float | None = kwargs.pop("timeout", None)
+        self._timeout: float | None = kwargs.pop("timeout", DEFAULT_TIMEOUT)
         self._pessimistic = kwargs.get("pessimistic", False)
         self._conns = Connections(
             kwargs.pop("max_lifetime", None), kwargs.pop("max_idle", None)
@@ -81,6 +84,10 @@ class AsyncPool:
 
     async def _acquire(self) -> None:
         if self._slots is None:
+            return
+        if not self._slots.locked():
+            # A timeout would set and cancel a timer on every checkout.
+            await self._slots.acquire()
             return
         try:
             async with asyncio.timeout(self._timeout):

@@ -75,6 +75,9 @@ Unreleased
   ``AsyncDatabase`` calls a plain function with an ``Execution`` after every
   statement, also failed ones, for metrics, tracing or finding slow scripts.
   ``echo`` still prints to stdout. See "Logging and hooks".
+- **Breaking:** a connection pool's ``timeout`` defaults to 30 seconds. Before, a
+  request waited forever for a free connection. It now gets ``TimeoutError``. To
+  keep the old behavior, pass ``timeout=None``.
 - Connection pools take ``max_lifetime`` and ``max_idle``, in seconds and off
   by default: they replace connections past that age or unused for that long,
   when a connection is checked out or returned. With ``max_idle``, a pool

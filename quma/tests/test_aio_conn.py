@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import pytest
 
 from .. import AsyncDatabase, exc
+from ..aio import pool as aio_pool
 from . import util
 
 pytestmark = pytest.mark.anyio
@@ -228,6 +229,57 @@ async def test_pool_timeout(driver):
         await p.get()
     for raw in raws:
         await p.put(raw)
+    await p.close()
+
+
+async def test_pool_timeout_defaults_to_30_seconds(driver, monkeypatch):
+    assert aio_pool.DEFAULT_TIMEOUT == 30
+    monkeypatch.setattr(aio_pool, "DEFAULT_TIMEOUT", 0.01)
+    p = pool(driver, size=1, overflow=0)
+    raw = await p.get()
+    with pytest.raises(exc.TimeoutError):
+        await p.get()
+    await p.put(raw)
+    await p.close()
+
+
+async def test_pool_timeout_none_waits_for_a_connection(driver, monkeypatch):
+    monkeypatch.setattr(aio_pool, "DEFAULT_TIMEOUT", 0.01)
+    p = pool(driver, size=1, overflow=0, timeout=None)
+    raw = await p.get()
+    waiter = asyncio.create_task(p.get())
+    await asyncio.sleep(0.05)
+    assert not waiter.done()
+    await p.put(raw)
+    assert await waiter is raw
+    await p.put(raw)
+    await p.close()
+
+
+async def test_pool_new_request_queues_behind_waiters(driver):
+    p = pool(driver, size=1, overflow=0)
+    raw = await p.get()
+    first = asyncio.create_task(p.get())
+    await asyncio.sleep(0)
+    await p.put(raw)
+    second = asyncio.create_task(p.get())
+    assert await first is raw
+    await asyncio.sleep(0.01)
+    assert not second.done()
+    await p.put(raw)
+    assert await second is raw
+    await p.put(raw)
+    await p.close()
+
+
+async def test_pool_timed_out_waiter_frees_its_place(driver):
+    p = pool(driver, size=1, overflow=0, timeout=0.01)
+    raw = await p.get()
+    with pytest.raises(exc.TimeoutError):
+        await p.get()
+    await p.put(raw)
+    assert await p.get() is raw
+    await p.put(raw)
     await p.close()
 
 

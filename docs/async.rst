@@ -87,10 +87,7 @@ test in a new loop) fails with "attached to a different loop".
 
 The pool takes the options of the sync :doc:`pool <pool>`: ``size``,
 ``overflow``, ``timeout``, ``pessimistic``, ``max_lifetime`` and ``max_idle``.
-A task waiting for a free
-connection awaits instead of blocking a thread. Set ``timeout`` in web
-applications, so an exhausted pool fails requests with
-:class:`quma.TimeoutError` instead of letting them wait forever.
+A task waiting for a free connection awaits instead of blocking a thread.
 
 With ``persist=True`` all tasks share one connection and their
 transactions interleave. Use it for scripts and workers, not for web

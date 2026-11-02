@@ -13,6 +13,7 @@ from .. import (
     connect,
     exc,
 )
+from .. import pool as pool_module
 from ..pool import Pool
 from . import util
 
@@ -618,6 +619,41 @@ def test_pool_replaces_connections_after_a_quiet_period(limited, clock):
     assert pool.checkedin == 0
     assert pool.checkedout == 1
     pool.put(fresh)
+
+
+def test_pool_timeout_defaults_to_30_seconds(monkeypatch):
+    assert pool_module.DEFAULT_TIMEOUT == 30
+    monkeypatch.setattr(pool_module, "DEFAULT_TIMEOUT", 0.01)
+    pool = connect_pool(
+        f"sqlite3+pool:///{util.SQLITE_FILE}", size=1, overflow=0
+    )
+    raw = pool.get()
+    with pytest.raises(exc.TimeoutError):
+        pool.get()
+    pool.put(raw)
+    pool.close()
+
+
+def test_pool_timeout_none_waits_for_a_connection(monkeypatch):
+    monkeypatch.setattr(pool_module, "DEFAULT_TIMEOUT", 0.01)
+    pool = connect_pool(
+        f"sqlite3+pool:///{util.SQLITE_FILE}",
+        size=1,
+        overflow=0,
+        timeout=None,
+        check_same_thread=False,
+    )
+    raw = pool.get()
+    results = queue.Queue()
+    waiter = threading.Thread(target=lambda: results.put(pool.get()))
+    waiter.start()
+    time.sleep(0.05)
+    assert waiter.is_alive()
+    pool.put(raw)
+    waiter.join(5)
+    assert results.get(timeout=1) is raw
+    pool.put(raw)
+    pool.close()
 
 
 def test_pool_keeps_autocommit_until_a_checkout_needs_another_mode(limited):

@@ -20,6 +20,8 @@ from .conn import (
     RawCursor,
 )
 
+DEFAULT_TIMEOUT = 30.0
+
 
 class Connections:
     """The connections a pool has open, and which of them are idle."""
@@ -91,7 +93,7 @@ class Pool:
     ) -> None:
         self._size: int = kwargs.pop("size", 5)
         self._max_overflow: int = kwargs.pop("overflow", 10)
-        self._timeout: float | None = kwargs.pop("timeout", None)
+        self._timeout: float | None = kwargs.pop("timeout", DEFAULT_TIMEOUT)
         self._pessimistic = kwargs.get("pessimistic", False)
         self._conns = Connections(
             kwargs.pop("max_lifetime", None), kwargs.pop("max_idle", None)

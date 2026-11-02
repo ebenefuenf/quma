@@ -20,6 +20,17 @@ Setup a pool:
 
 For a description of the parameters see :doc:`Connecting <connecting>`.
 
+Waiting for a connection
+------------------------
+
+When ``size`` and ``overflow`` are used up, a request waits for a connection to
+come back. After ``timeout`` seconds, 30 by default, it gets
+:class:`quma.TimeoutError`. ``timeout=None`` waits forever.
+
+``timeout`` covers only the wait for a free connection. Opening a connection can
+take longer and has its own setting in the driver, like ``connect_timeout`` on
+PostgreSQL and MySQL.
+
 Limiting how long connections live
 ----------------------------------
 

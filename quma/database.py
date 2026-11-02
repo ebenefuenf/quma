@@ -312,8 +312,9 @@ class Database(BaseDatabase[ConnectionLike]):
         the number of checked-out connections reaches the size set in `size`,
         additional connections will be returned up to this limit. Set to -1
         to indicate no overflow limit. Defaults to 10.
-    :param timeout: The number of seconds to wait before giving
-        up on returning a connection. Defaults to None.
+    :param timeout: The number of seconds to wait for a free connection
+        before raising :class:`quma.TimeoutError`. ``None`` waits forever.
+        Defaults to 30.
     :param max_lifetime: The age in seconds at which a connection is
         replaced. Defaults to None.
     :param max_idle: The number of seconds a connection may stay unused in
