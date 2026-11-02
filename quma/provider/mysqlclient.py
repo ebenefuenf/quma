@@ -24,6 +24,8 @@ from ..rows import (
 
 # ER_CANT_CHANGE_TX_CHARACTERISTICS
 TRANSACTION_IN_PROGRESS = 1568
+UNKNOWN_VARIABLE = 1193
+SET_ACCESS_MODE = "SET @@{0} = @@{0}"
 
 
 class Rows:
@@ -108,12 +110,13 @@ class Connection(conn.Connection):
         return conn.get_autocommit()
 
     def in_transaction(self, conn):
-        # mysqlclient doesn't expose the server's status. This statement
-        # fails in a transaction, and unlike the alternatives it works on
-        # MySQL and MariaDB without privileges.
+        # mysqlclient doesn't expose the server's status. Setting the next
+        # transaction's access mode fails in a transaction, and unlike the
+        # alternatives it works on MySQL and MariaDB without privileges.
+        # Setting it to its value keeps a read-only session read-only.
         cursor = conn.cursor()
         try:
-            cursor.execute("SET TRANSACTION READ WRITE")
+            self._set_access_mode(cursor)
         except MySQLdb.Error as e:
             if e.args[0] == TRANSACTION_IN_PROGRESS:
                 return True
@@ -121,6 +124,15 @@ class Connection(conn.Connection):
         finally:
             cursor.close()
         return False
+
+    def _set_access_mode(self, cursor):
+        try:
+            cursor.execute(SET_ACCESS_MODE.format("transaction_read_only"))
+        except MySQLdb.Error as e:
+            if e.args[0] != UNKNOWN_VARIABLE:
+                raise
+            # MariaDB before 11.1.
+            cursor.execute(SET_ACCESS_MODE.format("tx_read_only"))
 
     def _check(self, conn):
         try:

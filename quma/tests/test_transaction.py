@@ -579,3 +579,12 @@ def test_connection_ends_a_transaction_begun_in_autocommit(
         cur.execute("INSERT INTO reset_test VALUES (2)")
     db.close()
     assert committed_ids(reset_table) == [2]
+
+
+@pytest.mark.mysql
+def test_block_keeps_a_read_only_session_read_only(my):
+    with my.cursor as cur:
+        cur.execute("SET SESSION TRANSACTION READ ONLY")
+        with pytest.raises(DatabaseError) as error, cur.transaction():
+            cur.query("UPDATE users SET city = 'Moved'").run()
+    assert error.value.code == 1792
