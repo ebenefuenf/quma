@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
+from collections.abc import Callable
 from contextlib import suppress
 from typing import (
     Any,
@@ -110,6 +112,9 @@ class BaseConnection:
         self.changeling: bool = kwargs.pop("changeling", False)
         self.persist: bool = kwargs.pop("persist", False)
         self.pessimistic: bool = kwargs.pop("pessimistic", False)
+        self.on_connect: Callable[[RawConnection], Any] | None = kwargs.pop(
+            "on_connect", None
+        )
         self.has_rowcount = True
         self.dbapi_kwargs = kwargs
 
@@ -158,7 +163,24 @@ class Connection(BaseConnection):
 
     def _init_conn(self) -> None:
         if self.persist:
-            self.conn = self.create_conn(**self.dbapi_kwargs)
+            self.conn = self._open()
+
+    def _open(self) -> RawConnection:
+        conn = self.create_conn(**self.dbapi_kwargs)
+        if self.on_connect is None:
+            return conn
+        try:
+            self.on_connect(conn)
+            # On PostgreSQL a rollback would undo a SET, and the connection
+            # must not start its first checkout inside a transaction.
+            conn.commit()
+            return self.set_autocommit(False, conn)
+        except self.driver_error as e:
+            self.discard(conn)
+            raise self.translate(e) from e
+        except BaseException:
+            self.discard(conn)
+            raise
 
     def create_conn(self, **kwargs: Any) -> RawConnection:
         raise NotImplementedError
@@ -187,11 +209,9 @@ class Connection(BaseConnection):
                     self.check()
                 except exc.ConnectionLost:
                     self.discard(self.conn)
-                    self.conn = self.create_conn(**self.dbapi_kwargs)
+                    self.conn = self._open()
             return self.enable_autocommit_if(autocommit, self.conn)
-        return self.enable_autocommit_if(
-            autocommit, self.create_conn(**self.dbapi_kwargs)
-        )
+        return self.enable_autocommit_if(autocommit, self._open())
 
     def reset(
         self, conn: RawConnection, keep_autocommit: bool = False
@@ -283,9 +303,28 @@ class AsyncConnection(BaseConnection):
             return await self.enable_autocommit_if(
                 autocommit, await self._persistent()
             )
-        conn = await self.create_conn(**self.dbapi_kwargs)
+        conn = await self._open()
         try:
             return await self.enable_autocommit_if(autocommit, conn)
+        except BaseException:
+            await self.discard(conn)
+            raise
+
+    async def _open(self) -> RawConnection:
+        conn = await self.create_conn(**self.dbapi_kwargs)
+        if self.on_connect is None:
+            return conn
+        try:
+            result = self.on_connect(conn)
+            if inspect.isawaitable(result):
+                await result
+            # On PostgreSQL a rollback would undo a SET, and the connection
+            # must not start its first checkout inside a transaction.
+            await conn.commit()
+            return await self.set_autocommit(False, conn)
+        except self.driver_error as e:
+            await self.discard(conn)
+            raise self.translate(e) from e
         except BaseException:
             await self.discard(conn)
             raise
@@ -295,7 +334,7 @@ class AsyncConnection(BaseConnection):
             if self._closed:
                 raise exc.APIError("The connection is closed.")
             if self.conn is None:
-                self.conn = await self.create_conn(**self.dbapi_kwargs)
+                self.conn = await self._open()
             elif self.pessimistic:
                 try:
                     await self._check(self.conn)
@@ -303,7 +342,7 @@ class AsyncConnection(BaseConnection):
                     await self.discard(self.conn)
                     # A failed reconnect must not keep the discarded one.
                     self.conn = None
-                    self.conn = await self.create_conn(**self.dbapi_kwargs)
+                    self.conn = await self._open()
             return self.conn
 
     async def reset(

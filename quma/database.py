@@ -299,6 +299,10 @@ class Database(BaseDatabase[ConnectionLike]):
         :class:`~quma.Execution` after every statement, also failed ones.
         See :doc:`Logging and hooks <logging>`. Defaults to ``None``.
 
+    :param on_connect: A function called with the raw driver connection
+        each time quma opens one. :class:`quma.AsyncDatabase` also takes an async
+        function. See :ref:`on-connect`. Defaults to ``None``.
+
     Additional connection pool parameters (see :doc:`Connection pool <pool>`):
 
     :param size: The size of the pool to be maintained. This is the
@@ -412,6 +416,11 @@ def connect(dburi: str, **kwargs: Any) -> ConnectionLike:
     Create and return a Connection or Pool object specified
     via ``dburi`` (a string in the form of an URL)
     """
+    if inspect.iscoroutinefunction(kwargs.get("on_connect")):
+        raise TypeError(
+            "on_connect must be a plain function with Database. "
+            "Use AsyncDatabase for an async function."
+        )
     module, url, pooled = resolve(dburi)
     conn_class = getattr(module, "Connection", None)
     if conn_class is None:

@@ -60,6 +60,52 @@ The scheme of the URL names the package of the database driver:
 Append ``+pool`` to the scheme to use a :doc:`connection pool <pool>`, e.g.
 ``psycopg+pool://``.
 
+.. _on-connect:
+
+Setting up new connections
+--------------------------
+
+Pass ``on_connect`` to run a function on every connection quma opens, with every
+driver and with or without a pool. It receives the raw driver connection, so it is
+the place for setup that needs the connection itself:
+
+.. code-block:: python
+
+    from pgvector.psycopg import register_vector
+
+    def setup(conn):
+        register_vector(conn)
+        with conn.cursor() as cur:
+            cur.execute("SET search_path = app, public")
+
+    db = Database('psycopg+pool://username:password@/db_name', sqldirs,
+                  on_connect=setup)
+
+* It runs when a connection opens, not at each checkout from a pool. Without a pool
+  or ``persist=True`` every cursor opens a connection, so it runs for every cursor.
+* quma commits after it returns. So a ``SET`` stays in effect, which a rollback would
+  undo on PostgreSQL, and anything it writes is permanent.
+* It runs before a cursor's ``autocommit`` applies, so it starts in the same state
+  either way.
+* If it raises, quma closes the connection and passes the exception on. Driver errors
+  become :doc:`quma's exceptions <errors>`.
+* Its statements use the raw connection, so ``on_execute`` and the ``quma`` logger
+  don't report them, and their placeholders are the driver's.
+
+:class:`quma.AsyncDatabase` takes a plain or an async function:
+
+.. code-block:: python
+
+    from pgvector.psycopg import register_vector_async
+
+    async def setup(conn):
+        await register_vector_async(conn)
+
+    db = AsyncDatabase('psycopg+pool://username:password@/db_name', sqldirs,
+                       on_connect=setup)
+
+:class:`quma.Database` raises ``TypeError`` for an async function.
+
 PostgreSQL drivers
 ------------------
 

@@ -79,6 +79,10 @@ Unreleased
   by default: they replace connections past that age or unused for that long,
   when a connection is checked out or returned. With ``max_idle``, a pool
   reuses the most recently returned connection first. See "Connection pool".
+- ``Database(..., on_connect=func)`` runs a function on every new connection, with
+  the raw driver connection, and commits afterwards. Use it for setup that needs
+  the connection, like registering types or ``SET``. ``AsyncDatabase`` also takes
+  an async function. See "Setting up new connections".
 - With ``contextcommit``, a cursor's ``with`` block now rolls back when it
   raises. Before, quma committed the statements that ran before the
   error. If the block raises to signal success, such as a redirect, call
