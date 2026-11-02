@@ -95,6 +95,11 @@ class Namespace:
             except KeyError:
                 return getattr(self.shadow, attr)
 
+        # Only a file directly in the directory is a script: an .msql file
+        # elsewhere would run as a template.
+        if attr != Path(attr).name or "\0" in attr:
+            raise AttributeError(attr)
+
         try:
             sqlfile = self.sqldir / ".".join((attr, self.db.file_ext))
             if not sqlfile.is_file():

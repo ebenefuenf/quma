@@ -5,6 +5,11 @@ quma Changelog
 Unreleased
 ----------
 
+- Script names can't leave their SQL directory: without ``cache=True``,
+  ``getattr(db.users, '../../other/script')`` or an absolute path read that
+  file, and ran a ``.msql`` file as a template, so an application that passed
+  an untrusted name could run code. A name with a path separator or a NUL
+  character now raises ``AttributeError``.
 - **Breaking:** scripts and ``cursor.query()`` use ``:name`` placeholders
   with every driver, and a ``%`` in them is a plain percent sign. quma
   converts them to the driver's style, after rendering templates. This

@@ -1107,3 +1107,68 @@ def test_echo_parameter(dbecho, capsys):
         assert "SELECT email, city" in capsys.readouterr().out
         cursor.user.by_city(city="City 1").first()
         assert "SELECT name, email" in capsys.readouterr().out
+
+
+@pytest.fixture
+def script_dirs(tmp_path):
+    (tmp_path / "sql" / "users").mkdir(parents=True)
+    (tmp_path / "sql" / "users" / "all.sql").write_text("SELECT 1 AS a")
+    (tmp_path / "sql" / "users" / "with-dash.sql").write_text("SELECT 2 AS a")
+    (tmp_path / "other").mkdir()
+    (tmp_path / "other" / "secret.sql").write_text("SELECT 3 AS a")
+    (tmp_path / "other" / "linked.sql").write_text("SELECT 4 AS a")
+    (tmp_path / "sql" / "users" / "linked.sql").symlink_to(
+        tmp_path / "other" / "linked.sql"
+    )
+    (tmp_path / "other" / "evil.msql").write_text(
+        f'<% open(r"{tmp_path / "ran"}", "w").close() %>SELECT 5 AS a'
+    )
+    return tmp_path
+
+
+@pytest.mark.parametrize("cache", [False, True])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "../../other/secret",
+        "../../other/evil",
+        "./all",
+        "a\0b",
+        "{root}/other/secret",
+        "{root}/other/evil",
+    ],
+)
+def test_script_names_stay_in_their_directory(script_dirs, cache, name):
+    name = name.format(root=script_dirs)
+    db = Database(
+        util.SQLITE_MEMORY, sqldirs=str(script_dirs / "sql"), cache=cache
+    )
+    with pytest.raises(AttributeError):
+        getattr(db.users, name)
+    with db.cursor as cur, pytest.raises(AttributeError):
+        getattr(cur.users, name)
+    assert not (script_dirs / "ran").exists()
+    db.close()
+
+
+@pytest.mark.parametrize("cache", [False, True])
+def test_root_script_names_stay_in_their_directory(script_dirs, cache):
+    db = Database(
+        util.SQLITE_MEMORY, sqldirs=str(script_dirs / "sql"), cache=cache
+    )
+    with pytest.raises(AttributeError):
+        getattr(db, "../other/secret")
+    db.close()
+
+
+@pytest.mark.parametrize("cache", [False, True])
+@pytest.mark.parametrize(
+    "name, expected", [("all", 1), ("with-dash", 2), ("linked", 4)]
+)
+def test_script_names_with_any_file_name(script_dirs, cache, name, expected):
+    db = Database(
+        util.SQLITE_MEMORY, sqldirs=str(script_dirs / "sql"), cache=cache
+    )
+    with db.cursor as cur:
+        assert getattr(cur.users, name)().value() == expected
+    db.close()
