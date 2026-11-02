@@ -171,6 +171,15 @@ class Connection(BaseConnection):
     def disable_autocommit(self, conn: RawConnection) -> RawConnection:
         raise NotImplementedError
 
+    def set_autocommit(
+        self, autocommit: bool, conn: RawConnection
+    ) -> RawConnection:
+        if self.in_autocommit(conn) == autocommit:
+            return conn
+        if autocommit:
+            return self.enable_autocommit_if(True, conn)
+        return self.disable_autocommit(conn)
+
     def get(self, autocommit: bool = False) -> RawConnection:
         if self.persist:
             if self.pessimistic:
@@ -184,13 +193,16 @@ class Connection(BaseConnection):
             autocommit, self.create_conn(**self.dbapi_kwargs)
         )
 
-    def reset(self, conn: RawConnection) -> bool:
+    def reset(
+        self, conn: RawConnection, keep_autocommit: bool = False
+    ) -> bool:
         """Return False if ``conn`` is broken and has been discarded."""
         try:
             close_streams(conn)
             end_blocks(conn)
             conn.rollback()
-            self.disable_autocommit(conn)
+            if not keep_autocommit:
+                self.disable_autocommit(conn)
         except Exception:
             # Closing ends the transaction too. Raising would hide the
             # error that broke the connection.
@@ -257,6 +269,15 @@ class AsyncConnection(BaseConnection):
         else:
             await self.put(await self.get())
 
+    async def set_autocommit(
+        self, autocommit: bool, conn: RawConnection
+    ) -> RawConnection:
+        if self.in_autocommit(conn) == autocommit:
+            return conn
+        if autocommit:
+            return await self.enable_autocommit_if(True, conn)
+        return await self.disable_autocommit(conn)
+
     async def get(self, autocommit: bool = False) -> RawConnection:
         if self.persist:
             return await self.enable_autocommit_if(
@@ -285,13 +306,16 @@ class AsyncConnection(BaseConnection):
                     self.conn = await self.create_conn(**self.dbapi_kwargs)
             return self.conn
 
-    async def reset(self, conn: RawConnection) -> bool:
+    async def reset(
+        self, conn: RawConnection, keep_autocommit: bool = False
+    ) -> bool:
         """Return False if ``conn`` is broken and has been discarded."""
         try:
             await aclose_streams(conn)
             end_blocks(conn)
             await conn.rollback()
-            await self.disable_autocommit(conn)
+            if not keep_autocommit:
+                await self.disable_autocommit(conn)
         except Exception:
             await self.discard(conn)
             return False

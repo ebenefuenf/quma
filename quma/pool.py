@@ -123,7 +123,9 @@ class Pool:
         # state with no references held to the previous series of
         # operations.
         try:
-            reusable = self._conn.reset(conn)
+            # Switching costs a round trip on MySQL, so a connection keeps
+            # its mode until a checkout needs another one.
+            reusable = self._conn.reset(conn, keep_autocommit=True)
         except BaseException:
             self._drop(conn)
             self._release()
@@ -182,7 +184,7 @@ class Pool:
         try:
             if self._pessimistic:
                 self._conn.check(conn)
-            return self._conn.enable_autocommit_if(autocommit, conn)
+            return self._conn.set_autocommit(autocommit, conn)
         except exc.ConnectionLost:
             self._drop(conn)
             return self._new(autocommit)

@@ -72,6 +72,18 @@ async def test_connection_error(driver):
         await conn.get()
 
 
+async def test_persistent_autocommit_ends_with_the_checkout(driver):
+    conn = driver.conn(driver.url, persist=True)
+    raw = await conn.get(autocommit=True)
+    assert driver.autocommit(raw)
+    await conn.put(raw)
+    assert not driver.autocommit(raw)
+    assert await conn.get() is raw
+    assert not driver.autocommit(raw)
+    await conn.put(raw)
+    await conn.close()
+
+
 async def test_persistent_opens_on_first_use(driver):
     conn = driver.conn(driver.url, persist=True)
     assert conn.conn is None
@@ -325,6 +337,23 @@ async def test_pool_discards_connections_returned_after_close(driver):
     await p.put(raw)
     assert driver.closed(raw)
     assert p.checkedin == 0
+
+
+async def test_pool_keeps_autocommit_until_a_checkout_needs_another_mode(
+    driver,
+):
+    p = pool(driver, size=1)
+    raw = await p.get(autocommit=True)
+    await p.put(raw)
+    assert driver.autocommit(raw)
+    assert await p.get(autocommit=True) is raw
+    assert driver.autocommit(raw)
+    await p.put(raw)
+    assert await p.get() is raw
+    assert not driver.autocommit(raw)
+    await p.put(raw)
+    assert not driver.autocommit(raw)
+    await p.close()
 
 
 async def test_pool_replaces_connection_past_max_lifetime(driver, clock):

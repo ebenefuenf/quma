@@ -620,6 +620,20 @@ def test_pool_replaces_connections_after_a_quiet_period(limited, clock):
     pool.put(fresh)
 
 
+def test_pool_keeps_autocommit_until_a_checkout_needs_another_mode(limited):
+    pool = limited(size=1)
+    raw = pool.get(autocommit=True)
+    pool.put(raw)
+    assert pool.in_autocommit(raw)
+    assert pool.get(autocommit=True) is raw
+    assert pool.in_autocommit(raw)
+    pool.put(raw)
+    assert pool.get() is raw
+    assert not pool.in_autocommit(raw)
+    pool.put(raw)
+    assert not pool.in_autocommit(raw)
+
+
 @pytest.mark.parametrize("option", ["max_lifetime", "max_idle"])
 @pytest.mark.parametrize("value", [0, -1])
 def test_pool_rejects_limits_that_are_not_positive(option, value):

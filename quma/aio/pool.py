@@ -55,7 +55,9 @@ class AsyncPool:
 
     async def put(self, conn: RawConnection) -> None:
         try:
-            reusable = await self._conn.reset(conn)
+            # Switching costs a round trip on MySQL, so a connection keeps
+            # its mode until a checkout needs another one.
+            reusable = await self._conn.reset(conn, keep_autocommit=True)
         except BaseException:
             # A cancelled reset has discarded the connection.
             self._conns.remove(conn)
@@ -105,7 +107,7 @@ class AsyncPool:
         try:
             if self._pessimistic:
                 await self._conn.check(conn)
-            return await self._conn.enable_autocommit_if(autocommit, conn)
+            return await self._conn.set_autocommit(autocommit, conn)
         except exc.ConnectionLost:
             await self._drop(conn)
             return await self._new(autocommit)
