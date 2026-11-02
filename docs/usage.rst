@@ -209,8 +209,46 @@ to :class:`Database`. Statements then commit on their own, and
             cur.users.log_rename(id=13).run()
 
 An exception no longer undoes statements that ran outside a block, so it
-is a choice for an application as a whole. It suits new applications, and
-the default suits code that relies on ``commit()``.
+is a choice for an application as a whole. See `choosing a mode`_.
+
+
+.. _choosing a mode:
+
+Choosing a mode
+~~~~~~~~~~~~~~~
+
+By default nothing is permanent until you commit. This is what Python's
+database API asks of drivers: psycopg2 and psycopg send ``BEGIN`` before the first
+statement, and MySQL and MariaDB hold a transaction open. quma rolls back whatever
+is uncommitted when a connection goes back to the pool or closes. A forgotten
+:meth:`commit()` shows up as missing data the first time you test the code, and a
+failure between two writes leaves neither of them behind.
+
+With autocommit a statement is permanent as soon as it ran, as in ``psql``, and only
+`transaction blocks`_ are atomic. Two writes outside a block work until something
+fails between them, which leaves partial data and no error that points at the cause.
+So the default is the safer one to get wrong, and quma keeps it.
+
+Autocommit costs less for reads. A read on PostgreSQL is one message to the server
+instead of three (``BEGIN``, the statement and ``ROLLBACK``). On MySQL and MariaDB it
+stays two messages in both modes. Consider it for an application that mostly reads,
+if each group of writes that belongs together is in a block.
+
+Keep transactions short in both modes. An open transaction holds its locks, and on
+PostgreSQL also keeps ``VACUUM`` from removing old rows. Without autocommit a read
+opens one too, except on SQLite, so end the cursor before slow work, like calling
+another service:
+
+.. code-block:: python
+
+    with db.cursor as cur:
+        user = cur.users.by_id(id=13).one()
+
+    receipt = payment_service.charge(user)
+
+    with db.cursor as cur:
+        cur.users.add_receipt(id=13, receipt=receipt).run()
+        cur.commit()
 
 
 .. _transaction-blocks:

@@ -123,8 +123,9 @@ a cursor without a block, await it and close it yourself:
 With ``contextcommit=True`` the cursor commits when the ``async with``
 block ends, and rolls back if the block raises.
 
-:ref:`Transaction blocks <transaction-blocks>` work as in sync code, and
-``autocommit=True`` on the database suits them well in a new application:
+:ref:`Transaction blocks <transaction-blocks>` work as in sync code, and combine
+well with ``autocommit=True`` on the database. See :ref:`choosing a mode`
+for what that changes:
 
 .. code-block:: python
 
@@ -138,6 +139,10 @@ block ends, and rolls back if the block raises.
                 await cur.users.rename(id=user_id, name=name).run()
                 await cur.users.log_rename(id=user_id).run()
         return user
+
+Keep cursors short in a web application. Without autocommit a read opens a
+transaction too, and it stays open while the request awaits something else, like
+another service, with its connection out of the pool.
 
 Cancelling a task inside a block rolls the transaction back. A block on a
 :doc:`carrier <carrier>` holds its connection only for each statement, so
