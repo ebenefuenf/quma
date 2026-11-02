@@ -723,6 +723,173 @@ def test_pool_rejects_pointless_max_waiting(options):
         connect_pool(f"sqlite3+pool:///{util.SQLITE_FILE}", **options)
 
 
+def stats_pool(**kwargs):
+    return connect_pool(f"sqlite3+pool:///{util.SQLITE_FILE}", **kwargs)
+
+
+def test_pool_stats_of_a_new_pool():
+    pool = stats_pool(size=2, overflow=3)
+    stats = pool.stats()
+    assert stats.size == 2
+    assert stats.max_size == 5
+    assert (stats.open, stats.idle, stats.in_use, stats.waiting) == (
+        0,
+        0,
+        0,
+        0,
+    )
+    assert stats.checkouts == stats.opened == stats.closed == 0
+    assert stats_pool(overflow=-1).stats().max_size is None
+    pool.close()
+
+
+def test_pool_stats_count_checkouts_and_connections():
+    pool = stats_pool(size=1)
+    raw = pool.get()
+    stats = pool.stats()
+    assert (stats.open, stats.idle, stats.in_use) == (1, 0, 1)
+    assert stats.checkouts == stats.opened == 1
+    pool.put(raw)
+    stats = pool.stats()
+    assert (stats.open, stats.idle, stats.in_use) == (1, 1, 0)
+    assert pool.get() is raw
+    stats = pool.stats()
+    assert stats.checkouts == 2
+    assert stats.opened == 1
+    pool.put(raw)
+    pool.close()
+
+
+def test_pool_stats_are_a_snapshot():
+    pool = stats_pool()
+    stats = pool.stats()
+    pool.put(pool.get())
+    assert stats.checkouts == 0
+    assert pool.stats().checkouts == 1
+    pool.close()
+
+
+def test_pool_stats_count_waits_and_timeouts():
+    pool = waiting_pool(timeout=0.02)
+    raw = pool.get()
+    assert pool.stats().waits == 0
+    with pytest.raises(exc.TimeoutError):
+        pool.get()
+    stats = pool.stats()
+    assert stats.waits == stats.timeouts == 1
+    assert stats.wait_time >= 0.01
+    assert stats.waiting == 0
+    assert stats.checkouts == 1
+    pool.put(raw)
+    pool.close()
+
+
+def test_pool_stats_show_waiting_requests():
+    pool = waiting_pool(timeout=5)
+    raw = pool.get()
+    results = queue.Queue()
+    waiter = threading.Thread(target=lambda: results.put(pool.get()))
+    waiter.start()
+    time.sleep(0.05)
+    assert pool.stats().waiting == 1
+    pool.put(raw)
+    waiter.join(5)
+    stats = pool.stats()
+    assert stats.waiting == stats.timeouts == 0
+    assert stats.waits == 1
+    assert stats.checkouts == 2
+    pool.put(results.get(timeout=1))
+    pool.close()
+
+
+def test_pool_stats_count_rejected_requests():
+    pool = waiting_pool(max_waiting=0)
+    raw = pool.get()
+    with pytest.raises(exc.TooManyWaiting):
+        pool.get()
+    stats = pool.stats()
+    assert stats.rejected == 1
+    assert stats.waits == stats.timeouts == 0
+    pool.put(raw)
+    pool.close()
+
+
+def test_pool_stats_count_failed_connects(monkeypatch):
+    pool = stats_pool(size=1)
+    monkeypatch.setattr(
+        pool._conn, "create_conn", Mock(side_effect=exc.ConnectionError)
+    )
+    with pytest.raises(exc.ConnectionError):
+        pool.get()
+    stats = pool.stats()
+    assert stats.connect_errors == 1
+    assert stats.opened == stats.checkouts == 0
+    pool.close()
+
+
+def test_pool_stats_tell_why_connections_closed(clock):
+    pool = stats_pool(size=1, max_idle=100)
+    first, second = pool.get(), pool.get()
+    pool.put(first)
+    pool.put(second)
+    assert pool.stats().closed_surplus == 1
+
+    clock.now += 100
+    raw = pool.get()
+    assert pool.stats().closed_expired == 1
+
+    raw.close()
+    pool.put(raw)
+    assert pool.stats().closed_broken == 1
+
+    pool.put(pool.get())
+    pool.close()
+    stats = pool.stats()
+    assert stats.closed_shutdown == 1
+    assert stats.closed == 4
+    assert stats.opened == 4
+    assert stats.open == 0
+
+
+def test_pool_stats_count_connection_returned_after_close():
+    pool = stats_pool()
+    raw = pool.get()
+    pool.close()
+    pool.put(raw)
+    assert pool.stats().closed_shutdown == 1
+    assert pool.stats().closed_surplus == 0
+
+
+def test_pool_stats_count_connection_lost_at_checkout():
+    pool = stats_pool(size=1, pessimistic=True)
+    raw = pool.get()
+    pool.put(raw)
+    raw.close()
+    fresh = pool.get()
+    assert pool.stats().closed_broken == 1
+    assert pool.stats().opened == 2
+    assert pool.stats().checkouts == 2
+    pool.put(fresh)
+    pool.close()
+
+
+def test_database_pool_stats():
+    db = Database(f"sqlite3+pool:///{util.SQLITE_FILE}", size=1)
+    with db.cursor as cur:
+        cur.query("SELECT 1").value()
+    stats = db.pool_stats()
+    assert stats is not None
+    assert stats.checkouts == 1
+    assert stats.idle == 1
+    db.close()
+
+
+def test_database_without_a_pool_has_no_stats():
+    db = Database(util.SQLITE_URI)
+    assert db.pool_stats() is None
+    db.close()
+
+
 def test_pool_keeps_autocommit_until_a_checkout_needs_another_mode(limited):
     pool = limited(size=1)
     raw = pool.get(autocommit=True)
@@ -772,9 +939,13 @@ def test_pool_limits_keep_slots_correct_across_threads():
     assert not any(thread.is_alive() for thread in threads)
     assert pool.checkedout == 0
     assert pool.checkedin <= 2
+    stats = pool.stats()
+    assert stats.checkouts + stats.timeouts == 800
+    assert stats.opened - stats.closed == stats.open
     pool.close()
     assert pool.checkedin == 0
     assert pool.checkedout == 0
+    assert pool.stats().opened == pool.stats().closed
 
 
 @pytest.mark.postgres

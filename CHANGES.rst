@@ -78,6 +78,9 @@ Unreleased
 - **Breaking:** a connection pool's ``timeout`` defaults to 30 seconds. Before, a
   request waited forever for a free connection. It now gets ``TimeoutError``. To
   keep the old behavior, pass ``timeout=None``.
+- ``db.pool_stats()`` returns a snapshot of the connection pool: connections open,
+  idle and in use, requests waiting, how long they waited, and how many connections
+  were opened and closed and why. See "Connection pool".
 - Connection pools take ``max_waiting``: further requests get the new
   ``TooManyWaiting``, a subclass of ``TimeoutError``, instead of waiting.
 - Connection pools take ``max_lifetime`` and ``max_idle``, in seconds and off

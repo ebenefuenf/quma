@@ -43,6 +43,29 @@ each waiter already takes up a thread.
     db = AsyncDatabase('psycopg+pool://username:password@/db_name', sqldir,
                        size=10, timeout=5, max_waiting=50)
 
+Watching a pool
+---------------
+
+``db.pool_stats()`` returns a snapshot of the pool, or ``None`` if the database has
+no pool:
+
+.. code-block:: python
+
+    stats = db.pool_stats()
+    print(stats.in_use, stats.idle, stats.waiting)
+
+The counters run since the pool was created, so export them as they are and let your
+monitoring compute rates. A rising ``waits`` or ``wait_time`` means the pool is often
+used up, ``timeouts`` and ``rejected`` mean requests failed because of it,
+``closed_broken`` and ``connect_errors`` point at the connection to the server.
+
+Reading the snapshot does no I/O, also not on an :class:`quma.AsyncDatabase`, and
+counting doesn't slow down a checkout that doesn't have to wait.
+
+.. autoclass:: quma.PoolStats
+    :members:
+    :undoc-members:
+
 Limiting how long connections live
 ----------------------------------
 

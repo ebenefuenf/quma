@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import threading
 from collections import deque
+from dataclasses import dataclass, replace
 from math import inf
 from random import uniform
 from time import monotonic
@@ -21,6 +22,59 @@ from .conn import (
 )
 
 DEFAULT_TIMEOUT = 30.0
+
+
+@dataclass
+class PoolStats:
+    """A snapshot of a connection pool. The counters run since its creation."""
+
+    #: The ``size`` option.
+    size: int
+    #: ``size`` plus ``overflow``, ``None`` with ``overflow=-1``.
+    max_size: int | None
+    #: Connections open now.
+    open: int = 0
+    #: Open connections waiting in the pool now.
+    idle: int = 0
+    #: Requests waiting for a free connection now.
+    waiting: int = 0
+    #: Connections handed out.
+    checkouts: int = 0
+    #: Requests that had to wait for a free connection.
+    waits: int = 0
+    #: Seconds those requests waited, in total.
+    wait_time: float = 0.0
+    #: Requests that got :class:`quma.TimeoutError` after waiting.
+    timeouts: int = 0
+    #: Requests that got :class:`quma.TooManyWaiting`.
+    rejected: int = 0
+    #: Connections opened.
+    opened: int = 0
+    #: Failed attempts to open a connection.
+    connect_errors: int = 0
+    #: Connections closed past ``max_lifetime`` or ``max_idle``.
+    closed_expired: int = 0
+    #: Connections closed because they were broken.
+    closed_broken: int = 0
+    #: Connections closed because the pool already held ``size`` idle ones.
+    closed_surplus: int = 0
+    #: Connections closed by closing the pool.
+    closed_shutdown: int = 0
+
+    @property
+    def in_use(self) -> int:
+        """Connections checked out now."""
+        return self.open - self.idle
+
+    @property
+    def closed(self) -> int:
+        """Connections closed, for any reason."""
+        return (
+            self.closed_expired
+            + self.closed_broken
+            + self.closed_surplus
+            + self.closed_shutdown
+        )
 
 
 def max_waiting(kwargs: dict[str, Any], overflow: int) -> int | None:
@@ -106,7 +160,12 @@ class Pool:
         self._max_overflow: int = kwargs.pop("overflow", 10)
         self._timeout: float | None = kwargs.pop("timeout", DEFAULT_TIMEOUT)
         self._max_waiting = max_waiting(kwargs, self._max_overflow)
-        self._waiting = 0
+        self._stats = PoolStats(
+            self._size,
+            None
+            if self._max_overflow == -1
+            else self._size + self._max_overflow,
+        )
         self._pessimistic = kwargs.get("pessimistic", False)
         self._conns = Connections(
             kwargs.pop("max_lifetime", None), kwargs.pop("max_idle", None)
@@ -127,10 +186,13 @@ class Pool:
     def get(self, autocommit: bool = False) -> RawConnection:
         self._acquire()
         try:
-            return self._checkout(autocommit)
+            conn = self._checkout(autocommit)
         except BaseException:
             self._release()
             raise
+        with self._lock:
+            self._stats.checkouts += 1
+        return conn
 
     def put(self, conn: RawConnection) -> None:
         # Always rollback possibly open transaction so that as the
@@ -153,6 +215,12 @@ class Pool:
                 self._conns.returned(conn)
             else:
                 self._conns.remove(conn)
+                if not reusable:
+                    self._stats.closed_broken += 1
+                elif self._closed:
+                    self._stats.closed_shutdown += 1
+                else:
+                    self._stats.closed_surplus += 1
         self._release()
         if reusable and not keep:
             self._conn.discard(conn)
@@ -164,6 +232,7 @@ class Pool:
             self._closed = True
             while (conn := self._conns.take()) is not None:
                 self._conns.remove(conn)
+                self._stats.closed_shutdown += 1
                 idle.append(conn)
         for conn in idle:
             self._conn.discard(conn)
@@ -173,23 +242,31 @@ class Pool:
             return
         with self._lock:
             if self._max_waiting is not None:
-                if self._waiting >= self._max_waiting:
+                if self._stats.waiting >= self._max_waiting:
+                    self._stats.rejected += 1
                     raise exc.TooManyWaiting(
                         f"QueuePool limit of size {self._size} overflow "
-                        f"{self._max_overflow} reached, {self._waiting} "
+                        f"{self._max_overflow} reached, {self._stats.waiting} "
                         f"waiting, max_waiting {self._max_waiting}"
                     )
-            self._waiting += 1
+            self._stats.waiting += 1
+            self._stats.waits += 1
+        start = monotonic()
+        acquired = False
         try:
-            if not self._slots.acquire(timeout=self._timeout):
-                raise exc.TimeoutError(
-                    f"QueuePool limit of size {self._size} overflow "
-                    f"{self._max_overflow} reached, connection timed out, "
-                    f"timeout {self._timeout}"
-                )
+            acquired = self._slots.acquire(timeout=self._timeout)
         finally:
             with self._lock:
-                self._waiting -= 1
+                self._stats.waiting -= 1
+                self._stats.wait_time += monotonic() - start
+        if not acquired:
+            with self._lock:
+                self._stats.timeouts += 1
+            raise exc.TimeoutError(
+                f"QueuePool limit of size {self._size} overflow "
+                f"{self._max_overflow} reached, connection timed out, "
+                f"timeout {self._timeout}"
+            )
 
     def _release(self) -> None:
         if self._slots is not None:
@@ -199,8 +276,9 @@ class Pool:
         while True:
             with self._lock:
                 conn = self._conns.pop_expired()
-            if conn is None:
-                return
+                if conn is None:
+                    return
+                self._stats.closed_expired += 1
             self._conn.discard(conn)
 
     def _checkout(self, autocommit: bool) -> RawConnection:
@@ -221,14 +299,21 @@ class Pool:
             raise
 
     def _new(self, autocommit: bool) -> RawConnection:
-        conn = self._conn.get(autocommit=autocommit)
+        try:
+            conn = self._conn.get(autocommit=autocommit)
+        except Exception:
+            with self._lock:
+                self._stats.connect_errors += 1
+            raise
         with self._lock:
             self._conns.add(conn)
+            self._stats.opened += 1
         return conn
 
     def _drop(self, conn: RawConnection) -> None:
         with self._lock:
             self._conns.remove(conn)
+            self._stats.closed_broken += 1
         self._conn.discard(conn)
 
     @property
@@ -265,6 +350,12 @@ class Pool:
     @property
     def dialect(self) -> str:
         return self._conn.dialect
+
+    def stats(self) -> PoolStats:
+        with self._lock:
+            return replace(
+                self._stats, open=self._conns.open, idle=self._conns.idle
+            )
 
     def status(self) -> str:
         return (

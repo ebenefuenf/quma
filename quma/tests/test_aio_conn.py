@@ -359,6 +359,110 @@ async def test_pool_rejects_pointless_max_waiting(driver, options):
         pool(driver, **options)
 
 
+async def test_pool_stats_count_checkouts_and_connections(driver):
+    p = pool(driver, size=1, overflow=2)
+    fresh = p.stats()
+    assert (fresh.size, fresh.max_size) == (1, 3)
+    assert fresh.checkouts == fresh.opened == fresh.open == 0
+    raw = await p.get()
+    stats = p.stats()
+    assert (stats.open, stats.idle, stats.in_use) == (1, 0, 1)
+    assert stats.checkouts == stats.opened == 1
+    await p.put(raw)
+    assert p.stats().idle == 1
+    assert await p.get() is raw
+    stats = p.stats()
+    assert stats.checkouts == 2
+    assert stats.opened == 1
+    await p.put(raw)
+    await p.close()
+    stats = p.stats()
+    assert stats.closed_shutdown == stats.opened == stats.closed == 1
+
+
+async def test_pool_stats_count_waits_timeouts_and_rejections(driver):
+    p = pool(driver, size=1, overflow=0, timeout=0.02, max_waiting=1)
+    raw = await p.get()
+    with pytest.raises(exc.TimeoutError):
+        await p.get()
+    stats = p.stats()
+    assert stats.waits == stats.timeouts == 1
+    assert stats.wait_time >= 0.01
+    assert stats.waiting == 0
+    waiter = asyncio.create_task(p.get())
+    await asyncio.sleep(0)
+    assert p.stats().waiting == 1
+    with pytest.raises(exc.TooManyWaiting):
+        await p.get()
+    assert p.stats().rejected == 1
+    await p.put(raw)
+    assert await waiter is raw
+    stats = p.stats()
+    assert stats.waits == 2
+    assert stats.waiting == 0
+    assert stats.checkouts == 2
+    await p.put(raw)
+    await p.close()
+
+
+async def test_pool_stats_count_failed_connects(driver, monkeypatch):
+    p = pool(driver, size=1)
+
+    async def failing(**kwargs):
+        raise exc.ConnectionError
+
+    with monkeypatch.context() as patch:
+        patch.setattr(p._conn, "create_conn", failing)
+        with pytest.raises(exc.ConnectionError):
+            await p.get()
+    stats = p.stats()
+    assert stats.connect_errors == 1
+    assert stats.opened == stats.checkouts == 0
+    await p.close()
+
+
+async def test_pool_stats_tell_why_connections_closed(driver, clock):
+    p = pool(driver, size=1, max_idle=100)
+    first, second = await p.get(), await p.get()
+    await p.put(first)
+    await p.put(second)
+    assert p.stats().closed_surplus == 1
+    clock.now += 100
+    raw = await p.get()
+    assert p.stats().closed_expired == 1
+    await driver.close(raw)
+    await p.put(raw)
+    assert p.stats().closed_broken == 1
+    await p.put(await p.get())
+    await p.close()
+    stats = p.stats()
+    assert stats.closed_shutdown == 1
+    assert stats.closed == stats.opened == 4
+    assert stats.open == 0
+
+
+async def test_pool_stats_count_connection_lost_at_checkout(driver):
+    p = pool(driver, size=1, pessimistic=True)
+    raw = await p.get()
+    await p.put(raw)
+    await driver.close(raw)
+    fresh = await p.get()
+    assert p.stats().closed_broken == 1
+    assert p.stats().opened == 2
+    await p.put(fresh)
+    await p.close()
+
+
+async def test_database_pool_stats(driver):
+    db = AsyncDatabase(driver.uri.replace("://", "+pool://", 1), size=1)
+    async with db.cursor as cur:
+        await cur.query("SELECT 1").value()
+    stats = db.pool_stats()
+    assert stats is not None
+    assert stats.checkouts == 1
+    await db.close()
+
+
 async def test_pool_unlimited_overflow(driver):
     p = pool(driver, size=1, overflow=-1)
     raws = [await p.get() for _ in range(4)]
@@ -422,6 +526,7 @@ async def test_pool_cancelled_reset_frees_slot(driver):
         await p.put(raw)
     assert driver.closed(raw)
     assert p.checkedout == 0
+    assert p.stats().closed_broken == 1
     async with asyncio.timeout(1):
         replaced = await p.get()
     await p.put(replaced)
@@ -465,6 +570,7 @@ async def test_pool_discards_connections_returned_after_close(driver):
     await p.put(raw)
     assert driver.closed(raw)
     assert p.checkedin == 0
+    assert p.stats().closed_shutdown == 1
 
 
 async def test_pool_keeps_autocommit_until_a_checkout_needs_another_mode(

@@ -34,6 +34,7 @@ from .exc import (  # noqa: F401
 from .hooks import Execution
 from .mapping import FromRow
 from .namespace import Namespace
+from .pool import PoolStats
 
 __all__ = [
     "AsyncCursor",
@@ -60,6 +61,7 @@ __all__ = [
     "MultipleRowsError",
     "NotNullViolation",
     "PlaceholderError",
+    "PoolStats",
     "ProgrammingError",
     "RaisedError",
     "TimeoutError",

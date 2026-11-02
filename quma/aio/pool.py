@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
+from time import monotonic
 from typing import Any
 from urllib.parse import ParseResult
 
@@ -14,6 +16,7 @@ from ..conn import (
 from ..pool import (
     DEFAULT_TIMEOUT,
     Connections,
+    PoolStats,
     max_waiting,
 )
 
@@ -31,7 +34,12 @@ class AsyncPool:
         self._max_overflow: int = kwargs.pop("overflow", 10)
         self._timeout: float | None = kwargs.pop("timeout", DEFAULT_TIMEOUT)
         self._max_waiting = max_waiting(kwargs, self._max_overflow)
-        self._waiting = 0
+        self._stats = PoolStats(
+            self._size,
+            None
+            if self._max_overflow == -1
+            else self._size + self._max_overflow,
+        )
         self._pessimistic = kwargs.get("pessimistic", False)
         self._conns = Connections(
             kwargs.pop("max_lifetime", None), kwargs.pop("max_idle", None)
@@ -54,10 +62,12 @@ class AsyncPool:
     async def get(self, autocommit: bool = False) -> RawConnection:
         await self._acquire()
         try:
-            return await self._checkout(autocommit)
+            conn = await self._checkout(autocommit)
         except BaseException:
             self._release()
             raise
+        self._stats.checkouts += 1
+        return conn
 
     async def put(self, conn: RawConnection) -> None:
         try:
@@ -67,6 +77,7 @@ class AsyncPool:
         except BaseException:
             # A cancelled reset has discarded the connection.
             self._conns.remove(conn)
+            self._stats.closed_broken += 1
             self._release()
             raise
         keep = reusable and not self._closed and self._conns.idle < self._size
@@ -74,6 +85,12 @@ class AsyncPool:
             self._conns.returned(conn)
         else:
             self._conns.remove(conn)
+            if not reusable:
+                self._stats.closed_broken += 1
+            elif self._closed:
+                self._stats.closed_shutdown += 1
+            else:
+                self._stats.closed_surplus += 1
         self._release()
         if reusable and not keep:
             await self._conn.discard(conn)
@@ -83,6 +100,7 @@ class AsyncPool:
         self._closed = True
         while (conn := self._conns.take()) is not None:
             self._conns.remove(conn)
+            self._stats.closed_shutdown += 1
             await self._conn.discard(conn)
 
     async def _acquire(self) -> None:
@@ -93,23 +111,28 @@ class AsyncPool:
             await self._slots.acquire()
             return
         if self._max_waiting is not None:
-            if self._waiting >= self._max_waiting:
+            if self._stats.waiting >= self._max_waiting:
+                self._stats.rejected += 1
                 raise exc.TooManyWaiting(
                     f"Pool limit of size {self._size} overflow "
-                    f"{self._max_overflow} reached, {self._waiting} waiting, "
-                    f"max_waiting {self._max_waiting}"
+                    f"{self._max_overflow} reached, {self._stats.waiting} "
+                    f"waiting, max_waiting {self._max_waiting}"
                 )
-        self._waiting += 1
+        self._stats.waiting += 1
+        self._stats.waits += 1
+        start = monotonic()
         try:
             async with asyncio.timeout(self._timeout):
                 await self._slots.acquire()
         except TimeoutError as e:
+            self._stats.timeouts += 1
             raise exc.TimeoutError(
                 f"Pool limit of size {self._size} overflow {self._max_overflow} "
                 f"reached, connection timed out, timeout {self._timeout}"
             ) from e
         finally:
-            self._waiting -= 1
+            self._stats.waiting -= 1
+            self._stats.wait_time += monotonic() - start
 
     def _release(self) -> None:
         if self._slots is not None:
@@ -117,6 +140,7 @@ class AsyncPool:
 
     async def _discard_expired(self) -> None:
         while (conn := self._conns.pop_expired()) is not None:
+            self._stats.closed_expired += 1
             await self._conn.discard(conn)
 
     async def _checkout(self, autocommit: bool) -> RawConnection:
@@ -136,12 +160,18 @@ class AsyncPool:
             raise
 
     async def _new(self, autocommit: bool) -> RawConnection:
-        conn = await self._conn.get(autocommit=autocommit)
+        try:
+            conn = await self._conn.get(autocommit=autocommit)
+        except Exception:
+            self._stats.connect_errors += 1
+            raise
         self._conns.add(conn)
+        self._stats.opened += 1
         return conn
 
     async def _drop(self, conn: RawConnection) -> None:
         self._conns.remove(conn)
+        self._stats.closed_broken += 1
         await self._conn.discard(conn)
 
     @property
@@ -181,6 +211,11 @@ class AsyncPool:
     @property
     def dialect(self) -> str:
         return self._conn.dialect
+
+    def stats(self) -> PoolStats:
+        return replace(
+            self._stats, open=self._conns.open, idle=self._conns.idle
+        )
 
     def status(self) -> str:
         return (

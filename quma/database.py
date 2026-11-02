@@ -202,6 +202,12 @@ class BaseDatabase(Generic[ConnT]):
             for sqldir in sqldirs:
                 self.register_namespace(sqldir)
 
+    def pool_stats(self) -> pool.PoolStats | None:
+        """A snapshot of the :doc:`connection pool <pool>`, or ``None``
+        if the database has no pool."""
+        stats = getattr(self.conn, "stats", None)
+        return stats() if stats else None
+
     def register_namespace(self, sqldir: StrPath) -> None:
         def instantiate(ns, ns_class, path):
             if ns in self.namespaces:
