@@ -468,3 +468,19 @@ def test_set_fills_a_set_column():
         cur.query("INSERT INTO flags VALUES (:f)", f={"a", "c"}).run()
         assert cur.query("SELECT f FROM flags").value() == "a,c"
     db.close()
+
+
+def test_bytearray_is_stored_as_bytes():
+    value = bytes(range(256))
+    db = Database(util.MYSQL_URI)
+    with db.cursor as cur:
+        cur.execute("CREATE TEMPORARY TABLE blobs (a BLOB)")
+        cur.query("INSERT INTO blobs VALUES (:v)", v=bytearray(value)).run()
+        cur.executemany("INSERT INTO blobs VALUES (%s)", [(bytearray(value),)])
+        rows = cur.query("SELECT a FROM blobs").all()
+        assert [row[0] for row in rows] == [value, value]
+        query = cur.query(
+            "SELECT 1 AS a FROM blobs WHERE a IN (:v)", v=(bytearray(value),)
+        )
+        assert len(query.all()) == 2
+    db.close()

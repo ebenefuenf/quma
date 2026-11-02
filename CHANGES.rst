@@ -8,6 +8,8 @@ Unreleased
 - With mysqlclient, a ``set`` value can't run as SQL anymore. The driver quoted
   it with backslashes even under ``NO_BACKSLASH_ESCAPES``, so a value could end
   its string. quma now quotes it like a string.
+- With mysqlclient, a ``bytearray`` value is stored as its bytes. Before, the
+  driver stored its Python text, like ``bytearray(b'abc')``.
 - Script names can't leave their SQL directory: without ``cache=True``,
   ``getattr(db.users, '../../other/script')`` or an absolute path read that
   file, and ran a ``.msql`` file as a template, so an application that passed

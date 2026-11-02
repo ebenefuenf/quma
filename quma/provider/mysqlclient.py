@@ -64,6 +64,9 @@ class EscapingConnection(DriverConnection):
         # the sql_mode: under NO_BACKSLASH_ESCAPES, a value can end its string.
         if isinstance(o, set):
             o = ",".join(o)
+        elif isinstance(o, bytearray):
+            # string_literal() takes bytes only, and quotes the text of others.
+            o = bytes(o)
         return super().literal(o)
 
 
