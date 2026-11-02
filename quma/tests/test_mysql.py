@@ -448,3 +448,23 @@ def test_placeholders_and_quoting_settings(mydb):
                 cur.query("SELECT 'a\\', ':x'", x=value).one()
             row = cur.query("SELECT 'it''s :x', :x", x=value).one()
             assert tuple(row) == ("it's :x", value)
+
+
+def test_set_stays_a_value_without_backslash_escapes():
+    value = "' UNION SELECT 99 #"
+    db = Database(util.MYSQL_URI)
+    with db.cursor as cur:
+        cur.execute("SET SESSION sql_mode = 'NO_BACKSLASH_ESCAPES'")
+        assert [
+            list(row) for row in cur.query("SELECT :v AS a", v={value}).all()
+        ] == [[value]]
+    db.close()
+
+
+def test_set_fills_a_set_column():
+    db = Database(util.MYSQL_URI)
+    with db.cursor as cur:
+        cur.execute("CREATE TEMPORARY TABLE flags (f SET('a', 'b', 'c'))")
+        cur.query("INSERT INTO flags VALUES (:f)", f={"a", "c"}).run()
+        assert cur.query("SELECT f FROM flags").value() == "a,c"
+    db.close()

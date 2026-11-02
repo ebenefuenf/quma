@@ -124,7 +124,7 @@ def non_persistent(uri, connection, pessimistic):
     assert cn1.closed == 0
     with pytest.raises(AttributeError):
         conn.conn
-    assert type(cn1) is connection
+    assert isinstance(cn1, connection)
     cn2 = conn.get()
     assert cn1 != cn2
     conn.put(cn1)
@@ -154,7 +154,7 @@ def persistent(uri, connection):
     cn1 = conn.get()
     assert cn1.closed == 0
     assert conn.conn == cn1
-    assert type(cn1) is connection
+    assert isinstance(cn1, connection)
     conn.put(cn1)
     assert cn1.closed == 0
     cn2 = conn.get()
@@ -190,8 +190,8 @@ def pool(uri, pessimistic, connection):
     assert conn.overflow == -4
     cn2 = conn.get()
     assert conn.overflow == -3
-    assert type(cn1) is connection
-    assert type(cn2) is connection
+    assert isinstance(cn1, connection)
+    assert isinstance(cn2, connection)
     assert cn1 != cn2
     conn.put(cn1)
     conn.put(cn2)

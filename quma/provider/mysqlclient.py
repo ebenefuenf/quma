@@ -1,5 +1,6 @@
 try:
     import MySQLdb
+    from MySQLdb.connections import Connection as DriverConnection
     from MySQLdb.cursors import (
         Cursor,
         SSCursor,
@@ -57,6 +58,15 @@ class ChangelingStreamCursor(RowStreamCursor):
     row_class = ChangelingRow
 
 
+class EscapingConnection(DriverConnection):
+    def literal(self, o):
+        # MySQLdb quotes a set without its connection, with backslashes whatever
+        # the sql_mode: under NO_BACKSLASH_ESCAPES, a value can end its string.
+        if isinstance(o, set):
+            o = ",".join(o)
+        return super().literal(o)
+
+
 class Connection(conn.Connection):
     dialect = "mysql"
     driver_error = MySQLdb.Error
@@ -81,7 +91,7 @@ class Connection(conn.Connection):
 
     def create_conn(self, **kwargs):
         try:
-            conn = MySQLdb.connect(
+            conn = EscapingConnection(
                 db=self.database,
                 user=self.username,
                 passwd=self.password,
