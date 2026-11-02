@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 from types import SimpleNamespace
 
 import pytest
@@ -20,8 +21,18 @@ def connect_pool(uri, **kwargs):
     return pool
 
 
+async def execute(conn, sql):
+    # aiosqlite's cursor() has to be awaited.
+    cur = conn.cursor()
+    if inspect.isawaitable(cur) and not hasattr(cur, "execute"):
+        cur = await cur
+    await cur.execute(sql)
+    await cur.close()
+
+
 @pytest.fixture(
     params=[
+        "aiosqlite",
         pytest.param("psycopg", marks=pytest.mark.postgres),
         pytest.param("asyncmy", marks=pytest.mark.mysql),
     ]
@@ -29,7 +40,18 @@ def connect_pool(uri, **kwargs):
 def driver(request):
     pytest.importorskip(request.param)
     calls = []
-    if request.param == "psycopg":
+    if request.param == "aiosqlite":
+        uri = f"aiosqlite:///{util.SQLITE_FILE}"
+        spec = dict(
+            uri=uri,
+            pool_uri=uri.replace("aiosqlite://", "aiosqlite+pool://"),
+            setup="PRAGMA foreign_keys = ON",
+            check="PRAGMA foreign_keys",
+            value=1,
+            closed=lambda raw: raw._connection is None,
+            close=lambda raw: raw.close(),
+        )
+    elif request.param == "psycopg":
         spec = dict(
             uri=util.pg_uri("psycopg"),
             pool_uri=util.pg_uri("psycopg+pool"),
@@ -53,9 +75,7 @@ def driver(request):
 
     async def hook(conn):
         calls.append(conn)
-        cur = conn.cursor()
-        await cur.execute(spec["setup"])
-        await cur.close()
+        await execute(conn, spec["setup"])
 
     return SimpleNamespace(calls=calls, hook=hook, **spec)
 
@@ -182,8 +202,7 @@ async def test_exception_closes_the_connection_and_frees_the_slot(
 async def test_driver_error_becomes_quma_exception(driver):
     async def hook(conn):
         driver.calls.append(conn)
-        cur = conn.cursor()
-        await cur.execute("SELECT * FROM quma_table_that_does_not_exist")
+        await execute(conn, "SELECT * FROM quma_table_that_does_not_exist")
 
     pool = connect_pool(driver.pool_uri, size=1, overflow=0, on_connect=hook)
     with pytest.raises(ProgrammingError) as info:

@@ -16,6 +16,9 @@ from .test_aio_transaction import (
 
 pytestmark = pytest.mark.anyio
 
+# test_aio_sqlite.py covers aiosqlite: its errors have no constraint names.
+DRIVERS = [driver for driver in DRIVERS if "aiosqlite" not in str(driver.id)]
+
 BASE = [
     pytest.param(PG_URI, id="psycopg", marks=pytest.mark.postgres),
     pytest.param(MY_URI, id="asyncmy", marks=pytest.mark.mysql),

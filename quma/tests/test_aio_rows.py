@@ -18,6 +18,7 @@ pytestmark = pytest.mark.anyio
 
 @pytest.fixture(
     params=[
+        "aiosqlite",
         pytest.param("psycopg", marks=pytest.mark.postgres),
         pytest.param("asyncmy", marks=pytest.mark.mysql),
     ]
@@ -29,7 +30,9 @@ def driver(request):
 
 @pytest.fixture(params=["plain", "pool"])
 def uri(request, driver):
-    if driver == "psycopg":
+    if driver == "aiosqlite":
+        plain = f"aiosqlite:///{util.SQLITE_FILE}"
+    elif driver == "psycopg":
         plain = util.pg_uri("psycopg")
     else:
         plain = util.MYSQL_URI.replace("mysqlclient://", "asyncmy://")

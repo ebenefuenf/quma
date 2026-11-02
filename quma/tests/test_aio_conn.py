@@ -22,6 +22,7 @@ async def close_asyncmy(raw):
 
 @pytest.fixture(
     params=[
+        "aiosqlite",
         pytest.param("psycopg", marks=pytest.mark.postgres),
         pytest.param("asyncmy", marks=pytest.mark.mysql),
     ]
@@ -29,6 +30,16 @@ async def close_asyncmy(raw):
 def driver(request):
     pytest.importorskip(request.param)
     provider = import_module(f"quma.provider.{request.param}")
+    if request.param == "aiosqlite":
+        uri = f"aiosqlite:///{util.SQLITE_FILE}"
+        return SimpleNamespace(
+            conn=provider.AsyncConnection,
+            uri=uri,
+            url=urlparse(uri),
+            closed=lambda raw: raw._connection is None,
+            autocommit=lambda raw: raw.isolation_level is None,
+            close=close_psycopg,
+        )
     if request.param == "psycopg":
         util.setup_pg_db()
         return SimpleNamespace(
@@ -68,7 +79,12 @@ async def test_autocommit(driver):
 
 
 async def test_connection_error(driver):
-    conn = driver.conn(urlparse(driver.uri + "_wrong"))
+    wrong = (
+        "aiosqlite:////nonexistent/directory/quma.sqlite"
+        if driver.uri.startswith("aiosqlite")
+        else driver.uri + "_wrong"
+    )
+    conn = driver.conn(urlparse(wrong))
     with pytest.raises(exc.ConnectionError):
         await conn.get()
 
@@ -168,6 +184,7 @@ async def test_fetch_after_statement_without_result(driver):
     cursor = conn.cursor(raw)
     await cursor.execute("CREATE TEMPORARY TABLE no_result (id integer)")
     assert await conn.get_cursor_attr(cursor, "fetchall")() == ()
+    assert await conn.get_cursor_attr(cursor, "fetchmany")(2) == ()
     await cursor.execute("SELECT 1 AS one")
     rows = await conn.get_cursor_attr(cursor, "fetchall")()
     assert rows[0][0] == 1
@@ -180,7 +197,12 @@ async def test_mogrify(driver):
     cursor = conn.cursor(raw)
     await cursor.execute("SELECT 1 AS one")
     sql = conn.mogrify(cursor, "SELECT %(name)s", {"name": "quma"})
-    assert sql == "SELECT 'quma'"
+    # SQLite binds on the server, so there is nothing to show but the SQL.
+    assert sql == (
+        "SELECT %(name)s"
+        if driver.uri.startswith("aiosqlite")
+        else "SELECT 'quma'"
+    )
     assert (await cursor.fetchall())[0][0] == 1
     await conn.put(raw)
 
@@ -698,20 +720,15 @@ async def test_pool_rejects_limits_that_are_not_positive(driver, option):
 
 
 async def test_database_replaces_connection(driver, clock):
-    sql = (
-        "SELECT pg_backend_pid()"
-        if "psycopg" in driver.uri
-        else "SELECT CONNECTION_ID()"
-    )
     uri = driver.uri.replace("://", "+pool://", 1)
     db = AsyncDatabase(uri, max_lifetime=100)
-    async with db.cursor as cur:
-        pid = await cur.query(sql).value()
-    async with db.cursor as cur:
-        assert await cur.query(sql).value() == pid
-    clock.now += 100
-    async with db.cursor as cur:
-        assert await cur.query(sql).value() != pid
+    for opened, seconds in ((1, 0), (1, 0), (2, 100)):
+        clock.now += seconds
+        async with db.cursor as cur:
+            assert await cur.query("SELECT 1").value() == 1
+        stats = db.pool_stats()
+        assert stats is not None
+        assert stats.opened == opened
     await db.close()
 
 

@@ -42,8 +42,11 @@ the matching driver:
     # MySQL/MariaDB, async API only
     pip install quma asyncmy
 
-The :doc:`async API <async>` needs psycopg 3 or, for MySQL/MariaDB,
-asyncmy.
+    # SQLite needs nothing for the sync API. Async API only:
+    pip install quma aiosqlite
+
+The :doc:`async API <async>` needs psycopg 3, asyncmy for MySQL/MariaDB or
+aiosqlite for SQLite.
 
 Templates for dynamic SQL
 -------------------------

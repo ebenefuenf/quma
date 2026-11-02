@@ -12,7 +12,7 @@ every driver.
 It also provides a simple connection pool and templating for dynamic SQL like
 conditional WHEREs, and an async API for asyncio applications such as
 Starlette, FastAPI or Litestar (PostgreSQL with psycopg 3, MySQL and
-MariaDB with asyncmy).
+MariaDB with asyncmy, SQLite with aiosqlite).
 
 Motivation
 ----------

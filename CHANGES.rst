@@ -30,6 +30,8 @@ Unreleased
   SQL directories, namespaces, templates, rows and mapping work as in
   sync code. See the new docs page "Async", which also shows how to use
   it with Starlette, FastAPI and Litestar.
+- The async API supports SQLite with aiosqlite (``aiosqlite://`` and
+  ``aiosqlite+pool://``, extra ``aiosqlite``). See "SQLite" in "Async".
 - ``quma`` exports ``Cursor``, ``AsyncDatabase``, ``AsyncCursor`` and
   ``connect_async()``.
 - **Breaking:** ``Query.stream()`` replaces ``unbunch()``. It lets the

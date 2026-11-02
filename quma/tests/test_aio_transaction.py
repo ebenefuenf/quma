@@ -28,7 +28,17 @@ MY_POOL_URI = util.MYSQL_POOL_URI.replace(
     "mysqlclient+pool://", "asyncmy+pool://"
 )
 
+SQ_URI = f"aiosqlite:///{util.SQLITE_FILE}"
+SQ_POOL_URI = f"aiosqlite+pool:///{util.SQLITE_FILE}"
+
+
+def is_sqlite(uri):
+    return uri.startswith("aiosqlite")
+
+
 DRIVERS = [
+    pytest.param(SQ_URI, id="aiosqlite"),
+    pytest.param(SQ_POOL_URI, id="aiosqlite+pool"),
     pytest.param(PG_URI, id="psycopg", marks=pytest.mark.postgres),
     pytest.param(PG_POOL_URI, id="psycopg+pool", marks=pytest.mark.postgres),
     pytest.param(MY_URI, id="asyncmy", marks=pytest.mark.mysql),
@@ -39,6 +49,9 @@ DRIVERS = [
 def prepare(uri):
     if uri.startswith("psycopg"):
         util.setup_pg_db()
+    elif uri.startswith("aiosqlite"):
+        pytest.importorskip("aiosqlite")
+        util.setup_sqlite_db()
     else:
         util.setup_mysql_db()
     return uri

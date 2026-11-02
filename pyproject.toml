@@ -42,6 +42,7 @@ psycopg2 = ["psycopg2"]
 psycopg = ["psycopg"]
 mysqlclient = ["mysqlclient"]
 asyncmy = ["asyncmy"]
+aiosqlite = ["aiosqlite"]
 
 [project.urls]
 Homepage = "https://github.com/ebenefuenf/quma"

@@ -8,13 +8,18 @@ from .. import AsyncDatabase
 from .test_aio_transaction import (
     DRIVERS,
     PG_URI,
+    is_sqlite,
     prepare,
 )
 
 pytestmark = pytest.mark.anyio
 
 # The keyword each driver's execute() has for the parameters.
-PARAMS_KEYWORD = {"psycopg": "params", "asyncmy": "args"}
+PARAMS_KEYWORD = {
+    "psycopg": "params",
+    "asyncmy": "args",
+    "aiosqlite": "parameters",
+}
 
 
 @pytest.fixture(params=DRIVERS)
@@ -49,18 +54,33 @@ def db(open_db, events):
 def sleep(uri, seconds):
     if uri.startswith("psycopg"):
         return f"SELECT pg_sleep({seconds})"
+    if is_sqlite(uri):
+        # SQLite can't sleep. An aggregate runs in the first step, and this
+        # takes longer than the seconds asked for.
+        count = int(seconds * 2e7)
+        return (
+            "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL "
+            f"SELECT x + 1 FROM c WHERE x < {count}) SELECT count(*) FROM c"
+        )
     return f"SELECT SLEEP({seconds})"
 
 
-async def test_script_reports_what_the_driver_received(db, events):
+def positional(uri):
+    return "?" if is_sqlite(uri) else "%s"
+
+
+async def test_script_reports_what_the_driver_received(db, uri, events):
     async with db.cursor as cur:
         rows = await cur.users.by_name(name="User 1").all()
     assert len(rows) == 1
     [event] = events
     assert event.name == "users/by_name"
-    assert "name = %(name)s" in event.sql
+    assert (
+        "name = :name" if is_sqlite(uri) else "name = %(name)s"
+    ) in event.sql
     assert event.params == {"name": "User 1"}
-    assert event.rowcount == 1
+    # sqlite3 can't tell how many rows a SELECT has.
+    assert event.rowcount == (None if is_sqlite(uri) else 1)
     assert event.duration > 0
     assert event.error is None
 
@@ -80,8 +100,8 @@ async def test_statements_outside_scripts_have_no_name(db, events):
     ]
 
 
-async def test_executemany(db, events):
-    sql = "UPDATE users SET city = 'X' WHERE id = %s"
+async def test_executemany(db, uri, events):
+    sql = f"UPDATE users SET city = 'X' WHERE id = {positional(uri)}"
     params = [(1,), (2,)]
     async with db.cursor as cur:
         await cur.executemany(sql, params)
@@ -95,7 +115,7 @@ async def test_executemany(db, events):
 async def test_params_given_by_keyword(db, uri, events):
     keyword = PARAMS_KEYWORD[uri.split(":")[0].removesuffix("+pool")]
     async with db.cursor as cur:
-        await cur.execute("SELECT %s", **{keyword: [1]})
+        await cur.execute(f"SELECT {positional(uri)}", **{keyword: [1]})
         await cur.fetchall()
     [event] = events
     assert event.params == [1]
@@ -123,7 +143,8 @@ async def test_duration_leaves_out_waiting_for_the_connection(db, uri, events):
         slow = asyncio.create_task(first.execute(sleep(uri, 0.3)))
         await asyncio.sleep(0.05)
         await second.executemany(
-            "UPDATE users SET city = 'X' WHERE id = %s", [(1,)]
+            f"UPDATE users SET city = 'X' WHERE id = {positional(uri)}",
+            [(1,)],
         )
         await slow
         await second.rollback()
@@ -191,7 +212,7 @@ async def test_stream_that_fails_to_open(db, events):
     assert event.error is raised.value
 
 
-async def test_debug_log(open_db, caplog):
+async def test_debug_log(open_db, uri, caplog):
     db = open_db()
     with caplog.at_level(logging.DEBUG, logger="quma"):
         async with db.cursor as cur:
@@ -200,7 +221,8 @@ async def test_debug_log(open_db, caplog):
     assert len(records) == 1
     message = records[0].getMessage()
     assert message.startswith("users/by_name: ")
-    assert " ms, rowcount 1\n" in message
+    rowcount = None if is_sqlite(uri) else 1
+    assert f" ms, rowcount {rowcount}\n" in message
     assert "User 1" not in message
 
 

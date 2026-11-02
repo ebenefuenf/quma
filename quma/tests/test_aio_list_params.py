@@ -7,6 +7,7 @@ from .test_aio_transaction import (
     DRIVERS,
     MY_URI,
     PG_URI,
+    is_sqlite,
     prepare,
 )
 
@@ -94,13 +95,16 @@ async def test_stream(db):
     assert [row[0] for row in rows] == [1, 2, 3]
 
 
-async def test_hook_sees_what_the_driver_received(open_db):
+async def test_hook_sees_what_the_driver_received(open_db, uri):
     events = []
     db = open_db(on_execute=events.append)
     assert await ids(db, BY_IDS, ids=[1, 2]) == [1, 2]
     [event] = events
     assert event.params == {"ids__0": 1, "ids__1": 2}
-    assert "(%(ids__0)s, %(ids__1)s)" in event.sql
+    expected = (
+        "(:ids__0, :ids__1)" if is_sqlite(uri) else "(%(ids__0)s, %(ids__1)s)"
+    )
+    assert expected in event.sql
 
 
 @pytest.mark.postgres

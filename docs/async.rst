@@ -5,9 +5,11 @@ Async
 quma has an async API for asyncio applications, for example with
 `Starlette <https://www.starlette.io>`_, `FastAPI <https://fastapi.tiangolo.com>`_
 or `Litestar <https://litestar.dev>`_. It works with psycopg 3
-(``psycopg://`` and ``psycopg+pool://``) and, for MySQL and MariaDB,
+(``psycopg://`` and ``psycopg+pool://``), for MySQL and MariaDB with
 `asyncmy <https://github.com/long2ice/asyncmy>`_ (``asyncmy://`` and
-``asyncmy+pool://``). psycopg2, mysqlclient and sqlite3 have no asyncio
+``asyncmy+pool://``), and for SQLite with
+`aiosqlite <https://github.com/omnilib/aiosqlite>`_ (``aiosqlite://`` and
+``aiosqlite+pool://``). psycopg2, mysqlclient and sqlite3 have no asyncio
 support.
 
 Every call that talks to the database is awaited. Everything else works
@@ -238,6 +240,31 @@ loses a pool slot.
 
 asyncmy can't cancel a query on the server. quma closes the connection,
 but MySQL runs the query until it finishes.
+
+On SQLite, quma interrupts the running query.
+
+
+SQLite
+------
+
+aiosqlite isn't non-blocking I/O: it runs :mod:`sqlite3` in one thread per
+connection and awaits the results. That keeps the event loop free, but a connection
+still does one thing at a time, and SQLite allows one writer per database file.
+It suits small applications, prototypes and tests.
+
+.. code-block:: python
+
+    db = AsyncDatabase('aiosqlite:////path/to/app.db', sqldir, persist=True)
+
+* ``:memory:`` is a separate, empty database for each connection, so use it with
+  ``persist=True``. With a pool or without ``persist``, connections don't see each
+  other's data.
+* A second writer waits, by default for five seconds, and then gets
+  :class:`quma.TransactionConflict`. Pass ``timeout`` without a pool to change that,
+  because a pool takes ``timeout`` for itself and uses it for the wait for a free
+  connection.
+* Close the database when you can. A connection that wasn't closed doesn't keep the
+  process from ending, but its uncommitted work is lost and aiosqlite warns about it.
 
 
 Frameworks

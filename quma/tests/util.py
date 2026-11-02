@@ -1,4 +1,5 @@
 import os
+import sqlite3
 
 DB_USER = "quma_test_user"
 DB_PASS = "quma_test_password"
@@ -78,6 +79,16 @@ def setup_pg_db():
     cur.execute("DROP TABLE IF EXISTS test;")
     conn.commit()
     cur.close()
+    conn.close()
+
+
+def setup_sqlite_db():
+    remove_db(SQLITE_FILE)
+    conn = sqlite3.connect(SQLITE_FILE)
+    with conn:
+        conn.execute(DROP_USERS)
+        conn.execute(CREATE_USERS)
+        conn.execute(INSERT_USERS)
     conn.close()
 
 
