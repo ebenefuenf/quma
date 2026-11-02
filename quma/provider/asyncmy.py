@@ -71,6 +71,15 @@ class EscapingConnection(asyncmy.Connection):
             return f"({items})"
         return super().escape(obj, mapping)
 
+    async def query(self: Any, sql, unbuffered=False):
+        try:
+            return await super().query(sql, unbuffered)
+        except UnicodeDecodeError:
+            # The rest of the result stays unread, and the next statement would
+            # read it. Its packet numbers only catch that up to a wraparound.
+            self.close()
+            raise
+
 
 class AsyncConnection(conn.AsyncConnection):
     dialect = "mysql"

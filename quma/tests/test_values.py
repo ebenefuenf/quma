@@ -466,3 +466,16 @@ async def test_asyncmy_keeps_the_collation_of_an_init_command():
         query = cur.query("SELECT @@collation_connection AS a")
         assert await query.value() == "utf8mb4_bin"
     await db.close()
+
+
+@pytest.mark.mysql
+@pytest.mark.anyio
+async def test_asyncmy_closes_a_connection_it_cant_decode_for():
+    db = AsyncDatabase(ASYNCMY_URI)
+    async with db.cursor as cur:
+        await cur.execute("SET character_set_results = latin1")
+        with pytest.raises(exc.DataError):
+            await cur.query("SELECT 'é' AS a").all()
+        with pytest.raises(exc.ConnectionLost):
+            await cur.query("SELECT 1 AS a").all()
+    await db.close()
