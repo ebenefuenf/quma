@@ -107,19 +107,26 @@ backslash in the value can end the string. quma raises
 ``placeholders='native'``, such SQL reaches the driver unchanged and has this
 problem too.
 
-.. warning::
+Some settings also change how the driver has to escape a value, and quma's tests
+run hostile values under them with every driver: a value comes back as itself or
+is refused.
 
-    Some settings also change how the driver has to escape a value, and two
-    drivers miss a change made after connecting. A value can then end its
-    string and run as SQL, and quma can't detect it:
+* With psycopg2, a connection that started with
+  ``standard_conforming_strings = off`` raises :class:`quma.APIError` for
+  statements with values once the session turns it on, because psycopg2 can't
+  escape them then. Configure the value you want for the server, the role or the
+  connection's ``options``.
+* In MySQL and MariaDB, a character in charsets like ``big5``, ``gbk`` or ``sjis``
+  may contain a backslash byte, which makes backslash escapes depend on the charset
+  the server reads. So quma sends non-ASCII text and bytes without any: it doubles
+  quotes, and a value with a backslash byte becomes a hex literal, which behaves
+  like the quoted string but takes up twice its size in the statement. That counts
+  against ``max_allowed_packet``.
 
-    * With asyncmy, don't change the charset with statements like ``SET NAMES
-      gbk``, ``SET CHARACTER SET gbk`` or ``SET character_set_client = gbk``,
-      also not in ``on_connect``. Pass ``charset='gbk'`` when you create the
-      database instead. See :doc:`Connecting <connecting>`.
-    * With psycopg2, don't set ``standard_conforming_strings = on`` in a
-      session on a connection that started with it ``off``. Configure the
-      value you want for the server, the role or the connection's ``options``.
+Set a connection's charset with ``charset='gbk'``, see :doc:`Connecting
+<connecting>`, instead of ``SET NAMES gbk``: a value can't run as SQL either way,
+but the driver doesn't know about ``SET NAMES``, so text may arrive garbled or
+raise :class:`quma.DataError`.
 
 Whether MySQL or MariaDB runs a versioned comment like ``/*!80000 ... */``
 or ``/*M! ... */`` depends on the server's version and type, and one
@@ -127,6 +134,25 @@ server may run some of them and skip others. So SQL with such a comment
 can't have placeholders or ``\:``, and quma raises
 :class:`quma.PlaceholderError` for it. A ``/*! ... */`` comment without a
 version runs on every server and may hold placeholders.
+
+
+Types of values
+---------------
+
+Each driver decides how to send a value. What it can't send raises
+:class:`quma.ProgrammingError`, and text its charset can't hold raises
+:class:`quma.DataError`.
+
+mysqlclient and asyncmy send the same for these:
+
+* A ``bytearray``, ``memoryview`` or ``array`` is sent as its bytes.
+* A ``set`` or ``frozenset`` of strings is joined with commas, for a ``SET``
+  column.
+* A ``tuple`` or ``list`` becomes ``('a', 'b')``, also outside of ``IN``.
+* A subclass of ``int``, ``float`` or ``Decimal`` is sent as a number.
+* A value of another type is sent as its ``str()`` if its class defines one, like
+  ``UUID`` or ``PurePath``. A value whose only text is its ``repr()``, like a
+  ``dict``, a ``range`` or a plain object, is refused.
 
 
 Supported servers

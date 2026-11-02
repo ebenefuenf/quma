@@ -104,3 +104,16 @@ MySQL/MariaDB:
 * ``QUMA_MYSQL_HOST``
 * ``QUMA_MYSQL_PORT``
 
+
+Hostile values
+--------------
+
+``quma/tests/test_value_matrix.py`` sends values built to end their string, in
+text, bytes and objects, on every driver that binds on the client, under the
+session settings that change how the server reads SQL. A value must come back as
+itself or be refused. Set ``QUMA_VALUE_MATRIX=full`` for all payloads and settings
+after changing how values are sent:
+
+.. code-block:: console
+
+    QUMA_VALUE_MATRIX=full uv run pytest quma/tests/test_value_matrix.py

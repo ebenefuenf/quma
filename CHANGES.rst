@@ -12,6 +12,15 @@ Unreleased
 - With mysqlclient, a ``set`` value can't run as SQL anymore. The driver quoted
   it with backslashes even under ``NO_BACKSLASH_ESCAPES``, so a value could end
   its string. quma now quotes it like a string.
+- With mysqlclient, a ``bytes`` value could run as SQL under a charset in which
+  a backslash can be part of a character: under ``big5`` with libmariadb, under
+  ``gb18030`` with libmysqlclient too. quma now doubles quotes in non-ASCII values
+  and sends those with a backslash as a hex literal, which takes up twice their
+  size against ``max_allowed_packet``. Bytes that aren't valid in the connection's
+  charset are sent as binary.
+- A value a driver can't send raises ``DataError`` instead of a Python error: text
+  the connection's charset can't hold, a result it can't decode, too large an
+  integer on SQLite and NUL on psycopg2.
 - **Breaking:** mysqlclient no longer stores a Python ``repr()`` as if it were
   data. A value whose only text is its ``repr()``, like a ``dict``, a ``range`` or
   a plain object, raises ``ProgrammingError``, as it does with the other drivers.
