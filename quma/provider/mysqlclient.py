@@ -66,13 +66,13 @@ class EscapingConnection(DriverConnection):
 
     def literal(self, o):
         o = values.plain(o, self.encoders)
-        literal = None
-        if isinstance(o, str):
-            literal = values.hex_text(o, self.encoding, self._text_charset)
-        elif isinstance(o, bytes):
-            charset = "binary" if self._binary_prefix else self._text_charset
-            literal = values.hex_bytes(o, self.encoding, charset)
-        return literal.encode() if literal else super().literal(o)
+        if isinstance(o, str) and not o.isascii():
+            return values.quoted(o.encode(self.encoding), self._text_charset)
+        if isinstance(o, bytes) and not o.isascii():
+            if self._binary_prefix or not values.is_text(o, self.encoding):
+                return values.binary(o)
+            return values.quoted(o, self._text_charset)
+        return super().literal(o)
 
 
 class Connection(conn.Connection):

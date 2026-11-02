@@ -419,3 +419,50 @@ def test_psycopg_keeps_values_when_the_setting_goes_on():
         query = cur.query("SELECT :v AS a", v=HOSTILE)
         assert [list(row) for row in query.all()] == [[HOSTILE]]
     db.close()
+
+
+# Each of these takes another way into the SQL, and must behave the same.
+MIXES = [
+    pytest.param("l'été", id="quote"),
+    pytest.param("C:\\Müller", id="backslash"),
+    pytest.param("é'\\ü", id="both"),
+    pytest.param("été", id="neither"),
+    pytest.param('é\0\n\r\x1a"', id="control characters"),
+    pytest.param("plain 'ascii\\", id="ascii"),
+]
+MIXED_WITH_LITERALS = [
+    "SELECT :v = 'x' AS a",
+    "SELECT 'x' IN (:v) AS a",
+    "SELECT CONCAT(:v, 'x') AS a",
+    "SELECT COALESCE(NULL, :v, 'x') AS a",
+    "SELECT :v LIKE 'x' AS a",
+    "SELECT :v = :v AS a",
+]
+
+
+@pytest.mark.mysql
+@pytest.mark.parametrize("value", MIXES)
+def test_mysqlclient_values_mix_with_literals(mysqlclient, value):
+    assert mysqlclient.query("SELECT :v AS a", v=value).value() == value
+    for sql in MIXED_WITH_LITERALS:
+        mysqlclient.query(sql, v=value).all()
+
+
+@pytest.mark.mysql
+@pytest.mark.anyio
+@pytest.mark.parametrize("value", MIXES)
+async def test_asyncmy_values_mix_with_literals(asyncmy, value):
+    assert await asyncmy.query("SELECT :v AS a", v=value).value() == value
+    for sql in MIXED_WITH_LITERALS:
+        await asyncmy.query(sql, v=value).all()
+
+
+@pytest.mark.mysql
+@pytest.mark.anyio
+async def test_asyncmy_keeps_the_collation_of_an_init_command():
+    command = "SET NAMES utf8mb4 COLLATE utf8mb4_bin"
+    db = AsyncDatabase(ASYNCMY_URI, init_command=command)
+    async with db.cursor as cur:
+        query = cur.query("SELECT @@collation_connection AS a")
+        assert await query.value() == "utf8mb4_bin"
+    await db.close()

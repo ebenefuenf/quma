@@ -60,15 +60,12 @@ class ChangelingStreamCursor(RowStreamCursor):
 class EscapingConnection(asyncmy.Connection):
     def escape(self: Any, obj, mapping=None):
         obj = values.plain(obj, self._encoders if mapping is None else mapping)
-        # asyncmy escapes these with backslashes byte by byte: under
-        # NO_BACKSLASH_ESCAPES or a charset like gbk, a value can end its string.
-        # Without _binary, MySQL reads a hex literal as a number in arithmetic.
+        # asyncmy escapes bytes with backslashes, whatever the sql_mode.
         if isinstance(obj, bytes):
-            return f"_binary X'{obj.hex()}'"
-        if isinstance(obj, str):
-            literal = values.hex_text(obj, self._encoding, self._charset)
-            if literal:
-                return literal
+            return values.binary(obj).decode()
+        if isinstance(obj, str) and not obj.isascii():
+            raw = obj.encode(self._encoding)
+            return values.quoted(raw, self._charset).decode(self._encoding)
         if isinstance(obj, (tuple, list)) and not isinstance(obj, struct_time):
             items = ",".join(self.escape(item, mapping) for item in obj)
             return f"({items})"
@@ -117,6 +114,11 @@ class AsyncConnection(conn.AsyncConnection):
         return getattr(cursor, key)
 
     async def create_conn(self, **kwargs):
+        # A literal with a charset in front has the charset's default collation.
+        # asyncmy's handshake asks for another one, which MySQL refuses to
+        # compare it with, so a value in hex couldn't meet a quoted string.
+        charset = kwargs.get("charset") or "utf8mb4"
+        kwargs.setdefault("init_command", f"SET NAMES {charset}")
         try:
             conn = EscapingConnection(
                 database=self.database,
