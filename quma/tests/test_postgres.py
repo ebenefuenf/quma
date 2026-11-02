@@ -637,3 +637,18 @@ def test_execute_stays_native(pgdb):
         cur.execute("SELECT %(x)s || '%%'", {"x": "a"})
         assert cur.fetchone()[0] == "a%"
     assert pgdb.execute("SELECT '100%'")[0][0] == "100%"
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize("sql", ["SELECT E:v AS a", "SELECT E'a'\n:v AS a"])
+def test_value_cant_run_as_sql_from_an_escape_string(pgdb, sql):
+    with pgdb.cursor as cur, pytest.raises(PlaceholderError):
+        cur.query(sql, v="\\'; SELECT 99 AS a; --").value()
+
+
+@pytest.mark.postgres
+def test_value_after_an_escape_string_stays_a_value(pgdb):
+    value = "\\'; SELECT 99 AS a; --"
+    with pgdb.cursor as cur:
+        query = cur.query("SELECT E'a'\n|| :v AS a", v=value)
+        assert query.value() == "a" + value

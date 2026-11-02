@@ -81,6 +81,45 @@ def test_postgresql_backslash_before_quote():
     assert convert("SELECT E'a\\' :b '", "postgresql") == "SELECT E'a\\' :b '"
 
 
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT E:v",
+        "SELECT e:v",
+        "SELECT 1E:v",
+        "SELECT E'a'\n:v",
+        "SELECT E'a'\r:v",
+        "SELECT E'a' -- c\n  -- d\n :v",
+        "SELECT E'a'\n'b'\n:v",
+    ],
+)
+def test_postgresql_value_in_an_escape_string(sql):
+    with pytest.raises(PlaceholderError, match="E'...' string"):
+        convert(sql, "postgresql")
+
+
+@pytest.mark.parametrize(
+    "sql, converted",
+    [
+        ("SELECT nameE:v", "SELECT nameE%(v)s"),
+        ("SELECT €E:v", "SELECT €E%(v)s"),
+        ("SELECT a[e :v]", "SELECT a[e %(v)s]"),
+        ("SELECT e::text", "SELECT e::text"),
+        ("SELECT E\\:v", "SELECT E:v"),
+        ("SELECT E'a' :v", "SELECT E'a' %(v)s"),
+        ("SELECT E'a'\n|| :v", "SELECT E'a'\n|| %(v)s"),
+        ("SELECT 'a'\n:v", "SELECT 'a'\n%(v)s"),
+    ],
+)
+def test_postgresql_value_outside_of_an_escape_string(sql, converted):
+    assert convert(sql, "postgresql") == converted
+
+
+def test_e_before_a_placeholder_stays_valid_elsewhere():
+    assert convert("SELECT E:v", "mysql") == "SELECT E%(v)s"
+    assert convert("SELECT E:v", "sqlite") == "SELECT E:v"
+
+
 def test_postgresql_continued_strings():
     # An E'...' string continued after a newline keeps its escapes.
     for gap in ("\n", "\r", " -- c\n  -- d\n ", "\v\n\v"):

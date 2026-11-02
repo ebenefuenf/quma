@@ -100,6 +100,13 @@ the setting. Write the SQL so that it doesn't depend on the setting:
 ``E'C:\\'`` in PostgreSQL and ``''`` instead of ``\'`` for a quote in
 MySQL. SQL without backslashes never depends on these settings.
 
+On PostgreSQL, a placeholder directly after ``E``, or on the line after an
+``E'...'`` string, would make its value part of an ``E'...'`` string, where a
+backslash in the value can end the string. quma raises
+:class:`quma.PlaceholderError` for both. Write ``E'a' || :value``. With
+``placeholders='native'``, such SQL reaches the driver unchanged and has this
+problem too.
+
 Whether MySQL or MariaDB runs a versioned comment like ``/*!80000 ... */``
 or ``/*M! ... */`` depends on the server's version and type, and one
 server may run some of them and skip others. So SQL with such a comment

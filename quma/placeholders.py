@@ -61,8 +61,9 @@ _PG_CONT = _PG_START + "0-9"
 # Identifiers are tokens: an E'...' string or a $tag$ can't start in one.
 _PG_TOKEN = re.compile(
     rf"""
-        (?P<run>(?:(?![eE]')[{_PG_START}][{_PG_CONT}$]*+|[^'"$:\\/\-{_PG_START}])++)
+        (?P<run>(?:(?![eE](?:'|:{_NAME}))[{_PG_START}][{_PG_CONT}$]*+|[^'"$:\\/\-{_PG_START}])++)
       | (?P<escaped>[eE]')
+      | (?P<escaped_value>[eE](?=:{_NAME}))
       | (?P<string>')
       | (?P<quoted>"(?:[^"]|"")*+(?:"|\Z))
       | (?P<comment>--[^\n\r]*+)
@@ -81,9 +82,11 @@ _ESCAPED = re.compile(r"(?:[^'\\]|\\[\s\S]|'')*+(?:'|\Z)")
 
 # Strings separated by whitespace with a newline (and "--" comments) are
 # one string, and an E'...' string keeps its escapes in all parts.
-_PG_CONTINUE = re.compile(
-    r"(?:[ \t\f\v]|--[^\n\r]*+)*+[\n\r](?:[ \t\n\r\f\v]|--[^\n\r]*+[\n\r])*+'"
+_PG_GAP = (
+    r"(?:[ \t\f\v]|--[^\n\r]*+)*+[\n\r](?:[ \t\n\r\f\v]|--[^\n\r]*+[\n\r])*+"
 )
+_PG_CONTINUE = re.compile(_PG_GAP + "'")
+_PG_CONTINUE_VALUE = re.compile(rf"{_PG_GAP}:{_NAME}")
 
 # PostgreSQL's block comments nest.
 _COMMENT_MARK = re.compile(r"/\*|\*/")
@@ -187,8 +190,9 @@ def convert(sql: str, dialect: str) -> str:
     ``%(name)s`` placeholder or ``%%``: the script was written for the
     driver, see the ``placeholders`` option of :class:`quma.Database`.
     Also raises it if a setting of the session could change where a
-    string ends and so whether a placeholder is in it, and for MySQL SQL
-    with placeholders and versioned comments.
+    string ends and so whether a placeholder is in it, for a PostgreSQL
+    placeholder whose value would become part of an ``E'...'`` string, and
+    for MySQL SQL with placeholders and versioned comments.
     """
     return convert_lists(sql, dialect, {}).sql
 
@@ -328,6 +332,17 @@ def _versioned(sql: str, match: re.Match[str]) -> PlaceholderError:
     )
 
 
+def _escaped_value(sql: str, pos: int) -> PlaceholderError:
+    lineno = sql.count("\n", 0, pos) + 1
+    line = sql.split("\n")[lineno - 1].strip()
+    return PlaceholderError(
+        f"Line {lineno} has a placeholder whose value the server would read "
+        "as part of an E'...' string, where a backslash in the value can end "
+        f"the string and run the rest as SQL: {line}\nWrite || between a "
+        "string and the placeholder, or a space if E is a column's name."
+    )
+
+
 def _postgresql(sql: str, reading: Reading) -> Iterator[Token]:
     plain = _ESCAPED if reading.backslashes else _PLAIN
     pos = 0
@@ -341,8 +356,12 @@ def _postgresql(sql: str, reading: Reading) -> Iterator[Token]:
         if kind == "escape":
             yield ":", None
             continue
+        if kind == "escaped_value":
+            raise _escaped_value(sql, start)
         if kind == "escaped":
             pos = _pg_string(sql, pos, _ESCAPED)
+            if _PG_CONTINUE_VALUE.match(sql, pos):
+                raise _escaped_value(sql, pos)
         elif kind == "string":
             pos = _pg_string(sql, pos, plain)
         elif kind == "block":
