@@ -19,7 +19,7 @@ ALREADY_OPEN = "already open"
 NO_COMMIT = "can't run in a transaction block"
 RETURNED = "before the end of its block"
 ABORTED = "aborted the transaction"
-MYSQL_STREAM = "MySQL can't run"
+MYSQL_STREAM = "can't run other statements"
 
 PG_URI = util.pg_uri("psycopg")
 PG_POOL_URI = util.pg_uri("psycopg+pool")

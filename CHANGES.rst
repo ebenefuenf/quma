@@ -5,6 +5,13 @@ quma Changelog
 Unreleased
 ----------
 
+- psycopg's own ``cur.stream()`` and ``cur.copy()`` can't hang anymore. Between
+  rows the driver holds the connection's lock, so closing the cursor, committing
+  or returning the connection while an iterator was kept waited forever, and took
+  the pool slot with it. In sync code a query did too. Other statements on the
+  connection now raise ``APIError``, closing the cursor or returning its
+  connection ends the stream or copy, and using it afterwards raises
+  ``APIError``. Both also raise quma's exceptions now.
 - A persistent connection in ``Database`` recovers after it was lost: the
   failed statement raises ``ConnectionLost``, and the next cursor opens a new
   connection. It kept the dead one for good, unless ``pessimistic=True``. A

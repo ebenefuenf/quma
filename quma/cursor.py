@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from collections.abc import (
     Generator,
     Sequence,
@@ -46,6 +47,9 @@ from .script import (
     Script,
 )
 from .stream import (
+    DriverContext,
+    DriverIterator,
+    Occupation,
     blocked,
     check_idle,
     close_streams,
@@ -379,6 +383,25 @@ class Cursor(BaseCursor[ConnectionLike]):
 
     def close(self) -> None:
         self.put(force=True)
+
+    def _driver_attr(self, value: Any) -> Any:
+        if not callable(value):
+            return value
+
+        def call(*args: Any, **kwargs: Any) -> Any:
+            result = value(*args, **kwargs)
+            if inspect.isgenerator(result):
+                use = Occupation(self, result.close)
+                advance = translating(self._conn(), next)
+                return DriverIterator(use, lambda: advance(result))
+            # psycopg's execute() returns its cursor, a context manager too.
+            if hasattr(result, "__exit__") and (
+                self.raw_cursor is None or result is not self.raw_cursor.cursor
+            ):
+                return DriverContext(self, result)
+            return result
+
+        return call
 
     def _lose_carried(self) -> None:
         if self.raw_conn is not None and self.raw_cursor is not None:

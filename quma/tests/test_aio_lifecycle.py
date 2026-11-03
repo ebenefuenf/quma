@@ -1,6 +1,7 @@
 """The async side of test_lifecycle.py."""
 
 import asyncio
+from contextlib import aclosing
 from typing import Any
 
 import pytest
@@ -295,3 +296,200 @@ async def test_a_closed_persistent_connection_stays_closed(driver):
     await db.close()
     with pytest.raises(exc.APIError, match="closed"):
         await cur.create_cursor()
+
+
+COPY = "COPY (SELECT generate_series(1, 100000)) TO STDOUT"
+MANY_ROWS = "SELECT generate_series(1, 100000) AS n"
+
+
+@pytest.fixture(params=["plain", "persist", "pool"])
+async def psycopg_db(request):
+    suffix, options = CONNECTIONS[request.param]
+    db = AsyncDatabase(util.pg_uri(f"psycopg{suffix}"), **options)
+    yield db
+    await db.close()
+
+
+async def within_seconds(awaitable):
+    return await asyncio.wait_for(awaitable, 5)
+
+
+async def kept_stream(cur):
+    stream = cur.stream(MANY_ROWS)
+    assert (await anext(stream))[0] == 1
+    return stream
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize(
+    "use",
+    [
+        lambda cur: cur.query(SQL).all(),
+        lambda cur: cur.execute(SQL),
+        lambda cur: cur.commit(),
+        lambda cur: cur.rollback(),
+        lambda cur: cur.transaction().__aenter__(),
+        lambda cur: anext(cur.stream(MANY_ROWS)),
+        lambda cur: anext(aiter(cur.query(SQL).stream())),
+    ],
+)
+async def test_a_kept_driver_stream_refuses_other_statements(psycopg_db, use):
+    async def run():
+        async with psycopg_db.cursor as cur:
+            stream = await kept_stream(cur)
+            with pytest.raises(exc.APIError, match="holds this connection"):
+                await use(cur)
+            assert (await anext(stream))[0] == 2
+
+    await within_seconds(run())
+    await within_seconds(assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize(
+    "leave",
+    [
+        lambda cur: cur.__aexit__(None, None, None),
+        lambda cur: cur.close(),
+        lambda cur: cur.put(),
+    ],
+)
+async def test_closing_a_cursor_ends_its_driver_stream(psycopg_db, leave):
+    async def run():
+        cur = psycopg_db.cursor
+        await cur.__aenter__()
+        stream = await kept_stream(cur)
+        await leave(cur)
+        with pytest.raises(exc.APIError, match="closed before its end"):
+            await anext(stream)
+
+    await within_seconds(run())
+    await within_seconds(assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+async def test_releasing_a_carrier_ends_a_driver_stream(psycopg_db):
+    async def run():
+        carrier = object()
+        cur = psycopg_db(carrier).cursor
+        await cur.create_cursor()
+        await kept_stream(cur)
+        await psycopg_db.release(carrier)
+
+    await within_seconds(run())
+    await within_seconds(assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+async def test_closing_a_database_ends_a_driver_stream(psycopg_db):
+    async def run():
+        cur = psycopg_db.cursor
+        await cur.create_cursor()
+        await kept_stream(cur)
+        await psycopg_db.close()
+        await cur.close()
+
+    await within_seconds(run())
+
+
+@pytest.mark.postgres
+async def test_aclosing_a_driver_stream_frees_the_connection(psycopg_db):
+    async def run():
+        async with psycopg_db.cursor as cur:
+            async with aclosing(cur.stream(MANY_ROWS)) as stream:
+                async for _ in stream:
+                    break
+            # psycopg cancels the query, which aborts the transaction.
+            await cur.rollback()
+            assert await cur.query(SQL).value() == 1
+
+    await within_seconds(run())
+
+
+@pytest.mark.postgres
+async def test_a_finished_driver_stream_frees_the_connection(psycopg_db):
+    async with psycopg_db.cursor as cur:
+        rows = [row[0] async for row in cur.stream("SELECT 1 UNION SELECT 2")]
+        assert rows == [1, 2]
+        assert await cur.query(SQL).value() == 1
+    await assert_no_slot_lost(psycopg_db)
+
+
+@pytest.mark.postgres
+async def test_a_driver_stream_raises_quma_errors(psycopg_db):
+    async with psycopg_db.cursor as cur:
+        with pytest.raises(exc.ProgrammingError):
+            await anext(cur.stream("SELECT nope"))
+        await cur.rollback()
+    await assert_no_slot_lost(psycopg_db)
+
+
+@pytest.mark.postgres
+async def test_another_task_closing_the_cursor_waits_for_a_copy(psycopg_db):
+    cur = psycopg_db.cursor
+    await cur.create_cursor()
+    async with cur.copy(COPY) as copy:
+        assert await copy.read()
+        closing = asyncio.create_task(cur.close())
+        await asyncio.sleep(0.05)
+        assert not closing.done()
+        while await copy.read():
+            pass
+    await within_seconds(closing)
+    await within_seconds(assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize(
+    "use",
+    [
+        lambda cur: cur.query(SQL).all(),
+        lambda cur: cur.commit(),
+        lambda cur: cur.copy(COPY).__aenter__(),
+    ],
+)
+async def test_a_copy_refuses_other_statements(psycopg_db, use):
+    async def run():
+        async with psycopg_db.cursor as cur:
+            async with cur.copy(COPY) as copy:
+                assert await copy.read()
+                with pytest.raises(exc.APIError, match="busy"):
+                    await use(cur)
+
+    await within_seconds(run())
+    await within_seconds(assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+async def test_closing_a_cursor_inside_a_copy_ends_it(psycopg_db):
+    async def run():
+        cur = psycopg_db.cursor
+        await cur.create_cursor()
+        async with cur.copy(COPY) as copy:
+            assert await copy.read()
+            await cur.close()
+
+    await within_seconds(run())
+    await within_seconds(assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+async def test_a_copy_left_open_ends_with_its_cursor(psycopg_db):
+    async def run():
+        async with psycopg_db.cursor as cur:
+            copy = await cur.copy(COPY).__aenter__()
+            await copy.read()
+
+    await within_seconds(run())
+    await within_seconds(assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+async def test_a_copy_still_copies(psycopg_db):
+    async with psycopg_db.cursor as cur:
+        await cur.execute("CREATE TEMPORARY TABLE lifecycle_copy (a INT)")
+        async with cur.copy("COPY lifecycle_copy FROM STDIN") as copy:
+            await copy.write_row((7,))
+        assert await cur.query("SELECT a FROM lifecycle_copy").value() == 7
+        await cur.rollback()
+    await assert_no_slot_lost(psycopg_db)

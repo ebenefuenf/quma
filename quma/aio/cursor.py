@@ -4,7 +4,6 @@ import asyncio
 import inspect
 from collections.abc import (
     AsyncGenerator,
-    AsyncIterator,
     Awaitable,
     Callable,
     Generator,
@@ -36,6 +35,11 @@ from ..script import (
 )
 from ..stream import aclose_streams
 from .query import AsyncQuery
+from .stream import (
+    AsyncDriverContext,
+    AsyncDriverIterator,
+    AsyncOccupation,
+)
 from .transaction import AsyncBlock
 
 if TYPE_CHECKING:
@@ -69,6 +73,8 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         # would read each other's results.
         self._busy = asyncio.Lock()
         self._call_autocommit = False
+        # A driver's copy running in a block, which holds _busy.
+        self._block: AsyncOccupation | None = None
 
     def __call__(self, autocommit: bool = False) -> Self:
         # Calling can't await: `async with` or `await` opens the cursor.
@@ -167,6 +173,10 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
             raise
 
     async def _put_when_idle(self, force: bool) -> None:
+        # This task's own block would wait for itself.
+        block = self._block
+        if block is not None and block.task is asyncio.current_task():
+            await block.close()
         # Waits for a running operation instead of closing under it.
         async with self._busy, self._shared():
             if self.raw_conn is None or self.raw_cursor is None:
@@ -265,28 +275,12 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
             if inspect.isawaitable(result):
                 return self._guarded(lambda: result)
             if hasattr(result, "__aenter__"):
-                return self._guarded_context(result)
+                return AsyncDriverContext(self, result)
             if hasattr(result, "__anext__"):
-                return self._guarded_iter(result)
+                return AsyncDriverIterator(self, result)
             return result
 
         return call
-
-    @asynccontextmanager
-    async def _guarded_context(
-        self, manager: AbstractAsyncContextManager[Any]
-    ) -> AsyncGenerator[Any, None]:
-        self._check_idle()
-        async with self._busy, self._shared(), manager as value:
-            yield value
-
-    async def _guarded_iter(
-        self, iterator: AsyncIterator[Any]
-    ) -> AsyncIterator[Any]:
-        self._check_idle()
-        async with self._busy, self._shared():
-            async for item in iterator:
-                yield item
 
     def query(
         self,

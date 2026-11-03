@@ -239,11 +239,17 @@ def test_stream_blocks_connection(mypooldb):
             names = []
             for row in cur.users.all().stream(1):
                 names.append(row[1])
-                with pytest.raises(APIError, match="MySQL can't run"):
+                with pytest.raises(
+                    APIError, match="can't run other statements"
+                ):
                     cur.query("SELECT 1").run()
-                with pytest.raises(APIError, match="MySQL can't run"):
+                with pytest.raises(
+                    APIError, match="can't run other statements"
+                ):
                     other.query("SELECT 1").run()
-                with pytest.raises(APIError, match="MySQL can't run"):
+                with pytest.raises(
+                    APIError, match="can't run other statements"
+                ):
                     cur.commit()
             assert names == [f"User {i}" for i in range(1, 8)]
             assert other.query("SELECT 1 AS one").value() == 1

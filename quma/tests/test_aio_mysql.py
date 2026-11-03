@@ -349,11 +349,17 @@ async def test_stream_blocks_connection(apooldb):
             names = []
             async for row in cur.users.all().stream(1):
                 names.append(row[1])
-                with pytest.raises(exc.APIError, match="MySQL can't run"):
+                with pytest.raises(
+                    exc.APIError, match="can't run other statements"
+                ):
                     await cur.query("SELECT 1").run()
-                with pytest.raises(exc.APIError, match="MySQL can't run"):
+                with pytest.raises(
+                    exc.APIError, match="can't run other statements"
+                ):
                     await other.query("SELECT 1").run()
-                with pytest.raises(exc.APIError, match="MySQL can't run"):
+                with pytest.raises(
+                    exc.APIError, match="can't run other statements"
+                ):
                     await cur.commit()
             # asyncmy would have dropped the rest of the stream.
             assert names == [f"User {i}" for i in range(1, 8)]

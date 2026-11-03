@@ -163,7 +163,8 @@ parallel with one cursor per task; each gets its own connection:
     counts = await asyncio.gather(count('Berlin'), count('Hamburg'))
 
 ``close()``, and the end of an ``async with`` block, wait for a running
-query instead of closing the cursor under it.
+query instead of closing the cursor under it. They end a stream or a copy of the
+driver that the same task left open.
 
 Cursors on one :doc:`carrier <carrier>` share its connection, so their
 queries take turns instead of running in parallel. They also share its

@@ -3,6 +3,7 @@ closing, after the server dropped the connection. Each driver has its own way
 to fail here, and a slot lost in a pool only shows on a later checkout."""
 
 import sqlite3
+import threading
 import time
 from typing import Any
 
@@ -333,3 +334,222 @@ def test_pessimistic_finds_a_connection_closed_by_hand(driver):
     with db.cursor as cur:
         assert cur.query(SQL).value() == 1
     db.close()
+
+
+COPY = "COPY (SELECT generate_series(1, 100000)) TO STDOUT"
+MANY_ROWS = "SELECT generate_series(1, 100000) AS n"
+
+
+@pytest.fixture(params=["plain", "persist", "pool"])
+def psycopg_db(request):
+    pytest.importorskip("psycopg")
+    suffix, options = CONNECTIONS[request.param]
+    db = Database(util.pg_uri(f"psycopg{suffix}"), **options)
+    yield db
+    db.close()
+
+
+def within_seconds(call):
+    """A deadlock on the driver's lock can't be interrupted, a thread can."""
+    result = []
+
+    def run():
+        try:
+            result.append(("ok", call()))
+        except BaseException as e:
+            result.append(("raised", e))
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    thread.join(5)
+    assert not thread.is_alive(), "It waits for the connection forever."
+    kind, value = result[0]
+    if kind == "raised":
+        raise value
+    return value
+
+
+def kept_stream(cur):
+    stream = cur.stream(MANY_ROWS)
+    assert next(stream)[0] == 1
+    return stream
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize(
+    "use",
+    [
+        lambda cur: cur.query(SQL).all(),
+        lambda cur: cur.execute(SQL),
+        lambda cur: cur.commit(),
+        lambda cur: cur.rollback(),
+        lambda cur: cur.transaction().__enter__(),
+        lambda cur: next(cur.stream(MANY_ROWS)),
+        lambda cur: next(iter(cur.query(SQL).stream())),
+    ],
+)
+def test_a_kept_driver_stream_refuses_other_statements(psycopg_db, use):
+    def run():
+        with psycopg_db.cursor as cur:
+            stream = kept_stream(cur)
+            with pytest.raises(exc.APIError, match="holds this connection"):
+                use(cur)
+            assert next(stream)[0] == 2
+
+    within_seconds(run)
+    within_seconds(lambda: assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize(
+    "leave",
+    [
+        lambda db, cur: cur.__exit__(None, None, None),
+        lambda db, cur: cur.close(),
+        lambda db, cur: cur.put(),
+    ],
+)
+def test_closing_a_cursor_ends_its_driver_stream(psycopg_db, leave):
+    def run():
+        cur = psycopg_db.cursor
+        cur.__enter__()
+        stream = kept_stream(cur)
+        leave(psycopg_db, cur)
+        with pytest.raises(exc.APIError, match="closed before its end"):
+            next(stream)
+
+    within_seconds(run)
+    within_seconds(lambda: assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+def test_releasing_a_carrier_ends_a_driver_stream(psycopg_db):
+    def run():
+        carrier = object()
+        cur = psycopg_db(carrier).cursor
+        cur.create_cursor()
+        kept_stream(cur)
+        psycopg_db.release(carrier)
+
+    within_seconds(run)
+    within_seconds(lambda: assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+def test_closing_a_database_ends_a_driver_stream(psycopg_db):
+    def run():
+        cur = psycopg_db.cursor
+        cur.create_cursor()
+        stream = kept_stream(cur)
+        psycopg_db.close()
+        cur.close()
+        with pytest.raises(exc.APIError, match="closed before its end"):
+            next(stream)
+
+    within_seconds(run)
+
+
+@pytest.mark.postgres
+def test_a_dropped_driver_stream_frees_the_connection(psycopg_db):
+    def run():
+        with psycopg_db.cursor as cur:
+            for _ in cur.stream(MANY_ROWS):
+                break
+            # psycopg cancels the query, which aborts the transaction.
+            cur.rollback()
+            assert cur.query(SQL).value() == 1
+
+    within_seconds(run)
+
+
+@pytest.mark.postgres
+def test_a_finished_driver_stream_frees_the_connection(psycopg_db):
+    with psycopg_db.cursor as cur:
+        assert [row[0] for row in cur.stream("SELECT 1 UNION SELECT 2")] == [
+            1,
+            2,
+        ]
+        assert cur.query(SQL).value() == 1
+    assert_no_slot_lost(psycopg_db)
+
+
+@pytest.mark.postgres
+def test_a_driver_stream_raises_quma_errors(psycopg_db):
+    with psycopg_db.cursor as cur:
+        with pytest.raises(exc.ProgrammingError):
+            next(cur.stream("SELECT nope"))
+        cur.rollback()
+    assert_no_slot_lost(psycopg_db)
+
+
+@pytest.mark.postgres
+def test_a_quma_stream_waits_for_no_driver_stream(psycopg_db):
+    def run():
+        with psycopg_db.cursor as cur:
+            rows = iter(cur.query(MANY_ROWS).stream(size=2))
+            assert next(rows)[0] == 1
+            stream = kept_stream(cur)
+            assert next(rows)[0] == 2
+            with pytest.raises(exc.APIError, match="holds this connection"):
+                next(rows)
+            stream.close()
+
+    within_seconds(run)
+    within_seconds(lambda: assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize(
+    "use",
+    [
+        lambda cur: cur.query(SQL).all(),
+        lambda cur: cur.commit(),
+        lambda cur: cur.copy(COPY).__enter__(),
+    ],
+)
+def test_a_copy_refuses_other_statements(psycopg_db, use):
+    def run():
+        with psycopg_db.cursor as cur:
+            with cur.copy(COPY) as copy:
+                assert copy.read()
+                with pytest.raises(
+                    exc.APIError, match="holds this connection"
+                ):
+                    use(cur)
+
+    within_seconds(run)
+    within_seconds(lambda: assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+def test_closing_a_cursor_inside_a_copy_ends_it(psycopg_db):
+    def run():
+        cur = psycopg_db.cursor
+        cur.create_cursor()
+        with cur.copy(COPY) as copy:
+            assert copy.read()
+            cur.close()
+
+    within_seconds(run)
+    within_seconds(lambda: assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+def test_a_copy_left_open_ends_with_its_cursor(psycopg_db):
+    def run():
+        with psycopg_db.cursor as cur:
+            cur.copy(COPY).__enter__().read()
+
+    within_seconds(run)
+    within_seconds(lambda: assert_no_slot_lost(psycopg_db))
+
+
+@pytest.mark.postgres
+def test_a_copy_still_copies(psycopg_db):
+    with psycopg_db.cursor as cur:
+        cur.execute("CREATE TEMPORARY TABLE lifecycle_copy (a INT)")
+        with cur.copy("COPY lifecycle_copy FROM STDIN") as copy:
+            copy.write_row((7,))
+        assert cur.query("SELECT a FROM lifecycle_copy").value() == 7
+        cur.rollback()
+    assert_no_slot_lost(psycopg_db)

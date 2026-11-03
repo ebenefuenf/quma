@@ -111,9 +111,9 @@ What stays with the driver
 Exceptions of the driver still reach your code from what quma doesn't run
 itself:
 
-* Driver methods that return a context manager or an iterator, like psycopg's
-  ``cur.copy()`` and ``cur.stream()``. Other driver methods, like SQLite's
-  ``cur.executescript()``, raise quma's exceptions.
+* The object you get from psycopg's ``cur.copy()``. Other driver methods, like
+  SQLite's ``cur.executescript()`` and psycopg's ``cur.stream()``, raise quma's
+  exceptions.
 * The connection in ``cur.raw_conn``.
 * Scripts that run on a DB-API cursor you pass in, like
   ``db.users.all(raw_cursor)``.

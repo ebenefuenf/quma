@@ -12,7 +12,7 @@ ALREADY_OPEN = "already open"
 NO_COMMIT = "can't run in a transaction block"
 RETURNED = "before the end of its block"
 ABORTED = "aborted the transaction"
-MYSQL_STREAM = "MySQL can't run"
+MYSQL_STREAM = "can't run other statements"
 
 DRIVERS = [
     pytest.param("sqlite3", id="sqlite3"),

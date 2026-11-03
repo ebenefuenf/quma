@@ -254,6 +254,12 @@ If these limits get in the way, see :ref:`large-results-in-batches`.
 In async code, wrap a stream that may end early in
 :func:`contextlib.aclosing` (see :doc:`async`).
 
+psycopg's own ``cur.stream()`` is another thing: it holds the whole connection
+until it ends, and so does ``cur.copy()`` for its block. Other statements raise
+:class:`quma.APIError` meanwhile, and closing the cursor or returning its
+connection ends them. Ending ``cur.stream()`` early cancels its query on the
+server, which aborts the transaction, so roll back before the next statement.
+
 
 .. _large-results-in-batches:
 
