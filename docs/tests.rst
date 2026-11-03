@@ -117,3 +117,18 @@ after changing how values are sent:
 .. code-block:: console
 
     QUMA_VALUE_MATRIX=full uv run pytest quma/tests/test_value_matrix.py
+
+
+Connection lifecycle
+--------------------
+
+``quma/tests/test_lifecycle_matrix.py`` plays scenarios of opening, closing,
+losing and misusing connections, with the same steps for sync and async. Whatever
+a step raises must be one of quma's errors, and afterwards a pool must have its
+slots back and the database must work again. It runs on SQLite by default. Set
+``QUMA_LIFECYCLE_MATRIX=full`` for every driver and connection type after changing
+how cursors and connections open, close or recover:
+
+.. code-block:: console
+
+    QUMA_LIFECYCLE_MATRIX=full uv run pytest quma/tests/test_lifecycle_matrix.py
