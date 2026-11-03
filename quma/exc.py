@@ -81,7 +81,8 @@ class DataError(DatabaseError):
 
 class ProgrammingError(DatabaseError):
     """The statement can't run: a syntax error, a missing table or column,
-    a missing permission."""
+    a missing permission, a parameter that is missing or doesn't fit its
+    placeholder."""
 
 
 class RaisedError(DatabaseError):

@@ -243,7 +243,7 @@ class BaseStream:
         return observed(
             self.cursor.db.on_execute,
             self.query.script.name,
-            self._attr("execute"),
+            self._attr("execute", statement=True),
             (content, params),
             {},
         )
@@ -259,11 +259,12 @@ class BaseStream:
         self.done = len(rows) < self.size
         return self.done
 
-    def _attr(self, key: str) -> Any:
+    def _attr(self, key: str, statement: bool = False) -> Any:
         return translating(
             self.conn,
             self.conn.get_cursor_attr(self.raw, key),
             self.query.script.name,
+            statement,
         )
 
     def mogrify(self, content: str, params: Params) -> str:

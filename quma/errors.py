@@ -102,9 +102,8 @@ _CATEGORIES = {
     "ProgrammingError": exc.ProgrammingError,
 }
 
-# What drivers raise for a value they can't send: text their charset can't
-# hold, or too large an integer. psycopg2 raises a plain ValueError for NUL.
-_VALUE_ERRORS = (ValueError, OverflowError)
+# What drivers raise themselves, without asking the server.
+_BUILTIN_ERRORS = (LookupError, OverflowError, TypeError, ValueError)
 
 _MYSQL_LAST_QUOTED = re.compile(r"'([^']*)'\Z")
 _MYSQL_CONSTRAINT = re.compile(r"CONSTRAINT `((?:[^`]|``)*)`")
@@ -112,10 +111,30 @@ _MYSQL_CHECK = re.compile(r"'([^']*)' is violated")
 
 
 def _bad_value(error: Exception) -> bool:
-    # Other ValueErrors may be about the SQL, like a bad format character.
+    # A value the driver can't send: text its charset can't hold, or too large
+    # an integer. psycopg2 raises a plain ValueError for NUL.
     return isinstance(error, (UnicodeError, OverflowError)) or (
-        "NUL" in str(error)
+        isinstance(error, ValueError) and "NUL" in str(error)
     )
+
+
+def _from_builtin(
+    error: Exception, script: str | None, statement: bool
+) -> exc.DatabaseError | None:
+    if _bad_value(error):
+        return exc.DataError(str(error), script=script)
+    if not statement:
+        return None
+    # The statement and its parameters don't fit together. Drivers format them
+    # with Python's % operator, whose errors they pass on.
+    message = str(error)
+    if isinstance(error, KeyError):
+        name = error.args[0]
+        # mysqlclient formats bytes.
+        if isinstance(name, bytes):
+            name = name.decode(errors="replace")
+        message = f"query parameter missing: {name}"
+    return exc.ProgrammingError(message, script=script)
 
 
 def translate(
@@ -137,23 +156,28 @@ def connection_error(error: Exception, dialect: str) -> exc.ConnectionError:
 
 
 def translating(
-    conn: Any, call: Callable[..., Any], script: str | None = None
+    conn: Any,
+    call: Callable[..., Any],
+    script: str | None = None,
+    statement: bool = False,
 ) -> Callable[..., Any]:
     """Return ``call``, which calls the driver, raising quma's exceptions.
-    If it returns an awaitable, the result raises them once awaited."""
+    If it returns an awaitable, the result raises them once awaited.
+    ``statement`` says that ``call`` gets SQL and parameters."""
 
     def run(*args: Any, **kwargs: Any) -> Any:
         try:
             result = call(*args, **kwargs)
         except conn.driver_error as e:
             raise conn.translate(e, script) from e
-        except _VALUE_ERRORS as e:
-            if _bad_value(e):
-                raise exc.DataError(str(e), script=script) from e
-            raise
+        except _BUILTIN_ERRORS as e:
+            translated = _from_builtin(e, script, statement)
+            if translated is None:
+                raise
+            raise translated from e
         # inspect.isawaitable() would cost more than the rest of this.
         if hasattr(type(result), "__await__"):
-            return _awaited(conn, result, script)
+            return _awaited(conn, result, script, statement)
         return result
 
     return run
@@ -169,16 +193,17 @@ def new_cursor(conn: Any, create: Callable[..., Any], raw_conn: Any) -> Any:
 
 
 async def _awaited(
-    conn: Any, result: Awaitable[Any], script: str | None
+    conn: Any, result: Awaitable[Any], script: str | None, statement: bool
 ) -> Any:
     try:
         return await result
     except conn.driver_error as e:
         raise conn.translate(e, script) from e
-    except _VALUE_ERRORS as e:
-        if _bad_value(e):
-            raise exc.DataError(str(e), script=script) from e
-        raise
+    except _BUILTIN_ERRORS as e:
+        translated = _from_builtin(e, script, statement)
+        if translated is None:
+            raise
+        raise translated from e
 
 
 def _code(error: Exception, dialect: str) -> Any:

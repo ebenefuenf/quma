@@ -5,6 +5,9 @@ quma Changelog
 Unreleased
 ----------
 
+- A statement and parameters that don't fit together raise ``ProgrammingError``
+  with every driver, for a missing ``:name`` too. psycopg2, mysqlclient and asyncmy
+  raised builtin ``KeyError``, ``IndexError``, ``TypeError`` or ``ValueError``.
 - With aiosqlite, ``many().get()`` without a size works. It raised
   ``AttributeError``, because the driver's cursor didn't exist yet.
 - With aiosqlite, a failed connection waits for its thread. The thread could

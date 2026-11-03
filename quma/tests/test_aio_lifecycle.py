@@ -493,3 +493,77 @@ async def test_a_copy_still_copies(psycopg_db):
         assert await cur.query("SELECT a FROM lifecycle_copy").value() == 7
         await cur.rollback()
     await assert_no_slot_lost(psycopg_db)
+
+
+MISTAKES = {
+    "missing name": ("SELECT %(a)s AS a", ":a", {"b": 1}),
+    "no names": ("SELECT %(a)s AS a", ":a", {}),
+    "too few": ("SELECT %s AS a, %s AS b", "?, ?", (1,)),
+    "too many": ("SELECT %s AS a", "?", (1, 2)),
+    "list for a name": ("SELECT %(a)s AS a", ":a", (1,)),
+    "name for a position": ("SELECT %s AS a", "?", {"a": 1}),
+    "no sequence": ("SELECT %s AS a", "?", 5),
+    "bad format": ("SELECT %d AS a", "?", ("x",)),
+    "unknown format": ("SELECT %y AS a", "?", (1,)),
+    "incomplete name": ("SELECT %(a) AS a", "?", {"a": 1}),
+    "lone percent": ("SELECT 1 % AS a", "?", {"a": 1}),
+}
+
+
+def sql_of(driver, pyformat, qmark):
+    if driver.startswith("aiosqlite"):
+        return f"SELECT {qmark}"
+    return pyformat
+
+
+@pytest.mark.filterwarnings("ignore:Binding 1:DeprecationWarning")
+@pytest.mark.parametrize("mistake", MISTAKES.values(), ids=MISTAKES.keys())
+async def test_a_mistake_in_parameters_is_quma_error(
+    database, driver, mistake
+):
+    pyformat, qmark, params = mistake
+    async with database.cursor as cur:
+        try:
+            await cur.execute(sql_of(driver, pyformat, qmark), params)
+        except exc.DatabaseError:
+            pass
+    await assert_no_slot_lost(database)
+
+
+@pytest.mark.parametrize("params", [{"b": 1}, {}], ids=["other", "none"])
+async def test_a_missing_name_raises_programming_error(driver, params):
+    db = AsyncDatabase(driver)
+    async with db.cursor as cur:
+        with pytest.raises(exc.ProgrammingError, match="a"):
+            await cur.query("SELECT :a AS a", **params).all()
+        with pytest.raises(exc.ProgrammingError, match="a"):
+            await anext(aiter(cur.query("SELECT :a AS a", **params).stream()))
+    await db.close()
+
+
+async def test_a_missing_name_says_which(driver):
+    if driver.startswith("aiosqlite"):
+        pytest.skip("Says it its own way, in a message of sqlite3.")
+    db = AsyncDatabase(driver)
+    async with db.cursor as cur:
+        with pytest.raises(exc.ProgrammingError, match="missing: wanted"):
+            await cur.query("SELECT :wanted AS a").all()
+    await db.close()
+
+
+async def test_positional_mistakes_in_native_mode(driver):
+    db = AsyncDatabase(driver, placeholders="native")
+    too_few = sql_of(driver, "SELECT %s AS a, %s AS b", "?, ?")
+    async with db.cursor as cur:
+        with pytest.raises(exc.ProgrammingError):
+            await cur.query(too_few, 1).all()
+    await db.close()
+
+
+async def test_echo_keeps_the_error_of_a_statement(driver, capsys):
+    db = AsyncDatabase(driver, echo=True)
+    async with db.cursor as cur:
+        with pytest.raises(exc.ProgrammingError):
+            await cur.query("SELECT :a AS a").all()
+    assert "SELECT" in capsys.readouterr().out
+    await db.close()

@@ -553,3 +553,102 @@ def test_a_copy_still_copies(psycopg_db):
         assert cur.query("SELECT a FROM lifecycle_copy").value() == 7
         cur.rollback()
     assert_no_slot_lost(psycopg_db)
+
+
+def pyformat_or_qmark(driver, pyformat, qmark):
+    return qmark if driver.startswith("sqlite3") else pyformat
+
+
+MISTAKES = {
+    "missing name": ("SELECT %(a)s AS a", ":a", {"b": 1}),
+    "no names": ("SELECT %(a)s AS a", ":a", {}),
+    "too few": ("SELECT %s AS a, %s AS b", "?, ?", (1,)),
+    "too many": ("SELECT %s AS a", "?", (1, 2)),
+    "list for a name": ("SELECT %(a)s AS a", ":a", (1,)),
+    "name for a position": ("SELECT %s AS a", "?", {"a": 1}),
+    "no sequence": ("SELECT %s AS a", "?", 5),
+    "bad format": ("SELECT %d AS a", "?", ("x",)),
+    "unknown format": ("SELECT %y AS a", "?", (1,)),
+    "incomplete name": ("SELECT %(a) AS a", "?", {"a": 1}),
+    "lone percent": ("SELECT 1 % AS a", "?", {"a": 1}),
+}
+
+
+@pytest.mark.filterwarnings("ignore:Binding 1:DeprecationWarning")
+@pytest.mark.parametrize("mistake", MISTAKES.values(), ids=MISTAKES.keys())
+def test_a_mistake_in_parameters_is_quma_error(database, driver, mistake):
+    pyformat, qmark, params = mistake
+    with database.cursor as cur:
+        try:
+            cur.execute(
+                pyformat_or_qmark(driver, pyformat, f"SELECT {qmark}"), params
+            )
+        except exc.DatabaseError:
+            pass
+    assert_no_slot_lost(database)
+
+
+@pytest.mark.parametrize("params", [{"b": 1}, {}], ids=["other", "none"])
+def test_a_missing_name_raises_programming_error(driver, params):
+    db = Database(driver)
+    with db.cursor as cur:
+        with pytest.raises(exc.ProgrammingError, match="a"):
+            cur.query("SELECT :a AS a", **params).all()
+        with pytest.raises(exc.ProgrammingError, match="a"):
+            next(iter(cur.query("SELECT :a AS a", **params).stream()))
+    db.close()
+
+
+def test_a_missing_name_says_which(driver):
+    if driver.startswith("sqlite3"):
+        pytest.skip("Says it its own way, in a message of sqlite3.")
+    db = Database(driver)
+    with db.cursor as cur:
+        with pytest.raises(exc.ProgrammingError, match="missing: wanted"):
+            cur.query("SELECT :wanted AS a").all()
+    db.close()
+
+
+def test_a_missing_name_in_a_script_names_it(driver, tmp_path):
+    (tmp_path / "missing.sql").write_text("SELECT :a AS a")
+    db = Database(driver, tmp_path)
+    with db.cursor as cur:
+        with pytest.raises(exc.ProgrammingError) as info:
+            cur.missing().all()
+    assert info.value.script == "missing"
+    db.close()
+
+
+def test_positional_mistakes_in_native_mode(driver):
+    db = Database(driver, placeholders="native")
+    too_few = pyformat_or_qmark(
+        driver, "SELECT %s AS a, %s AS b", "SELECT ?, ?"
+    )
+    with db.cursor as cur:
+        with pytest.raises(exc.ProgrammingError):
+            cur.query(too_few, 1).all()
+    db.close()
+
+
+def test_executemany_with_a_missing_name(driver):
+    db = Database(driver)
+    insert = pyformat_or_qmark(
+        driver,
+        "INSERT INTO lifecycle_many VALUES (%(a)s)",
+        "INSERT INTO lifecycle_many VALUES (:a)",
+    )
+    with db.cursor as cur:
+        cur.execute("CREATE TEMPORARY TABLE lifecycle_many (a INT)")
+        with pytest.raises(exc.ProgrammingError):
+            cur.executemany(insert, [{"a": 1}, {"b": 1}])
+        cur.rollback()
+    db.close()
+
+
+def test_echo_keeps_the_error_of_a_statement(driver, capsys):
+    db = Database(driver, echo=True)
+    with db.cursor as cur:
+        with pytest.raises(exc.ProgrammingError):
+            cur.query("SELECT :a AS a").all()
+    assert "SELECT" in capsys.readouterr().out
+    db.close()

@@ -126,7 +126,10 @@ class RawCursorWrapper:
         self.executions += 1
         self._script = script
         call = translating(
-            self.conn, self.conn.get_cursor_attr(self.cursor, name), script
+            self.conn,
+            self.conn.get_cursor_attr(self.cursor, name),
+            script,
+            statement=True,
         )
         return observed(
             self._on_execute, script, call, args, kwargs, self._rowcount
