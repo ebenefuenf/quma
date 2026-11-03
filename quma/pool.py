@@ -6,15 +6,22 @@ from __future__ import annotations
 
 import threading
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from math import inf
 from random import uniform
 from time import monotonic
-from typing import Any
+from typing import (
+    Any,
+    ClassVar,
+    Generic,
+    TypeVar,
+)
 from urllib.parse import ParseResult
 
 from . import exc
 from .conn import (
+    BaseConnection,
     Connection,
     Params,
     RawConnection,
@@ -22,6 +29,7 @@ from .conn import (
 )
 
 DEFAULT_TIMEOUT = 30.0
+PoolConn = TypeVar("PoolConn", bound=BaseConnection)
 
 
 @dataclass
@@ -150,11 +158,13 @@ class Connections:
         return None
 
 
-class Pool:
-    """A pool of connections"""
+class BasePool(Generic[PoolConn]):
+    """A pool's options, and what it only asks its provider. This does no I/O."""
+
+    _semaphore: ClassVar[Callable[[int], Any]]
 
     def __init__(
-        self, conn_class: type[Connection], url: ParseResult, **kwargs: Any
+        self, conn_class: type[PoolConn], url: ParseResult, **kwargs: Any
     ) -> None:
         self._size: int = kwargs.pop("size", 5)
         self._max_overflow: int = kwargs.pop("overflow", 10)
@@ -170,18 +180,94 @@ class Pool:
         self._conns = Connections(
             kwargs.pop("max_lifetime", None), kwargs.pop("max_idle", None)
         )
-        # A semaphore, not a full queue, limits the connections: a waiting
-        # thread also wakes when a broken connection was discarded.
+        # A semaphore, not a full queue, limits the connections: a waiter also
+        # wakes when a broken connection was discarded.
         self._slots = (
             None
             if self._max_overflow == -1
-            else threading.Semaphore(self._size + self._max_overflow)
+            else self._semaphore(self._size + self._max_overflow)
         )
-        self._lock = threading.Lock()
         self._closed = False
         self._conn = conn_class(url, **kwargs)
         if self._conn.persist:
             raise ValueError("Persistent connections are not allowed")
+
+    def _release(self) -> None:
+        if self._slots is not None:
+            self._slots.release()
+
+    @property
+    def driver_error(self) -> type[Exception]:
+        return self._conn.driver_error
+
+    def translate(
+        self, error: Exception, script: str | None = None
+    ) -> exc.DatabaseError:
+        return self._conn.translate(error, script)
+
+    def cursor(self, conn: RawConnection) -> RawCursor:
+        return self._conn.cursor(conn)
+
+    def stream_cursor(self, conn: RawConnection) -> RawCursor:
+        return self._conn.stream_cursor(conn)
+
+    def get_cursor_attr(self, cursor: RawCursor, key: str) -> Any:
+        return self._conn.get_cursor_attr(cursor, key)
+
+    def in_autocommit(self, conn: RawConnection) -> bool:
+        return self._conn.in_autocommit(conn)
+
+    def in_transaction(self, conn: RawConnection) -> bool:
+        return self._conn.in_transaction(conn)
+
+    def in_failed_transaction(self, conn: RawConnection) -> bool:
+        return self._conn.in_failed_transaction(conn)
+
+    def mogrify(self, cursor: RawCursor, content: str, params: Params) -> str:
+        return self._conn.mogrify(cursor, content, params)
+
+    @property
+    def has_rowcount(self) -> bool:
+        return self._conn.has_rowcount
+
+    @property
+    def dialect(self) -> str:
+        return self._conn.dialect
+
+    def status(self) -> str:
+        return (
+            f"Pool size: {self.size} Connections in pool: {self.checkedin} "
+            f"Current Overflow: {self.overflow} Current Checked out "
+            f"connections: {self.checkedout}"
+        )
+
+    @property
+    def size(self) -> int:
+        return self._size
+
+    @property
+    def checkedin(self) -> int:
+        return self._conns.idle
+
+    @property
+    def overflow(self) -> int:
+        return self._conns.open - self._size
+
+    @property
+    def checkedout(self) -> int:
+        return self._conns.open - self._conns.idle
+
+
+class Pool(BasePool[Connection]):
+    """A pool of connections"""
+
+    _semaphore = threading.Semaphore
+
+    def __init__(
+        self, conn_class: type[Connection], url: ParseResult, **kwargs: Any
+    ) -> None:
+        self._lock = threading.Lock()
+        super().__init__(conn_class, url, **kwargs)
 
     def get(self, autocommit: bool = False) -> RawConnection:
         self._acquire()
@@ -268,10 +354,6 @@ class Pool:
                 f"timeout {self._timeout}"
             )
 
-    def _release(self) -> None:
-        if self._slots is not None:
-            self._slots.release()
-
     def _discard_expired(self) -> None:
         while True:
             with self._lock:
@@ -316,69 +398,8 @@ class Pool:
             self._stats.closed_broken += 1
         self._conn.discard(conn)
 
-    @property
-    def driver_error(self) -> type[Exception]:
-        return self._conn.driver_error
-
-    def translate(
-        self, error: Exception, script: str | None = None
-    ) -> exc.DatabaseError:
-        return self._conn.translate(error, script)
-
-    def cursor(self, conn: RawConnection) -> RawCursor:
-        return conn.cursor()
-
-    def stream_cursor(self, conn: RawConnection) -> RawCursor:
-        return self._conn.stream_cursor(conn)
-
-    def get_cursor_attr(self, cursor: RawCursor, key: str) -> Any:
-        return self._conn.get_cursor_attr(cursor, key)
-
-    def in_autocommit(self, conn: RawConnection) -> bool:
-        return self._conn.in_autocommit(conn)
-
-    def in_transaction(self, conn: RawConnection) -> bool:
-        return self._conn.in_transaction(conn)
-
-    def in_failed_transaction(self, conn: RawConnection) -> bool:
-        return self._conn.in_failed_transaction(conn)
-
-    @property
-    def has_rowcount(self) -> bool:
-        return self._conn.has_rowcount
-
-    @property
-    def dialect(self) -> str:
-        return self._conn.dialect
-
     def stats(self) -> PoolStats:
         with self._lock:
             return replace(
                 self._stats, open=self._conns.open, idle=self._conns.idle
             )
-
-    def status(self) -> str:
-        return (
-            f"Pool size: {self.size} Connections in pool: {self.checkedin} "
-            f"Current Overflow: {self.overflow} Current Checked out "
-            f"connections: {self.checkedout}"
-        )
-
-    @property
-    def size(self) -> int:
-        return self._size
-
-    @property
-    def checkedin(self) -> int:
-        return self._conns.idle
-
-    @property
-    def overflow(self) -> int:
-        return self._conns.open - self._size
-
-    @property
-    def checkedout(self) -> int:
-        return self._conns.open - self._conns.idle
-
-    def mogrify(self, cursor: RawCursor, content: str, params: Params) -> str:
-        return self._conn.mogrify(cursor, content, params)

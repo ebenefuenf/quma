@@ -39,9 +39,6 @@ class Connection(conn.Connection):
         self.has_rowcount = False
         self._init_conn()
 
-    def cursor(self, conn):
-        return conn.cursor()
-
     def create_conn(self, **kwargs):
         try:
             conn = sqlite3.connect(database=self.database, **kwargs)

@@ -3,58 +3,22 @@ from __future__ import annotations
 import asyncio
 from dataclasses import replace
 from time import monotonic
-from typing import Any
-from urllib.parse import ParseResult
 
 from .. import exc
 from ..conn import (
     AsyncConnection,
-    Params,
     RawConnection,
-    RawCursor,
 )
 from ..pool import (
-    DEFAULT_TIMEOUT,
-    Connections,
+    BasePool,
     PoolStats,
-    max_waiting,
 )
 
 
-class AsyncPool:
+class AsyncPool(BasePool[AsyncConnection]):
     """A pool of async connections with the options of :class:`quma.pool.Pool`."""
 
-    def __init__(
-        self,
-        conn_class: type[AsyncConnection],
-        url: ParseResult,
-        **kwargs: Any,
-    ) -> None:
-        self._size: int = kwargs.pop("size", 5)
-        self._max_overflow: int = kwargs.pop("overflow", 10)
-        self._timeout: float | None = kwargs.pop("timeout", DEFAULT_TIMEOUT)
-        self._max_waiting = max_waiting(kwargs, self._max_overflow)
-        self._stats = PoolStats(
-            self._size,
-            None
-            if self._max_overflow == -1
-            else self._size + self._max_overflow,
-        )
-        self._pessimistic = kwargs.get("pessimistic", False)
-        self._conns = Connections(
-            kwargs.pop("max_lifetime", None), kwargs.pop("max_idle", None)
-        )
-        # A semaphore, not a full queue, limits the connections: a waiting
-        # task also wakes when a broken connection was discarded.
-        self._slots = (
-            None
-            if self._max_overflow == -1
-            else asyncio.Semaphore(self._size + self._max_overflow)
-        )
-        self._closed = False
-        self._conn = conn_class(url, **kwargs)
-        if self._conn.persist:
-            raise ValueError("Persistent connections are not allowed")
+    _semaphore = asyncio.Semaphore
 
     async def open(self) -> None:
         await self.put(await self.get())
@@ -134,10 +98,6 @@ class AsyncPool:
             self._stats.waiting -= 1
             self._stats.wait_time += monotonic() - start
 
-    def _release(self) -> None:
-        if self._slots is not None:
-            self._slots.release()
-
     async def _discard_expired(self) -> None:
         while (conn := self._conns.pop_expired()) is not None:
             self._stats.closed_expired += 1
@@ -174,68 +134,7 @@ class AsyncPool:
         self._stats.closed_broken += 1
         await self._conn.discard(conn)
 
-    @property
-    def driver_error(self) -> type[Exception]:
-        return self._conn.driver_error
-
-    def translate(
-        self, error: Exception, script: str | None = None
-    ) -> exc.DatabaseError:
-        return self._conn.translate(error, script)
-
-    def cursor(self, conn: RawConnection) -> RawCursor:
-        return self._conn.cursor(conn)
-
-    def stream_cursor(self, conn: RawConnection) -> RawCursor:
-        return self._conn.stream_cursor(conn)
-
-    def get_cursor_attr(self, cursor: RawCursor, key: str) -> Any:
-        return self._conn.get_cursor_attr(cursor, key)
-
-    def in_autocommit(self, conn: RawConnection) -> bool:
-        return self._conn.in_autocommit(conn)
-
-    def in_transaction(self, conn: RawConnection) -> bool:
-        return self._conn.in_transaction(conn)
-
-    def in_failed_transaction(self, conn: RawConnection) -> bool:
-        return self._conn.in_failed_transaction(conn)
-
-    def mogrify(self, cursor: RawCursor, content: str, params: Params) -> str:
-        return self._conn.mogrify(cursor, content, params)
-
-    @property
-    def has_rowcount(self) -> bool:
-        return self._conn.has_rowcount
-
-    @property
-    def dialect(self) -> str:
-        return self._conn.dialect
-
     def stats(self) -> PoolStats:
         return replace(
             self._stats, open=self._conns.open, idle=self._conns.idle
         )
-
-    def status(self) -> str:
-        return (
-            f"Pool size: {self.size} Connections in pool: {self.checkedin} "
-            f"Current Overflow: {self.overflow} Current Checked out "
-            f"connections: {self.checkedout}"
-        )
-
-    @property
-    def size(self) -> int:
-        return self._size
-
-    @property
-    def checkedin(self) -> int:
-        return self._conns.idle
-
-    @property
-    def overflow(self) -> int:
-        return self._conns.open - self._size
-
-    @property
-    def checkedout(self) -> int:
-        return self._conns.open - self._conns.idle

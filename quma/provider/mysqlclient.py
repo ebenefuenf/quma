@@ -93,9 +93,6 @@ class Connection(conn.Connection):
             self.stream_factory = RowStreamCursor
         self._init_conn()
 
-    def cursor(self, conn):
-        return conn.cursor()
-
     def stream_cursor(self, conn):
         return conn.cursor(self.stream_factory)
 

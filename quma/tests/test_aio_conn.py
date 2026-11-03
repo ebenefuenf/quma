@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import pytest
 
 from .. import AsyncDatabase, exc
-from ..aio import pool as aio_pool
+from .. import pool as pool_module
 from . import util
 
 pytestmark = pytest.mark.anyio
@@ -255,8 +255,8 @@ async def test_pool_timeout(driver):
 
 
 async def test_pool_timeout_defaults_to_30_seconds(driver, monkeypatch):
-    assert aio_pool.DEFAULT_TIMEOUT == 30
-    monkeypatch.setattr(aio_pool, "DEFAULT_TIMEOUT", 0.01)
+    assert pool_module.DEFAULT_TIMEOUT == 30
+    monkeypatch.setattr(pool_module, "DEFAULT_TIMEOUT", 0.01)
     p = pool(driver, size=1, overflow=0)
     raw = await p.get()
     with pytest.raises(exc.TimeoutError):
@@ -266,7 +266,7 @@ async def test_pool_timeout_defaults_to_30_seconds(driver, monkeypatch):
 
 
 async def test_pool_timeout_none_waits_for_a_connection(driver, monkeypatch):
-    monkeypatch.setattr(aio_pool, "DEFAULT_TIMEOUT", 0.01)
+    monkeypatch.setattr(pool_module, "DEFAULT_TIMEOUT", 0.01)
     p = pool(driver, size=1, overflow=0, timeout=None)
     raw = await p.get()
     waiter = asyncio.create_task(p.get())
