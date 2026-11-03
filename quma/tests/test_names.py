@@ -1,6 +1,8 @@
 """What ``cur.name`` means when SQL has the name of something else on the cursor."""
 
+import ast
 import warnings
+from pathlib import Path
 
 import pytest
 
@@ -8,6 +10,9 @@ from .. import (
     AsyncDatabase,
     Database,
 )
+from ..aio.cursor import AsyncCursor
+from ..cursor import Cursor
+from ..database import _TAKEN_ON_CURSORS
 from . import util
 
 SYNC_DRIVERS = [
@@ -194,3 +199,53 @@ def test_a_script_shadowed_by_a_method_keeps_its_underscore(tmp_path, cache):
         with pytest.raises(AttributeError):
             cur.users._nothing
     db.close()
+
+
+# Modules that get a quma cursor. In the providers and pools it's the driver's.
+USING_CURSORS = (
+    "occupation.py",
+    "query.py",
+    "script.py",
+    "stream.py",
+    "transaction.py",
+    "aio/occupation.py",
+    "aio/query.py",
+    "aio/stream.py",
+    "aio/transaction.py",
+)
+
+
+def is_cursor(node):
+    if isinstance(node, ast.Name):
+        return node.id == "cursor"
+    return isinstance(node, ast.Attribute) and node.attr == "cursor"
+
+
+def names_read_on_cursors():
+    package = Path(__file__).parent.parent
+    for module in USING_CURSORS:
+        tree = ast.parse((package / module).read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Attribute) and is_cursor(node.value):
+                yield node.attr
+            elif (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "getattr"
+                and is_cursor(node.args[0])
+                and isinstance(node.args[1], ast.Constant)
+            ):
+                yield node.args[1].value
+
+
+def test_sql_can_not_hide_what_quma_reads_on_a_cursor():
+    names = set(names_read_on_cursors())
+    assert {"description", "rowcount", "executions", "_guarded"} <= names
+    hidden = {
+        name
+        for name in names
+        if name not in _TAKEN_ON_CURSORS
+        and not hasattr(Cursor, name)
+        and not hasattr(AsyncCursor, name)
+    }
+    assert not hidden
