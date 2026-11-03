@@ -241,14 +241,14 @@ class BaseCursor(Generic[ConnT]):
             raise exc.APIError("The database is closed.")
         return self.conn
 
-    def _raw_conn(self) -> RawConnection:
+    def _idle_raw_conn(self) -> RawConnection:
         if self.raw_conn is None:
             raise exc.APIError("The cursor has no open connection.")
         check_idle(self.raw_conn)
         return self.raw_conn
 
     def _commit_conn(self) -> RawConnection:
-        raw_conn = self._raw_conn()
+        raw_conn = self._idle_raw_conn()
         check_no_block(raw_conn)
         return raw_conn
 

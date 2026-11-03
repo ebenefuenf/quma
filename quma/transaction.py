@@ -54,7 +54,7 @@ class BaseBlock:
     def __init__(self, cursor: BaseCursor[Any]) -> None:
         self.cursor = cursor
         self.conn = cursor._conn()
-        self.raw_conn = cursor._raw_conn()
+        self.raw_conn = cursor._idle_raw_conn()
         self.autocommit = translating(self.conn, self.conn.in_autocommit)(
             self.raw_conn
         )

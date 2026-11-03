@@ -49,7 +49,7 @@ class BaseStream:
         self.query = query
         self.cursor = query.cursor
         self.conn = self.cursor._conn()
-        self.raw_conn = self.cursor._raw_conn()
+        self.raw_conn = self.cursor._idle_raw_conn()
         self.postgres = self.conn.dialect == "postgresql"
         # MySQL can't run other statements before the stream has ended.
         self.blocks = self.conn.dialect == "mysql"
