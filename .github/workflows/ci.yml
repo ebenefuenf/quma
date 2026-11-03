@@ -43,11 +43,16 @@ jobs:
       - uses: actions/checkout@v7
       # setup-uv publishes no floating major tags, so pin the full version.
       - uses: astral-sh/setup-uv@v10.3.2
+      # A superuser skips permission checks, which the tests have to see.
+      - name: Create the test user and database
+        run: >
+          psql -h localhost -U postgres
+          -c "CREATE ROLE quma_test_user LOGIN PASSWORD 'quma_test_password'"
+          -c "CREATE DATABASE quma_test_db OWNER quma_test_user"
+        env:
+          PGPASSWORD: postgres
       - name: Run linter and tests
         run: uvx --with tox-uv tox run -e ${{ matrix.tox }}
         env:
-          QUMA_PGSQL_USER: postgres
-          QUMA_PGSQL_PASS: postgres
-          QUMA_PGSQL_DB: postgres
           QUMA_PGSQL_HOST: localhost
           QUMA_PGSQL_PORT: 5432
