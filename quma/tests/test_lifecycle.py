@@ -652,3 +652,34 @@ def test_echo_keeps_the_error_of_a_statement(driver, capsys):
             cur.query("SELECT :a AS a").all()
     assert "SELECT" in capsys.readouterr().out
     db.close()
+
+
+@pytest.mark.postgres
+def test_threads_reopen_a_lost_persistent_connection_once():
+    opened = []
+
+    def on_connect(raw):
+        opened.append(raw)
+        time.sleep(0.05)
+
+    db = Database(util.pg_uri("psycopg2"), persist=True, on_connect=on_connect)
+    with db.cursor as cur:
+        raw: Any = cur.raw_conn
+        raw.close()
+    conn = db.conn
+    assert conn is not None
+    start = threading.Barrier(8)
+    got = []
+
+    def checkout():
+        start.wait()
+        got.append(conn.get())
+
+    threads = [threading.Thread(target=checkout) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert len(opened) == 2
+    assert len({id(conn) for conn in got}) == 1
+    db.close()

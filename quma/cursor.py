@@ -415,7 +415,7 @@ class Cursor(BaseCursor[ConnectionLike]):
                 advance = translating(self._conn(), next)
                 return DriverIterator(use, lambda: advance(result))
             # psycopg's execute() returns its cursor, a context manager too.
-            if hasattr(result, "__exit__") and (
+            if hasattr(type(result), "__exit__") and (
                 self.raw_cursor is None or result is not self.raw_cursor.cursor
             ):
                 return DriverContext(self, result)

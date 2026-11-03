@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import threading
 from collections.abc import Callable
 from contextlib import suppress
 from typing import (
@@ -169,6 +170,12 @@ class PostgresTransactions:
 class Connection(BaseConnection):
     """Abstract base class for DBMS specific connection objects"""
 
+    def __init__(self, url: ParseResult, kwargs: dict[str, Any]) -> None:
+        super().__init__(url, kwargs)
+        # Threads share the persistent connection, and must not each open a new
+        # one when it's lost. Reentrant for on_connect, which may use the database.
+        self._lock = threading.RLock()
+
     def _init_conn(self) -> None:
         if self.persist:
             self.conn = self._open()
@@ -220,19 +227,20 @@ class Connection(BaseConnection):
             raise
 
     def _persistent(self) -> RawConnection:
-        if self._closed:
-            raise exc.APIError("The connection is closed.")
-        if self.conn is None:
-            self.conn = self._open()
-        elif self.pessimistic:
-            try:
-                self._check(self.conn)
-            except exc.ConnectionLost:
-                self.discard(self.conn)
-                # A failed reconnect must not keep the discarded one.
-                self.conn = None
+        with self._lock:
+            if self._closed:
+                raise exc.APIError("The connection is closed.")
+            if self.conn is None:
                 self.conn = self._open()
-        return self.conn
+            elif self.pessimistic:
+                try:
+                    self._check(self.conn)
+                except exc.ConnectionLost:
+                    self.discard(self.conn)
+                    # A failed reconnect must not keep the discarded one.
+                    self.conn = None
+                    self.conn = self._open()
+            return self.conn
 
     def reset(
         self, conn: RawConnection, keep_autocommit: bool = False
@@ -264,10 +272,11 @@ class Connection(BaseConnection):
         if conn:
             conn.close()
             return
-        self._closed = self.persist
-        if self.conn is not None:
-            self.discard(self.conn)
-            self.conn = None
+        with self._lock:
+            self._closed = self.persist
+            if self.conn is not None:
+                self.discard(self.conn)
+                self.conn = None
 
     def discard(self, conn: RawConnection) -> None:
         # Closing a broken connection can fail, MySQLdb raises if it is
