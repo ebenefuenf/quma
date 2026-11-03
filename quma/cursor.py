@@ -98,10 +98,18 @@ DRIVER_ATTRS = DBAPI_CALLS | frozenset(
 )
 
 
-class CarriedConnection(Generic[ConnT]):
+class Checkout(Generic[ConnT]):
+    """A driver connection taken from ``conn`` until :meth:`put`. A carrier
+    and its cursors share one."""
+
     def __init__(self, conn: ConnT, raw_conn: RawConnection) -> None:
         self.conn = conn
         self.raw_conn = raw_conn
+
+    def put(self) -> Any:
+        # Returns an awaitable if the connection is async.
+        conn: Any = self.conn
+        return conn.put(self.raw_conn)
 
 
 class RawCursorWrapper:
@@ -179,62 +187,56 @@ class BaseCursor(Generic[ConnT]):
         self.autocommit = db.autocommit or (
             isinstance(autocommit, bool) and autocommit
         )
-        self.raw_conn: RawConnection | None = None
-        self.raw_cursor: RawCursorWrapper | None = None
         self.contextcommit = contextcommit
+        self._checkout: Checkout[ConnT] | None = None
+        # The driver cursor while it's open. raw_cursor stays after closing,
+        # because a query reads from it what its statement left.
+        self._live: RawCursorWrapper | None = None
+        self.raw_cursor: RawCursorWrapper | None = None
         self._opened_by_call = False
-        self._open = False
+
+    @property
+    def raw_conn(self) -> RawConnection | None:
+        # A carried cursor keeps it after put(), to commit later.
+        return None if self._checkout is None else self._checkout.raw_conn
 
     def _autocommit(self, autocommit: bool) -> bool:
         if isinstance(autocommit, bool) and autocommit:
             return True
         return self.autocommit
 
-    def _carried_raw_conn(self) -> RawConnection | None:
-        if self.carrier and self.carrier.conn:
-            return self.carrier.conn.raw_conn
-        return None
-
-    def _attach(self, conn: ConnT, raw_conn: RawConnection) -> None:
+    def _attach(self, checkout: Checkout[ConnT]) -> None:
+        conn, raw_conn = checkout.conn, checkout.raw_conn
         raw_cursor = new_cursor(conn, conn.cursor, raw_conn)
         if self.carrier and self.carrier.ended:
             # Released while this cursor opened: the connection is its own.
             self.carrier = None
         if self.carrier:
-            if not self.carrier.conn:
-                self.carrier.add_conn(CarriedConnection(conn, raw_conn))
+            self.carrier.conn = checkout
             self.carrier.cursors.add(self)
-        self.raw_conn = raw_conn
-        self.raw_cursor = RawCursorWrapper(
+        self._checkout = checkout
+        self._live = self.raw_cursor = RawCursorWrapper(
             conn, raw_conn, raw_cursor, self.db.on_execute
         )
 
-    def _detach(self, force: bool) -> tuple[ConnT, RawConnection] | None:
+    def _detach(self, force: bool) -> Checkout[ConnT] | None:
         """Return the connection to put back, or None if there is none."""
-        if self.carrier and self.carrier.conn:
-            if not force:
-                return None
-            carried = self.carrier.end()
-            detached = (
-                None if carried is None else (carried.conn, carried.raw_conn)
-            )
-        else:
-            detached = (self._conn(), self.raw_conn)
-        self.raw_conn = None
+        if self.carrier:
+            return self.carrier.end() if force else None
+        checkout, self._checkout = self._checkout, None
         self._opened_by_call = False
-        return detached
+        return checkout
 
     def _lose_carried(self) -> None:
         self.carrier = None
-        self.raw_conn = None
+        self._checkout = None
+        self._live = None
         self._opened_by_call = False
-        self._open = False
 
     def _cursor(self) -> RawCursorWrapper:
-        # A carried cursor keeps raw_conn after put(), to commit later.
-        if not self._open or self.raw_cursor is None:
+        if self._live is None:
             raise exc.APIError("The cursor has no open connection.")
-        return self.raw_cursor
+        return self._live
 
     def _conn(self) -> ConnT:
         if self.conn is None:
@@ -242,10 +244,11 @@ class BaseCursor(Generic[ConnT]):
         return self.conn
 
     def _idle_raw_conn(self) -> RawConnection:
-        if self.raw_conn is None:
+        raw_conn = self.raw_conn
+        if raw_conn is None:
             raise exc.APIError("The cursor has no open connection.")
-        check_idle(self.raw_conn)
-        return self.raw_conn
+        check_idle(raw_conn)
+        return raw_conn
 
     def _commit_conn(self) -> RawConnection:
         raw_conn = self._idle_raw_conn()
@@ -330,8 +333,7 @@ class Cursor(BaseCursor[ConnectionLike]):
                 with suppress(Exception):
                     self.rollback()
         finally:
-            if self.conn:
-                self.put()
+            self.put()
 
     def __call__(self, autocommit: bool = False) -> Self:
         self.create_cursor(autocommit=autocommit)
@@ -339,33 +341,35 @@ class Cursor(BaseCursor[ConnectionLike]):
         return self
 
     def create_cursor(self, autocommit: bool = False) -> Self:
-        if self._open:
+        if self._live is not None:
             # A second connection would replace the first, which stays
             # checked out for good.
             raise exc.APIError("The cursor is already open.")
         conn = self._conn()
-        if self.carrier is None:
+        carrier = self.carrier
+        if carrier is None:
             self._attach_new(conn, autocommit)
         else:
             # Other threads on this carrier wait for its connection instead
             # of opening another one.
-            with self.carrier.lock:
-                raw_conn = self._carried_raw_conn()
-                if raw_conn is None:
+            with carrier.lock:
+                if carrier.conn is None:
                     self._attach_new(conn, autocommit)
                 else:
-                    self._attach(conn, raw_conn)
-        self._open = True
+                    self._attach(carrier.conn)
         return self
 
     def _attach_new(self, conn: ConnectionLike, autocommit: bool) -> None:
-        raw_conn = translating(conn, conn.get)(
-            autocommit=self._autocommit(autocommit)
+        checkout = Checkout(
+            conn,
+            translating(conn, conn.get)(
+                autocommit=self._autocommit(autocommit)
+            ),
         )
         try:
-            self._attach(conn, raw_conn)
+            self._attach(checkout)
         except BaseException:
-            conn.put(raw_conn)
+            checkout.put()
             raise
 
     def put(self, force: bool = False) -> None:
@@ -378,28 +382,29 @@ class Cursor(BaseCursor[ConnectionLike]):
 
         If :param:`force` is set to True return is anyway
         """
-        if self.raw_conn is None or self.raw_cursor is None:
+        raw_conn = self.raw_conn
+        if raw_conn is None:
             return
-        self._open = False
+        live, self._live = self._live, None
         try:
-            close_occupants(self.raw_conn, self)
-            try:
-                self.raw_cursor.close()
-            except exc.ConnectionLost:
-                # Returning the connection discards it. An error here would
-                # hide the exception that left the block.
-                pass
-            except Exception:
-                # mysqlclient reports a failing later statement here, but
-                # also fails while another cursor's stream occupies the
-                # connection, which must not hide the block's exception.
-                if not blocked(self.raw_conn):
-                    raise
+            close_occupants(raw_conn, self)
+            if live is not None:
+                try:
+                    live.close()
+                except exc.ConnectionLost:
+                    # Returning the connection discards it. An error here
+                    # would hide the exception that left the block.
+                    pass
+                except Exception:
+                    # mysqlclient reports a failing later statement here, but
+                    # also fails while another cursor's stream occupies the
+                    # connection, which must not hide the block's exception.
+                    if not blocked(raw_conn):
+                        raise
         finally:
-            detached = self._detach(force)
-            if detached is not None:
-                conn, raw_conn = detached
-                conn.put(raw_conn)
+            checkout = self._detach(force)
+            if checkout is not None:
+                checkout.put()
 
     def close(self) -> None:
         self.put(force=True)
@@ -424,10 +429,10 @@ class Cursor(BaseCursor[ConnectionLike]):
         return call
 
     def _lose_carried(self) -> None:
-        if self.raw_conn is not None and self.raw_cursor is not None:
+        if self._live is not None:
             # Queries would run on a connection back in the pool.
             with suppress(Exception):
-                self.raw_cursor.close()
+                self._live.close()
         super()._lose_carried()
 
     def commit(self) -> None:

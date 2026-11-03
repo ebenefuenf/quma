@@ -170,7 +170,7 @@ class AsyncDatabase(BaseDatabase[AsyncConnectionLike]):
         async with found.alock:
             carried = found.end()
         if carried is not None:
-            await carried.conn.put(carried.raw_conn)
+            await carried.put()
 
     @property
     def cursor(self) -> AsyncCursor:

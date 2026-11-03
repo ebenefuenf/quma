@@ -37,7 +37,7 @@ from .conn import (
 )
 from .cursor import (
     DRIVER_ATTRS,
-    CarriedConnection,
+    Checkout,
     Cursor,
 )
 from .hooks import OnExecute
@@ -68,7 +68,6 @@ _TAKEN_ON_CURSORS = (
             "contextcommit",
             "db",
             "namespaces",
-            "raw_conn",
             "raw_cursor",
         )
     )
@@ -80,7 +79,7 @@ class Carrier:
         self.obj = obj
         self.heap = heap
         self.oid = id(obj)
-        self.conn: CarriedConnection[Any] | None = None
+        self.conn: Checkout[Any] | None = None
         self.cursors: WeakSet[BaseCursor[Any]] = WeakSet()
         self.ended = False
         # Held by a sync cursor while it gets the carrier's connection.
@@ -89,10 +88,7 @@ class Carrier:
         # connection.
         self.alock = asyncio.Lock()
 
-    def add_conn(self, conn: CarriedConnection[Any]) -> None:
-        self.conn = conn
-
-    def end(self) -> CarriedConnection[Any] | None:
+    def end(self) -> Checkout[Any] | None:
         """Remove the carrier from the heap and return its connection.
         The cursors that used it lose it."""
         with self.lock:
@@ -128,7 +124,7 @@ class CarrierHeap:
         with self.lock:
             return self.heap.get(oid)
 
-    def pop(self, oid: int) -> CarriedConnection[Any] | None:
+    def pop(self, oid: int) -> Checkout[Any] | None:
         carrier = self.find(oid)
         return None if carrier is None else carrier.end()
 
@@ -447,7 +443,7 @@ class Database(BaseDatabase[ConnectionLike]):
         """
         carried = self.heap.pop(id(carrier))
         if carried is not None:
-            carried.conn.put(carried.raw_conn)
+            carried.put()
 
     @property
     def cursor(self) -> Cursor:

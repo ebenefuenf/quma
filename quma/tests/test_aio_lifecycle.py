@@ -279,8 +279,16 @@ async def test_a_cursor_being_opened_refuses_to_open(database, slow_get):
     await assert_no_slot_lost(database)
 
 
-async def test_a_cursor_being_opened_has_no_connection_yet(database, slow_get):
+@pytest.mark.parametrize("again", [False, True], ids=["first", "again"])
+async def test_a_cursor_being_opened_has_no_connection_yet(
+    database, slow_get, again
+):
     cur = database.cursor
+    if again:
+        slow_get.set()
+        async with cur:
+            await cur.execute(SQL)
+        slow_get.clear()
     task = await opening(cur)
     with pytest.raises(exc.APIError, match="no open connection"):
         await cur.execute(SQL)

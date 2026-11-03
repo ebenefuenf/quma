@@ -26,7 +26,10 @@ from ..conn import (
     AsyncConnectionLike,
     Params,
 )
-from ..cursor import BaseCursor
+from ..cursor import (
+    BaseCursor,
+    Checkout,
+)
 from ..errors import translating
 from ..namespace import Namespace
 from ..occupation import aclose_occupants
@@ -75,6 +78,8 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         self._call_autocommit = False
         # A driver's copy running in a block, which holds _busy.
         self._block: AsyncOccupation | None = None
+        # Until it's open, for a second task on this cursor.
+        self._opening = False
 
     def __call__(self, autocommit: bool = False) -> Self:
         # Calling can't await: `async with` or `await` opens the cursor.
@@ -110,48 +115,48 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
                 with suppress(Exception):
                     await self.rollback()
         finally:
-            if self.conn:
-                await self.put()
+            await self.put()
 
     async def _open_cursor(self) -> Self:
         autocommit, self._call_autocommit = self._call_autocommit, False
         return await self.create_cursor(autocommit=autocommit)
 
     async def create_cursor(self, autocommit: bool = False) -> Self:
-        if self._open:
+        if self._live is not None or self._opening:
             # A second connection would replace the first, which stays
             # checked out for good.
             raise exc.APIError("The cursor is already open.")
         conn = self._conn()
-        # Before the first await, for a second task on this cursor.
-        self._open = True
+        carrier = self.carrier
+        self._opening = True
         try:
-            if self.carrier is None:
+            if carrier is None:
                 await self._attach_new(conn, autocommit)
             else:
                 # Other tasks on this carrier wait for its connection instead
                 # of taking another pool slot.
-                async with self.carrier.alock:
-                    raw_conn = self._carried_raw_conn()
-                    if raw_conn is None:
+                async with carrier.alock:
+                    if carrier.conn is None:
                         await self._attach_new(conn, autocommit)
                     else:
-                        self._attach(conn, raw_conn)
-        except BaseException:
-            self._open = False
-            raise
+                        self._attach(carrier.conn)
+        finally:
+            self._opening = False
         return self
 
     async def _attach_new(
         self, conn: AsyncConnectionLike, autocommit: bool
     ) -> None:
-        raw_conn = await translating(conn, conn.get)(
-            autocommit=self._autocommit(autocommit)
+        checkout = Checkout(
+            conn,
+            await translating(conn, conn.get)(
+                autocommit=self._autocommit(autocommit)
+            ),
         )
         try:
-            self._attach(conn, raw_conn)
+            self._attach(checkout)
         except BaseException:
-            await conn.put(raw_conn)
+            await checkout.put()
             raise
 
     async def put(self, force: bool = False) -> None:
@@ -159,14 +164,14 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         Close the cursor and return the connection, unless a carrier
         holds it. With ``force`` the carrier releases it too.
         """
-        if self.raw_conn is None or self.raw_cursor is None:
+        if self.raw_conn is None:
             return
         try:
             await self._put_when_idle(force)
         except asyncio.CancelledError:
             # Still waiting for the operation, and only put() returns the
             # connection to its pool.
-            if self._open:
+            if self._live is not None:
                 task = asyncio.create_task(self._put_when_idle(force))
                 _finishing.add(task)
                 task.add_done_callback(_finishing.discard)
@@ -179,20 +184,21 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
             await block.close()
         # Waits for a running operation instead of closing under it.
         async with self._busy, self._shared():
-            if self.raw_conn is None or self.raw_cursor is None:
+            raw_conn = self.raw_conn
+            if raw_conn is None:
                 return
-            self._open = False
+            live, self._live = self._live, None
             try:
-                await aclose_occupants(self.raw_conn, self)
-                # Returning the connection discards it. An error here would
-                # hide the exception that left the block.
-                with suppress(exc.ConnectionLost):
-                    await self.raw_cursor.close()
+                await aclose_occupants(raw_conn, self)
+                if live is not None:
+                    # Returning the connection discards it. An error here
+                    # would hide the exception that left the block.
+                    with suppress(exc.ConnectionLost):
+                        await live.close()
             finally:
-                detached = self._detach(force)
-                if detached is not None:
-                    conn, raw_conn = detached
-                    await conn.put(raw_conn)
+                checkout = self._detach(force)
+                if checkout is not None:
+                    await checkout.put()
 
     async def close(self) -> None:
         await self.put(force=True)
