@@ -68,7 +68,6 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         # Held while an operation runs; two tasks on one DB-API cursor
         # would read each other's results.
         self._busy = asyncio.Lock()
-        self._open = False
         self._call_autocommit = False
 
     def __call__(self, autocommit: bool = False) -> Self:
@@ -109,25 +108,32 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
                 await self.put()
 
     async def _open_cursor(self) -> Self:
-        if self._open:
-            raise exc.APIError("The cursor is already open.")
         autocommit, self._call_autocommit = self._call_autocommit, False
         return await self.create_cursor(autocommit=autocommit)
 
     async def create_cursor(self, autocommit: bool = False) -> Self:
+        if self._open:
+            # A second connection would replace the first, which stays
+            # checked out for good.
+            raise exc.APIError("The cursor is already open.")
         conn = self._conn()
-        if self.carrier is None:
-            await self._attach_new(conn, autocommit)
-        else:
-            # Other tasks on this carrier wait for its connection instead
-            # of taking another pool slot.
-            async with self.carrier.alock:
-                raw_conn = self._carried_raw_conn()
-                if raw_conn is None:
-                    await self._attach_new(conn, autocommit)
-                else:
-                    self._attach(conn, raw_conn)
+        # Before the first await, for a second task on this cursor.
         self._open = True
+        try:
+            if self.carrier is None:
+                await self._attach_new(conn, autocommit)
+            else:
+                # Other tasks on this carrier wait for its connection instead
+                # of taking another pool slot.
+                async with self.carrier.alock:
+                    raw_conn = self._carried_raw_conn()
+                    if raw_conn is None:
+                        await self._attach_new(conn, autocommit)
+                    else:
+                        self._attach(conn, raw_conn)
+        except BaseException:
+            self._open = False
+            raise
         return self
 
     async def _attach_new(
@@ -178,10 +184,6 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
     async def close(self) -> None:
         await self.put(force=True)
 
-    def _lose_carried(self) -> None:
-        super()._lose_carried()
-        self._open = False
-
     async def commit(self) -> None:
         await self._guarded(lambda: self._end_transaction("commit"))
 
@@ -229,11 +231,6 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
         await self._guarded(
             lambda: self._cursor()._run_script(script, content, params)
         )
-
-    def _cursor(self) -> Any:
-        if self.raw_conn is None or self.raw_cursor is None:
-            raise exc.APIError("The cursor has no open connection.")
-        return self.raw_cursor
 
     async def _guarded(self, call: Callable[[], Awaitable[Any]]) -> Any:
         self._check_idle()

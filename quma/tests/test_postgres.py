@@ -89,7 +89,7 @@ def test_release_ends_the_carrier(pgdriver):
     stale = wrapper.cursor()
     released = stale.raw_conn
     db.release(request)
-    with pytest.raises(exc.DatabaseError):
+    with pytest.raises(exc.APIError, match="no open connection"):
         stale.execute("SELECT 1")
     with db.cursor as other:
         assert other.raw_conn is released

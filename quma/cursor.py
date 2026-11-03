@@ -62,6 +62,20 @@ if TYPE_CHECKING:
         Carrier,
     )
 
+# The driver's cursor methods, which can't work without an open cursor.
+DBAPI_CALLS = frozenset(
+    (
+        "callproc",
+        "execute",
+        "executemany",
+        "fetchall",
+        "fetchmany",
+        "fetchone",
+        "nextset",
+        "scroll",
+    )
+)
+
 
 class CarriedConnection(Generic[ConnT]):
     def __init__(self, conn: ConnT, raw_conn: RawConnection) -> None:
@@ -145,6 +159,7 @@ class BaseCursor(Generic[ConnT]):
         self.raw_cursor: RawCursorWrapper | None = None
         self.contextcommit = contextcommit
         self._opened_by_call = False
+        self._open = False
 
     def _autocommit(self, autocommit: bool) -> bool:
         if isinstance(autocommit, bool) and autocommit:
@@ -189,6 +204,13 @@ class BaseCursor(Generic[ConnT]):
         self.carrier = None
         self.raw_conn = None
         self._opened_by_call = False
+        self._open = False
+
+    def _cursor(self) -> RawCursorWrapper:
+        # A carried cursor keeps raw_conn after put(), to commit later.
+        if not self._open or self.raw_cursor is None:
+            raise exc.APIError("The cursor has no open connection.")
+        return self.raw_cursor
 
     def _conn(self) -> ConnT:
         if self.conn is None:
@@ -242,9 +264,11 @@ class BaseCursor(Generic[ConnT]):
         setattr(self.raw_conn, attr, value)
 
     def mogrify(self, content: str, params: Params) -> str:
-        return self._conn().mogrify(self.raw_cursor, content, params)
+        return self._conn().mogrify(self._cursor(), content, params)
 
     def __getattr__(self, attr: str) -> Any:
+        if attr in DBAPI_CALLS:
+            return self._driver_attr(getattr(self._cursor(), attr))
         try:
             value = getattr(self.raw_cursor, attr)
         except AttributeError:
@@ -291,18 +315,23 @@ class Cursor(BaseCursor[ConnectionLike]):
         return self
 
     def create_cursor(self, autocommit: bool = False) -> Self:
+        if self._open:
+            # A second connection would replace the first, which stays
+            # checked out for good.
+            raise exc.APIError("The cursor is already open.")
         conn = self._conn()
         if self.carrier is None:
             self._attach_new(conn, autocommit)
-            return self
-        # Other threads on this carrier wait for its connection instead
-        # of opening another one.
-        with self.carrier.lock:
-            raw_conn = self._carried_raw_conn()
-            if raw_conn is None:
-                self._attach_new(conn, autocommit)
-            else:
-                self._attach(conn, raw_conn)
+        else:
+            # Other threads on this carrier wait for its connection instead
+            # of opening another one.
+            with self.carrier.lock:
+                raw_conn = self._carried_raw_conn()
+                if raw_conn is None:
+                    self._attach_new(conn, autocommit)
+                else:
+                    self._attach(conn, raw_conn)
+        self._open = True
         return self
 
     def _attach_new(self, conn: ConnectionLike, autocommit: bool) -> None:
@@ -327,6 +356,7 @@ class Cursor(BaseCursor[ConnectionLike]):
         """
         if self.raw_conn is None or self.raw_cursor is None:
             return
+        self._open = False
         try:
             close_streams(self.raw_conn, self)
             try:
@@ -381,9 +411,7 @@ class Cursor(BaseCursor[ConnectionLike]):
     def _run_script(
         self, script: str | None, content: str, params: Params
     ) -> None:
-        if self.raw_cursor is None:
-            raise exc.APIError("The cursor has no open connection.")
-        self.raw_cursor._run_script(script, content, params)
+        self._cursor()._run_script(script, content, params)
 
     def query(
         self,

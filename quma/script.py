@@ -107,9 +107,14 @@ class Script:
 
     def mogrify(self, cursor, content, params):
         if content:
+            try:
+                bound = cursor.mogrify(content, params)
+            except Exception:
+                # Runs after a failed statement too, whose error counts.
+                bound = content
             sys.stdout.write("-" * 50)
             sys.stdout.write("\n")
-            sys.stdout.write(cursor.mogrify(content, params))
+            sys.stdout.write(bound)
 
     def _prepare(self, cursor, payload, prepare_params):
         # create an empty list if payload == args

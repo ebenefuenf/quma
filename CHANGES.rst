@@ -5,6 +5,16 @@ quma Changelog
 Unreleased
 ----------
 
+- Opening a cursor that is already open raises ``APIError``, with every way to
+  open one. It used to check out a second connection and lose the first, so a
+  pool ran out of slots. ``AsyncCursor`` only refused this in ``async with``.
+- A cursor without an open connection says so: anything that needs one raises
+  ``APIError`` with every driver, also on a carried cursor after its block. It
+  used to raise whatever the driver made of it, from ``ProgrammingError`` to a
+  builtin ``TypeError`` or ``AttributeError``.
+- With mysqlclient, ``cur.mogrify()`` binds the values it gets. It returned the
+  statement run last, and failed without one.
+- ``echo=True`` no longer replaces the error of a failed statement with its own.
 - With psycopg2, a connection that starts with
   ``standard_conforming_strings = off`` raises ``APIError`` for statements with
   values after the session turns the setting on. psycopg2 no longer escaped
