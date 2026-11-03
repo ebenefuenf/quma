@@ -58,3 +58,31 @@ quma creates the following members:
     cur.create_admin         #   second
     cur.get_admin            #   second (shadows get_admin.sql from dir first)
     cur.remove_admin         #   first
+
+
+Names that are taken
+--------------------
+
+A cursor has members of its own, like ``commit``, ``query`` or ``transaction``, and
+those of every DB-API cursor, like ``execute`` or ``description``. ``cur.transaction``
+always means the method, so it can't reach a SQL directory or a script in the root
+of that name, and quma warns about such a name when it registers the directory.
+Rename it, or go through the database, which has fewer members:
+
+.. code-block:: python
+
+    db.transaction.by_id(cur, id=1)
+
+The few names both have, like ``close`` or ``execute``, work like this:
+
+.. code-block:: python
+
+    db.namespaces['close'].by_id(cur, id=1)
+
+Attributes that only some drivers have, like ``copy`` on psycopg or ``name`` on
+psycopg2, don't get in the way: a SQL directory or script of that name wins, on
+every driver, and ``cur.raw_cursor.copy`` still reaches the driver's.
+
+A :doc:`custom namespace <namespaces>` with a method of the name of a script in its
+directory shadows that script too. It's available with an underscore:
+``cur.users._all()``.

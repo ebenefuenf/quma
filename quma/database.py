@@ -6,6 +6,7 @@ import inspect
 import os
 import pkgutil
 import threading
+import warnings
 from collections.abc import (
     Callable,
     Sequence,
@@ -35,6 +36,7 @@ from .conn import (
     Row,
 )
 from .cursor import (
+    DRIVER_ATTRS,
     CarriedConnection,
     Cursor,
 )
@@ -53,6 +55,24 @@ from .script import (
 
 if TYPE_CHECKING:
     from .cursor import BaseCursor
+
+# What ``cur.name`` means anyway, so it can't reach SQL of that name.
+_TAKEN_ON_CURSORS = (
+    frozenset(name for name in dir(Cursor) if not name.startswith("_"))
+    | DRIVER_ATTRS
+    | frozenset(
+        (
+            "autocommit",
+            "carrier",
+            "conn",
+            "contextcommit",
+            "db",
+            "namespaces",
+            "raw_conn",
+            "raw_cursor",
+        )
+    )
+)
 
 
 class Carrier:
@@ -210,6 +230,7 @@ class BaseDatabase(Generic[ConnT]):
 
     def register_namespace(self, sqldir: StrPath) -> None:
         def instantiate(ns, ns_class, path):
+            self._warn_if_taken(ns, "directory")
             if ns in self.namespaces:
                 # pass the old namespace to the new instance
                 shadow = self.namespaces[ns]
@@ -242,6 +263,17 @@ class BaseDatabase(Generic[ConnT]):
         for path in Path(sqldir).iterdir():
             if path.is_dir() and path.name != "__pycache__":
                 register(path, path.name)
+            elif path.suffix in (f".{self.file_ext}", f".{self.tmpl_ext}"):
+                self._warn_if_taken(path.stem, "script")
+
+    def _warn_if_taken(self, name: str, kind: str) -> None:
+        if name in _TAKEN_ON_CURSORS:
+            warnings.warn(
+                f"cur.{name} is a member of the cursor, so it can't reach the "
+                f'SQL {kind} "{name}". Rename it, or see "Names that are taken" '
+                "in the documentation on shadowing.",
+                stacklevel=4,
+            )
 
     def _namespace_class(
         self, module: ModuleType, class_name: str

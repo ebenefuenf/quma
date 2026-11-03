@@ -79,6 +79,23 @@ DBAPI_CALLS = frozenset(
         "scroll",
     )
 )
+# Read from the driver's cursor before SQL directories and scripts of that name,
+# by quma too. Anything else comes after them, so the same SQL directory means the
+# same on every driver, whatever else its cursor has.
+DRIVER_ATTRS = DBAPI_CALLS | frozenset(
+    (
+        "arraysize",
+        "connection",
+        "cursor",
+        "description",
+        "executions",
+        "has_rowcount",
+        "lastrowid",
+        "messages",
+        "rowcount",
+        "rownumber",
+    )
+)
 
 
 class CarriedConnection(Generic[ConnT]):
@@ -276,19 +293,19 @@ class BaseCursor(Generic[ConnT]):
     def __getattr__(self, attr: str) -> Any:
         if attr in DBAPI_CALLS:
             return self._driver_attr(getattr(self._cursor(), attr))
+        if attr not in DRIVER_ATTRS:
+            try:
+                return CursorNamespace(get_namespace(self, attr), self)
+            except AttributeError:
+                pass
         try:
             value = getattr(self.raw_cursor, attr)
-        except AttributeError:
-            pass
-        else:
-            return self._driver_attr(value)
-        try:
-            return CursorNamespace(get_namespace(self, attr), self)
         except AttributeError as e:
             raise AttributeError(
                 "Namespace, Root method, or cursor "
                 f'attribute "{attr}" not found.'
             ) from e
+        return self._driver_attr(value)
 
 
 class Cursor(BaseCursor[ConnectionLike]):

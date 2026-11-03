@@ -5,6 +5,16 @@ quma Changelog
 Unreleased
 ----------
 
+- **Breaking:** ``cur.transaction`` is a method now, so it hides a SQL directory
+  or a script in the root called ``transaction``. quma warns when it registers a
+  name that is taken on the cursor like this, and ``db.transaction.script(cur)``
+  still reaches it. See "Names that are taken".
+- A SQL directory or script named like an attribute that only some drivers'
+  cursors have, like ``copy``, ``stream``, ``name`` or ``index``, works with every
+  driver. It used to be hidden on those drivers only.
+- Without ``cache=True``, a script shadowed by a method of its namespace class is
+  available as ``_name`` too. It only was with ``cache=True``, so it could work in
+  production and fail in development.
 - With asyncmy, ``init_command`` no longer replaces the ``SET NAMES`` quma sends
   first, which made MySQL refuse to compare a value in a hex literal to a quoted
   string. The command still runs, afterwards.

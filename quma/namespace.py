@@ -60,9 +60,7 @@ class Namespace:
             attr = filename.stem
             ext = filename.suffix
 
-            if hasattr(type(self), attr) or attr in vars(self):
-                # A real namespace member shadows this file. Not
-                # hasattr(self): it finds scripts of shadowed directories.
+            if self._is_member(attr):
                 attr = "_" + attr
             if attr in self._scripts:
                 # A .sql file wins over a template, as without the cache.
@@ -74,6 +72,11 @@ class Namespace:
                     ext.lower() == "." + self.db.tmpl_ext,
                     filename.stem,
                 )
+
+    def _is_member(self, name: str) -> bool:
+        # A real namespace member shadows a file of that name, which then goes
+        # by _name. Not hasattr(self): it finds scripts of shadowed directories.
+        return hasattr(type(self), name) or name in vars(self)
 
     def _create_script(
         self, content: str, is_template: bool, name: str
@@ -100,15 +103,18 @@ class Namespace:
         if attr != Path(attr).name or "\0" in attr:
             raise AttributeError(attr)
 
+        name = attr
+        if attr.startswith("_") and self._is_member(attr[1:]):
+            name = attr[1:]
         try:
-            sqlfile = self.sqldir / ".".join((attr, self.db.file_ext))
+            sqlfile = self.sqldir / ".".join((name, self.db.file_ext))
             if not sqlfile.is_file():
-                sqlfile = self.sqldir / ".".join((attr, self.db.tmpl_ext))
+                sqlfile = self.sqldir / ".".join((name, self.db.tmpl_ext))
             with open(str(sqlfile)) as f:
                 return self._create_script(
                     f.read(),
                     Path(sqlfile).suffix == "." + self.db.tmpl_ext,
-                    attr,
+                    name,
                 )
         except FileNotFoundError:
             return getattr(self.shadow, attr)
