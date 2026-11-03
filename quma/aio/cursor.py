@@ -174,7 +174,10 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
             self._open = False
             try:
                 await aclose_streams(self.raw_conn, self)
-                await self.raw_cursor.close()
+                # Returning the connection discards it. An error here would
+                # hide the exception that left the block.
+                with suppress(exc.ConnectionLost):
+                    await self.raw_cursor.close()
             finally:
                 detached = self._detach(force)
                 if detached is not None:

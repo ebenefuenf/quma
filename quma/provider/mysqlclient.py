@@ -156,5 +156,5 @@ class Connection(conn.Connection):
         try:
             cur = conn.cursor()
             cur.execute("SELECT 1")
-        except MySQLdb.OperationalError as e:
+        except (MySQLdb.OperationalError, MySQLdb.InterfaceError) as e:
             raise exc.ConnectionLost(str(e)) from e

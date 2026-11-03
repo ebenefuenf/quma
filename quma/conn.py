@@ -117,6 +117,14 @@ class BaseConnection:
         )
         self.has_rowcount = True
         self.dbapi_kwargs = kwargs
+        # The persistent connection.
+        self.conn: RawConnection | None = None
+        self._closed = False
+
+    def _forget(self, conn: RawConnection) -> None:
+        # The next get() opens a new persistent connection.
+        if conn is self.conn:
+            self.conn = None
 
     def translate(
         self, error: Exception, script: str | None = None
@@ -150,7 +158,9 @@ class PostgresTransactions:
     """Reads libpq's transaction status, in psycopg2 and psycopg."""
 
     def in_transaction(self, conn: RawConnection) -> bool:
-        return conn.info.transaction_status != 0  # PQTRANS_IDLE
+        # PQTRANS_IDLE, or PQTRANS_UNKNOWN: a lost connection isn't in a
+        # transaction, and the next statement reports it.
+        return conn.info.transaction_status not in (0, 4)
 
     def in_failed_transaction(self, conn: RawConnection) -> bool:
         return conn.info.transaction_status == 3  # PQTRANS_INERROR
@@ -158,8 +168,6 @@ class PostgresTransactions:
 
 class Connection(BaseConnection):
     """Abstract base class for DBMS specific connection objects"""
-
-    conn: RawConnection
 
     def _init_conn(self) -> None:
         if self.persist:
@@ -203,15 +211,28 @@ class Connection(BaseConnection):
         return self.disable_autocommit(conn)
 
     def get(self, autocommit: bool = False) -> RawConnection:
-        if self.persist:
-            if self.pessimistic:
-                try:
-                    self.check()
-                except exc.ConnectionLost:
-                    self.discard(self.conn)
-                    self.conn = self._open()
-            return self.enable_autocommit_if(autocommit, self.conn)
-        return self.enable_autocommit_if(autocommit, self._open())
+        conn = self._persistent() if self.persist else self._open()
+        try:
+            return self.enable_autocommit_if(autocommit, conn)
+        except BaseException:
+            self.discard(conn)
+            self._forget(conn)
+            raise
+
+    def _persistent(self) -> RawConnection:
+        if self._closed:
+            raise exc.APIError("The connection is closed.")
+        if self.conn is None:
+            self.conn = self._open()
+        elif self.pessimistic:
+            try:
+                self._check(self.conn)
+            except exc.ConnectionLost:
+                self.discard(self.conn)
+                # A failed reconnect must not keep the discarded one.
+                self.conn = None
+                self.conn = self._open()
+        return self.conn
 
     def reset(
         self, conn: RawConnection, keep_autocommit: bool = False
@@ -234,16 +255,19 @@ class Connection(BaseConnection):
         conn.rollback()
 
     def put(self, conn: RawConnection) -> None:
-        if self.reset(conn) and not self.persist:
+        if not self.reset(conn):
+            self._forget(conn)
+        elif not self.persist:
             conn.close()
 
     def close(self, conn: RawConnection | None = None) -> None:
         if conn:
             conn.close()
             return
-        if getattr(self, "conn", None):
-            self.conn.close()
-            del self.conn
+        self._closed = self.persist
+        if self.conn is not None:
+            self.discard(self.conn)
+            self.conn = None
 
     def discard(self, conn: RawConnection) -> None:
         # Closing a broken connection can fail, MySQLdb raises if it is
@@ -268,9 +292,7 @@ class AsyncConnection(BaseConnection):
         super().__init__(url, kwargs)
         # The persistent connection opens on first use, a constructor
         # can't await.
-        self.conn: RawConnection | None = None
         self._lock = asyncio.Lock()
-        self._closed = False
 
     async def create_conn(self, **kwargs: Any) -> RawConnection:
         raise NotImplementedError
@@ -302,15 +324,12 @@ class AsyncConnection(BaseConnection):
         return await self.disable_autocommit(conn)
 
     async def get(self, autocommit: bool = False) -> RawConnection:
-        if self.persist:
-            return await self.enable_autocommit_if(
-                autocommit, await self._persistent()
-            )
-        conn = await self._open()
+        conn = await (self._persistent() if self.persist else self._open())
         try:
             return await self.enable_autocommit_if(autocommit, conn)
         except BaseException:
             await self.discard(conn)
+            self._forget(conn)
             raise
 
     async def _open(self) -> RawConnection:
@@ -388,11 +407,6 @@ class AsyncConnection(BaseConnection):
     async def discard(self, conn: RawConnection) -> None:
         with suppress(Exception):
             await self.close_conn(conn)
-
-    def _forget(self, conn: RawConnection) -> None:
-        # The next get() opens a new persistent connection.
-        if conn is self.conn:
-            self.conn = None
 
     async def _check(self, conn: RawConnection) -> None:
         raise NotImplementedError

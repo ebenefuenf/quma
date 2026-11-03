@@ -122,8 +122,7 @@ def non_persistent(uri, connection, pessimistic):
     conn = connect_single(uri, pessimistic=pessimistic)
     cn1 = conn.get()
     assert cn1.closed == 0
-    with pytest.raises(AttributeError):
-        conn.conn
+    assert conn.conn is None
     assert isinstance(cn1, connection)
     cn2 = conn.get()
     assert cn1 != cn2
@@ -163,8 +162,7 @@ def persistent(uri, connection):
     conn.close()
     assert cn1.closed == 1
     assert cn2.closed == 1
-    with pytest.raises(AttributeError):
-        conn.conn
+    assert conn.conn is None
     conn.close()
 
 

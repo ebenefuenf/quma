@@ -92,6 +92,8 @@ _SQLITE: dict[Any, type[exc.DatabaseError]] = {
 
 _CODES = {"postgresql": _POSTGRESQL, "mysql": _MYSQL, "sqlite": _SQLITE}
 
+SQLITE_CLOSED = "Cannot operate on a closed database."
+
 # The driver's classes that mean the same on every driver, for unknown codes
 # and for errors the driver raises itself.
 _CATEGORIES = {
@@ -213,6 +215,8 @@ def _class(
         return exc.ConnectionLost
     if "InterfaceError" in names and _not_connected(error, dialect, code):
         return exc.ConnectionLost
+    if dialect == "sqlite" and str(error) == SQLITE_CLOSED:
+        return exc.ConnectionLost
     for name in names:
         if name in _CATEGORIES:
             return _CATEGORIES[name]
@@ -220,10 +224,12 @@ def _class(
 
 
 def _not_connected(error: Exception, dialect: str, code: Any) -> bool:
-    # psycopg2's "cursor already closed" stays: it can't tell a lost connection
-    # from a cursor that was closed on a working one.
     if dialect == "postgresql":
-        return str(error) == "connection already closed"
+        # A closed cursor doesn't get this far: BaseCursor._cursor() refuses it.
+        return str(error) in (
+            "connection already closed",
+            "cursor already closed",
+        )
     return dialect == "mysql" and code == 0
 
 

@@ -361,6 +361,10 @@ class Cursor(BaseCursor[ConnectionLike]):
             close_streams(self.raw_conn, self)
             try:
                 self.raw_cursor.close()
+            except exc.ConnectionLost:
+                # Returning the connection discards it. An error here would
+                # hide the exception that left the block.
+                pass
             except Exception:
                 # mysqlclient reports a failing later statement here, but
                 # also fails while another cursor's stream occupies the

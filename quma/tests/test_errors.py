@@ -431,9 +431,8 @@ def test_cursor_on_a_lost_persistent_connection(uri):
         raw_conn = cur.raw_conn
         assert raw_conn is not None
         raw_conn.close()
-    for _ in range(2):
-        with pytest.raises(exc.ConnectionLost), db.cursor:
-            pass
+    with db.cursor as cur:
+        assert cur.query("SELECT 1 AS a").value() == 1
     db.close()
 
 
@@ -911,7 +910,7 @@ def test_mysql_codes(code, expected):
     "dialect, args, expected",
     [
         ("postgresql", ["connection already closed"], exc.ConnectionLost),
-        ("postgresql", ["cursor already closed"], exc.DatabaseError),
+        ("postgresql", ["cursor already closed"], exc.ConnectionLost),
         ("mysql", [0, "Not connected"], exc.ConnectionLost),
         ("mysql", [0, ""], exc.ConnectionLost),
         ("mysql", [9999, "m"], exc.DatabaseError),

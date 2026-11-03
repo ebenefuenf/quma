@@ -55,7 +55,9 @@ class BaseBlock:
         self.cursor = cursor
         self.conn = cursor._conn()
         self.raw_conn = cursor._raw_conn()
-        self.autocommit = self.conn.in_autocommit(self.raw_conn)
+        self.autocommit = translating(self.conn, self.conn.in_autocommit)(
+            self.raw_conn
+        )
         self.ended = False
         self.savepoint: str | None = None
         if in_block(self.raw_conn):

@@ -5,6 +5,19 @@ quma Changelog
 Unreleased
 ----------
 
+- A persistent connection in ``Database`` recovers after it was lost: the
+  failed statement raises ``ConnectionLost``, and the next cursor opens a new
+  connection. It kept the dead one for good, unless ``pessimistic=True``. A
+  persistent database that was closed raises ``APIError`` instead of opening a
+  new connection for a cursor created earlier.
+- ``Database.close()`` no longer raises the driver's error if mysqlclient's
+  connection is already gone.
+- A lost connection raises ``ConnectionLost`` in more places: a transaction block
+  on a lost connection, which raised ``APIError`` on PostgreSQL, the next
+  statement after a loss on psycopg2, which raised ``DatabaseError``, and a closed
+  SQLite connection, which raised ``ProgrammingError``, or a builtin ``ValueError``
+  with aiosqlite. Closing a cursor on a lost connection no longer raises and hides
+  the exception that left the block.
 - Opening a cursor that is already open raises ``APIError``, with every way to
   open one. It used to check out a second connection and lose the first, so a
   pool ran out of slots. ``AsyncCursor`` only refused this in ``async with``.

@@ -1,5 +1,6 @@
 """The async side of test_lifecycle.py."""
 
+import asyncio
 from typing import Any
 
 import pytest
@@ -41,6 +42,25 @@ async def database(request, driver):
     db = AsyncDatabase(f"{scheme}{suffix}://{rest}", **options)
     yield db
     await db.close()
+
+
+async def lose(raw):
+    if hasattr(raw, "thread_id"):
+        uri = util.MYSQL_URI.replace("mysqlclient://", "asyncmy://")
+        kill = f"KILL {raw.thread_id()}"
+    elif hasattr(raw, "info"):
+        pid = raw.info.backend_pid
+        uri = util.pg_uri("psycopg")
+        kill = f"SELECT pg_terminate_backend({pid}, 5000)"
+    else:
+        await raw.close()
+        return
+    killer = AsyncDatabase(uri)
+    async with killer.cursor as cur:
+        await cur.execute(kill)
+    await killer.close()
+    # MySQL's KILL returns before the connection is gone.
+    await asyncio.sleep(0.05)
 
 
 async def assert_no_slot_lost(db):
@@ -170,3 +190,108 @@ async def test_a_closed_carried_cursor_can_still_commit(database):
     await cur.commit()
     await database.release(carrier)
     await assert_no_slot_lost(database)
+
+
+def query(cur):
+    return cur.query(SQL).all()
+
+
+def execute(cur):
+    return cur.execute(SQL)
+
+
+async def stream(cur):
+    async for row in cur.query(SQL).stream():
+        return row
+
+
+async def block(cur):
+    async with cur.transaction():
+        await cur.query(SQL).all()
+
+
+@pytest.mark.parametrize("use", [query, execute, stream, block])
+async def test_a_lost_connection_raises_connection_lost(database, use):
+    async with database.cursor as cur:
+        await lose(cur.raw_conn)
+        with pytest.raises(exc.ConnectionLost):
+            await use(cur)
+        with pytest.raises(exc.ConnectionLost):
+            await use(cur)
+    await assert_recovers(database)
+
+
+async def assert_recovers(db):
+    """A connection found broken only on its next use costs one statement."""
+    stats = db.pool_stats()
+    if stats is not None:
+        assert stats.in_use == 0
+    try:
+        async with db.cursor as cur:
+            await cur.query(SQL).all()
+    except exc.ConnectionLost:
+        pass
+    async with db.cursor as cur:
+        assert await cur.query(SQL).value() == 1
+
+
+@pytest.mark.parametrize(
+    "use", [lambda cur: cur.commit(), lambda cur: cur.rollback()]
+)
+async def test_ending_a_transaction_on_a_lost_connection(database, use):
+    async with database.cursor as cur:
+        await cur.execute(SQL)
+        await lose(cur.raw_conn)
+        with pytest.raises(exc.ConnectionLost):
+            await use(cur)
+    await assert_recovers(database)
+
+
+async def test_a_block_after_a_failed_statement_on_a_lost_connection(database):
+    async with database.cursor as cur:
+        await lose(cur.raw_conn)
+        with pytest.raises(exc.ConnectionLost):
+            await cur.query(SQL).all()
+        with pytest.raises(exc.ConnectionLost):
+            async with cur.transaction():
+                await cur.query(SQL).all()
+    await assert_recovers(database)
+
+
+async def test_a_lost_connection_keeps_the_exception_of_the_block(database):
+    with pytest.raises(ZeroDivisionError):
+        async with database.cursor as cur:
+            await lose(cur.raw_conn)
+            raise ZeroDivisionError
+    await assert_recovers(database)
+
+
+async def test_an_autocommit_cursor_after_a_lost_connection(driver):
+    db = AsyncDatabase(driver, persist=True)
+    async with db.cursor as cur:
+        await cur.execute(SQL)
+        raw = cur.raw_conn
+    await lose(raw)
+    try:
+        async with await db.cursor(autocommit=True) as cur:
+            await cur.query(SQL).all()
+    except exc.ConnectionLost:
+        pass
+    await assert_recovers(db)
+    await db.close()
+
+
+async def test_closing_a_database_with_a_lost_connection(database):
+    async with database.cursor as cur:
+        await lose(cur.raw_conn)
+        with pytest.raises(exc.ConnectionLost):
+            await cur.query(SQL).all()
+    await database.close()
+
+
+async def test_a_closed_persistent_connection_stays_closed(driver):
+    db = AsyncDatabase(driver, persist=True)
+    cur = db.cursor
+    await db.close()
+    with pytest.raises(exc.APIError, match="closed"):
+        await cur.create_cursor()

@@ -21,6 +21,21 @@ from ..rows import (
 from .sqlite3 import row_factory
 
 
+class SqliteConnection(aiosqlite.Connection):
+    """Reports a closed connection like sqlite3, not with a ValueError."""
+
+    @property
+    def _conn(self):
+        if self._connection is None:
+            raise sqlite3.ProgrammingError(errors.SQLITE_CLOSED)
+        return self._connection
+
+    async def _execute(self, fn, *args, **kwargs):
+        if not self._running or not self._connection:
+            raise sqlite3.ProgrammingError(errors.SQLITE_CLOSED)
+        return await super()._execute(fn, *args, **kwargs)
+
+
 class Cursor:
     """Creates aiosqlite's cursor on first use: it has to be awaited, and
     quma gets cursors from its other drivers without an await."""
@@ -52,14 +67,9 @@ class Cursor:
         except asyncio.CancelledError:
             # The statement would go on running in the connection's thread,
             # and aiosqlite's interrupt() would queue up behind it.
-            with suppress(ValueError):
+            with suppress(sqlite3.Error):
                 self.connection._conn.interrupt()
             raise
-        except UnicodeError:
-            raise
-        except ValueError as e:
-            # aiosqlite's error for a closed connection, sqlite3's is this.
-            raise sqlite3.ProgrammingError(str(e)) from e
 
     async def execute(self, sql, parameters=None):
         await self._run("execute", sql, parameters)
@@ -109,7 +119,10 @@ class AsyncConnection(conn.AsyncConnection):
         # The event loop's thread sets isolation_level and reads the state,
         # while the connection's own thread is idle.
         kwargs["check_same_thread"] = False
-        conn = aiosqlite.connect(self.database, **kwargs)
+        chunk_size = kwargs.pop("iter_chunk_size", 64)
+        conn = SqliteConnection(
+            lambda: sqlite3.connect(self.database, **kwargs), chunk_size
+        )
         # Otherwise a connection that wasn't closed keeps the process alive.
         conn._thread.daemon = True
         try:
@@ -140,5 +153,5 @@ class AsyncConnection(conn.AsyncConnection):
         try:
             async with conn.execute("SELECT 1"):
                 pass
-        except (sqlite3.Error, ValueError) as e:
+        except sqlite3.Error as e:
             raise exc.ConnectionLost(str(e)) from e
