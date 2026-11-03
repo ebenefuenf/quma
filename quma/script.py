@@ -164,6 +164,9 @@ class Script:
             content = converted.sql
             if converted.expanded:
                 params = placeholders.spread(params, converted)
+        elif db is not None and params:
+            if cursor._conn().dialect == "postgresql":
+                placeholders.check_native(content)
         return content, params
 
     def _convert(

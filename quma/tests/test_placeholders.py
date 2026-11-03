@@ -2,6 +2,7 @@ import pytest
 
 from .. import PlaceholderError
 from ..placeholders import (
+    check_native,
     convert,
     convert_lists,
     list_sizes,
@@ -442,3 +443,35 @@ def test_spread_refuses_a_name_in_use():
     converted = convert_lists("x IN :ids", "postgresql", {"ids": 1})
     with pytest.raises(ValueError, match='"ids__0"'):
         spread({"ids": [5], "ids__0": 7}, converted)
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT E%(v)s",
+        "SELECT e%(v)s",
+        "SELECT E%s",
+        "SELECT (E%(v)s)",
+        "SELECT 1,\nE%(a_b)s",
+    ],
+)
+def test_native_placeholder_after_e_is_refused(sql):
+    with pytest.raises(PlaceholderError, match="E'...' string"):
+        check_native(sql)
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT %(v)s",
+        "SELECT E'a' || %(v)s",
+        "SELECT name LIKE%(v)s",
+        "SELECT type%(v)s",
+        "SELECT $e%(v)s",
+        "SELECT 1 WHERE a LIKE 'E%%s'",
+        "SELECT 1 WHERE a LIKE 'e%%' AND b = %(v)s",
+        "SELECT E'%%'",
+    ],
+)
+def test_native_placeholders_elsewhere_pass(sql):
+    check_native(sql)

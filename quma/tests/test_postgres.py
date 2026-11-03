@@ -652,3 +652,16 @@ def test_value_after_an_escape_string_stays_a_value(pgdb):
     with pgdb.cursor as cur:
         query = cur.query("SELECT E'a'\n|| :v AS a", v=value)
         assert query.value() == "a" + value
+
+
+@pytest.mark.postgres
+def test_native_placeholder_after_e_runs_nothing(pgdriver):
+    value = "\\'; SELECT 99 AS a; --"
+    db = Database(pgdriver.uri, placeholders="native")
+    with db.cursor as cur:
+        with pytest.raises(exc.PlaceholderError):
+            cur.query("SELECT E%(v)s AS a", v=value).all()
+        with pytest.raises(exc.PlaceholderError):
+            cur.query("SELECT E%s AS a", value).all()
+        assert cur.query("SELECT %(o)s AS a", o=1).value() == 1
+    db.close()

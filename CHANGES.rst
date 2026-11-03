@@ -5,6 +5,10 @@ quma Changelog
 Unreleased
 ----------
 
+- With ``placeholders='native'`` on PostgreSQL, a driver placeholder directly after
+  ``E``, like ``E%(value)s``, raises ``PlaceholderError``, as ``E:value`` does in the
+  default mode. A backslash in the value could end the string and run the rest as
+  SQL.
 - **Breaking:** ``cur.transaction`` is a method now, so it hides a SQL directory
   or a script in the root called ``transaction``. quma warns when it registers a
   name that is taken on the cursor like this, and ``db.transaction.script(cur)``

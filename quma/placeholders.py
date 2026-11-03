@@ -87,6 +87,7 @@ _PG_GAP = (
 )
 _PG_CONTINUE = re.compile(_PG_GAP + "'")
 _PG_CONTINUE_VALUE = re.compile(rf"{_PG_GAP}:{_NAME}")
+_NATIVE_AFTER_E = re.compile(r"(?<![\w$])[eE]%(?:s|\([^)]*\)s)")
 
 # PostgreSQL's block comments nest.
 _COMMENT_MARK = re.compile(r"/\*|\*/")
@@ -341,6 +342,16 @@ def _escaped_value(sql: str, pos: int) -> PlaceholderError:
         f"the string and run the rest as SQL: {line}\nWrite || between a "
         "string and the placeholder, or a space if E is a column's name."
     )
+
+
+def check_native(sql: str) -> None:
+    """Refuse a driver placeholder directly after E on PostgreSQL. It can't be
+    meant otherwise: the driver fills in any %s, also in a string or comment."""
+    # The regular expression alone takes 49 us on 2 KB of SQL.
+    if "E%" in sql or "e%" in sql:
+        match = _NATIVE_AFTER_E.search(sql)
+        if match:
+            raise _escaped_value(sql, match.start())
 
 
 def _postgresql(sql: str, reading: Reading) -> Iterator[Token]:

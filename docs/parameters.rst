@@ -104,8 +104,10 @@ On PostgreSQL, a placeholder directly after ``E``, or on the line after an
 ``E'...'`` string, would make its value part of an ``E'...'`` string, where a
 backslash in the value can end the string. quma raises
 :class:`quma.PlaceholderError` for both. Write ``E'a' || :value``. With
-``placeholders='native'``, such SQL reaches the driver unchanged and has this
-problem too.
+``placeholders='native'``, it does for a placeholder directly after ``E``, like
+``E%(value)s``. It doesn't read that SQL any further, so one on the line after an
+``E'...'`` string reaches the driver unchanged and has this problem, and so does
+everything in ``cur.execute()``.
 
 Some settings also change how the driver has to escape a value, and quma's tests
 run hostile values under them with every driver: a value comes back as itself or
