@@ -120,8 +120,10 @@ is refused.
   may contain a backslash byte, which makes backslash escapes depend on the charset
   the server reads. So quma sends non-ASCII text and bytes without any: it doubles
   quotes, and a value with a backslash byte becomes a hex literal, which behaves
-  like the quoted string but takes up twice its size in the statement. That counts
-  against ``max_allowed_packet``.
+  like the quoted string. Bytes that aren't valid text in the connection's charset
+  become a binary hex literal, and asyncmy sends all bytes that way. A hex literal
+  takes up twice the value's size in the statement, which counts against
+  ``max_allowed_packet``, so large binary values reach that limit sooner.
 
 Set a connection's charset with ``charset='gbk'``, see :doc:`Connecting
 <connecting>`, instead of ``SET NAMES gbk``: a value can't run as SQL either way,

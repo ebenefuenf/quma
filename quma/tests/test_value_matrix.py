@@ -3,8 +3,8 @@ session settings that change how the server reads SQL: a value must come back as
 itself or be refused, and never run. The drivers bind on the client, so nothing
 else stands between a value and the SQL.
 
-Set QUMA_VALUE_MATRIX=full for all payloads and settings. Run it after changing
-how values are sent. It takes minutes, and two hours without parallel workers.
+Set QUMA_VALUE_MATRIX=full for all payloads and settings, after changing how
+values are sent. It takes about three minutes.
 """
 
 import os
