@@ -38,6 +38,14 @@ from .namespace import (
     Namespace,
     get_namespace,
 )
+from .occupation import (
+    DriverContext,
+    DriverIterator,
+    Occupation,
+    blocked,
+    check_idle,
+    close_occupants,
+)
 from .query import (
     BaseQuery,
     Query,
@@ -45,14 +53,6 @@ from .query import (
 from .script import (
     PrepareParams,
     Script,
-)
-from .stream import (
-    DriverContext,
-    DriverIterator,
-    Occupation,
-    blocked,
-    check_idle,
-    close_streams,
 )
 from .transaction import (
     Block,
@@ -382,7 +382,7 @@ class Cursor(BaseCursor[ConnectionLike]):
             return
         self._open = False
         try:
-            close_streams(self.raw_conn, self)
+            close_occupants(self.raw_conn, self)
             try:
                 self.raw_cursor.close()
             except exc.ConnectionLost:

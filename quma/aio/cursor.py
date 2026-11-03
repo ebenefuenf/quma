@@ -29,17 +29,17 @@ from ..conn import (
 from ..cursor import BaseCursor
 from ..errors import translating
 from ..namespace import Namespace
+from ..occupation import aclose_occupants
 from ..script import (
     PrepareParams,
     Script,
 )
-from ..stream import aclose_streams
-from .query import AsyncQuery
-from .stream import (
+from .occupation import (
     AsyncDriverContext,
     AsyncDriverIterator,
     AsyncOccupation,
 )
+from .query import AsyncQuery
 from .transaction import AsyncBlock
 
 if TYPE_CHECKING:
@@ -183,7 +183,7 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
                 return
             self._open = False
             try:
-                await aclose_streams(self.raw_conn, self)
+                await aclose_occupants(self.raw_conn, self)
                 # Returning the connection discards it. An error here would
                 # hide the exception that left the block.
                 with suppress(exc.ConnectionLost):

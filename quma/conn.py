@@ -16,9 +16,9 @@ from . import (
     errors,
     exc,
 )
-from .stream import (
-    aclose_streams,
-    close_streams,
+from .occupation import (
+    aclose_occupants,
+    close_occupants,
 )
 from .transaction import end_blocks
 
@@ -247,7 +247,7 @@ class Connection(BaseConnection):
     ) -> bool:
         """Return False if ``conn`` is broken and has been discarded."""
         try:
-            close_streams(conn)
+            close_occupants(conn)
             end_blocks(conn)
             self.rollback(conn)
             if not keep_autocommit:
@@ -381,7 +381,7 @@ class AsyncConnection(BaseConnection):
     ) -> bool:
         """Return False if ``conn`` is broken and has been discarded."""
         try:
-            await aclose_streams(conn)
+            await aclose_occupants(conn)
             end_blocks(conn)
             await conn.rollback()
             if not keep_autocommit:

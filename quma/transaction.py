@@ -12,9 +12,9 @@ from .errors import (
     new_cursor,
     translating,
 )
-from .stream import (
+from .occupation import (
     check_idle,
-    streams,
+    occupants,
 )
 
 if TYPE_CHECKING:
@@ -119,7 +119,7 @@ class BaseBlock:
         return translating(self.conn, call)
 
     def _blocking_streams(self) -> list[Any]:
-        return [s for s in streams(self.raw_conn) if s.blocks]
+        return [s for s in occupants(self.raw_conn) if s.blocks]
 
     def _register(self) -> None:
         with _lock:
