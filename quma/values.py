@@ -25,6 +25,10 @@ from typing import Any
 
 from . import exc
 
+# The only bytes of the 41 charsets of MySQL and MariaDB that Python accepts and
+# the servers refuse (scanned): 0x80, 0xA0, 0xFD, 0xFE and 0xFF.
+_NOT_IN_SERVERS_CP932 = frozenset(b"\x80\xa0\xfd\xfe\xff".decode("cp932"))
+
 
 def plain(value: Any, encoders: Container[type]) -> Any:
     """Return ``value`` as a type the driver handles correctly: text, bytes, a
@@ -65,10 +69,10 @@ def binary(raw: bytes) -> bytes:
 def is_text(raw: bytes, encoding: str) -> bool:
     """The server refuses a string in a charset that the bytes aren't valid in."""
     try:
-        raw.decode(encoding)
+        text = raw.decode(encoding)
     except UnicodeDecodeError:
         return False
-    return True
+    return encoding != "cp932" or _NOT_IN_SERVERS_CP932.isdisjoint(text)
 
 
 def _joined(value: set[Any] | frozenset[Any]) -> str:

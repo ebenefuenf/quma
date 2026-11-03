@@ -1001,3 +1001,19 @@ def test_sqlite_error_of_the_driver_itself():
     error = translate(fake("ProgrammingError", "closed"), "sqlite")
     assert type(error) is exc.ProgrammingError
     assert error.code is None
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize("scheme", ["psycopg2", "psycopg"])
+def test_json_garbled_by_a_charset_is_a_data_error(scheme):
+    # In Shift-JIS the yen sign is the byte of a backslash, which ends up
+    # escaping the closing quote of the JSON.
+    if scheme == "psycopg2":
+        from psycopg2.extras import Json
+    else:
+        from psycopg.types.json import Json
+    db = Database(util.pg_uri(scheme), client_encoding="SJIS")
+    with db.cursor as cur:
+        with pytest.raises(exc.DataError):
+            cur.query("SELECT :v::jsonb AS a", v=Json({"a": "¥"})).value()
+    db.close()

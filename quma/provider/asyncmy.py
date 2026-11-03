@@ -127,7 +127,8 @@ class AsyncConnection(conn.AsyncConnection):
         # asyncmy's handshake asks for another one, which MySQL refuses to
         # compare it with, so a value in hex couldn't meet a quoted string.
         charset = kwargs.get("charset") or "utf8mb4"
-        kwargs.setdefault("init_command", f"SET NAMES {charset}")
+        init_command = kwargs.pop("init_command", None)
+        kwargs["init_command"] = f"SET NAMES {charset}"
         try:
             conn = EscapingConnection(
                 database=self.database,
@@ -141,7 +142,22 @@ class AsyncConnection(conn.AsyncConnection):
             await conn.connect()
         except Error as e:
             raise errors.connection_error(e, self.dialect) from e
+        except LookupError as e:
+            raise errors.no_codec(e) from e
+        if init_command:
+            await self._init_command(conn, init_command)
         return await self.disable_autocommit(conn)
+
+    async def _init_command(self, conn, command):
+        try:
+            await conn.query(command)
+            await conn.commit()
+        except Error as e:
+            conn.close()
+            raise errors.connection_error(e, self.dialect) from e
+        except BaseException:
+            conn.close()
+            raise
 
     async def enable_autocommit_if(self, autocommit, conn):
         if autocommit:

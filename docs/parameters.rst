@@ -124,6 +124,14 @@ is refused.
   become a binary hex literal, and asyncmy sends all bytes that way. A hex literal
   takes up twice the value's size in the statement, which counts against
   ``max_allowed_packet``, so large binary values reach that limit sooner.
+* A hex literal has the charset's default collation. Under another one, set with
+  ``collation='utf8mb4_unicode_ci'`` or ``SET NAMES ... COLLATE``, comparing such a
+  value to a quoted string in the SQL, like ``'x' IN (:value)``, raises
+  :class:`quma.ProgrammingError`. A comparison to a column works.
+* A charset that Python has no codec for, like ``eucjpms`` or ``armscii8``, raises
+  :class:`quma.ConnectionError` if you set it with ``charset=``, because the
+  drivers can't encode for it. After ``SET NAMES`` it raises
+  :class:`quma.DataError` on mysqlclient.
 
 Set a connection's charset with ``charset='gbk'``, see :doc:`Connecting
 <connecting>`, instead of ``SET NAMES gbk``: a value can't run as SQL either way,

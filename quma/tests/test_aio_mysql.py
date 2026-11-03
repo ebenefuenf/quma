@@ -487,3 +487,41 @@ async def test_bytes_are_strings_in_arithmetic():
     async with db.cursor as cur:
         assert await cur.query("SELECT :v + 0 AS a", v=b"A").value() == 0
     await db.close()
+
+
+@pytest.mark.parametrize("charset", ["eucjpms", "armscii8", "geostd8"])
+async def test_a_charset_without_a_python_codec_is_refused(charset):
+    db = AsyncDatabase(URI, charset=charset)
+    with pytest.raises(exc.ConnectionError, match="no codec"):
+        async with db.cursor:
+            pass
+    await db.close()
+
+
+async def test_init_command_runs_after_the_charset_is_set():
+    db = AsyncDatabase(URI, init_command="SET @quma_init = 7")
+    async with db.cursor as cur:
+        assert await cur.query("SELECT @quma_init AS a").value() == 7
+        sql = "SELECT 'x' IN (:v) AS a"
+        assert await cur.query(sql, v="é\\").value() == 0
+    await db.close()
+
+
+async def test_a_failing_init_command_is_a_connection_error():
+    db = AsyncDatabase(URI, init_command="SELECT nope FROM nothing")
+    with pytest.raises(exc.ConnectionError):
+        async with db.cursor:
+            pass
+    await db.close()
+
+
+async def test_init_command_with_a_collation_of_its_own():
+    command = "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci"
+    db = AsyncDatabase(URI, init_command=command)
+    async with db.cursor as cur:
+        collation = cur.query("SELECT @@collation_connection AS a")
+        assert await collation.value() == "utf8mb4_unicode_ci"
+        with pytest.raises(exc.ProgrammingError) as info:
+            await cur.query("SELECT 'x' IN (:v) AS a", v="é\\").all()
+        assert info.value.code == 1267
+    await db.close()

@@ -9,6 +9,7 @@ on psycopg2 and a ``ProgrammingError`` on psycopg.
 from __future__ import annotations
 
 import gc
+import json
 import re
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -51,8 +52,12 @@ _MYSQL: dict[Any, type[exc.DatabaseError]] = {
     1217: exc.ForeignKeyViolation,
     1227: exc.ProgrammingError,  # missing privilege
     1264: exc.DataError,  # out of range
+    1267: exc.ProgrammingError,  # collations that can't be compared
     1265: exc.DataError,  # truncated
+    1270: exc.ProgrammingError,  # collations that can't be compared
+    1271: exc.ProgrammingError,  # collations that can't be compared
     1292: exc.DataError,  # incorrect value
+    1300: exc.DataError,  # invalid in the charset
     1305: exc.ProgrammingError,  # missing routine or savepoint
     1364: exc.NotNullViolation,  # no value and no default
     1365: exc.DataError,  # division by zero
@@ -111,10 +116,13 @@ _MYSQL_CHECK = re.compile(r"'([^']*)' is violated")
 
 
 def _bad_value(error: Exception) -> bool:
-    # A value the driver can't send: text its charset can't hold, or too large
-    # an integer. psycopg2 raises a plain ValueError for NUL.
-    return isinstance(error, (UnicodeError, OverflowError)) or (
-        isinstance(error, ValueError) and "NUL" in str(error)
+    # A value the driver can't send or read: text its charset can't hold, too
+    # large an integer, JSON garbled by a charset, a charset without a Python
+    # codec. psycopg2 raises a plain ValueError for NUL.
+    return (
+        isinstance(error, (UnicodeError, OverflowError, json.JSONDecodeError))
+        or type(error) is LookupError
+        or (isinstance(error, ValueError) and "NUL" in str(error))
     )
 
 
@@ -152,6 +160,13 @@ def translate(
 def connection_error(error: Exception, dialect: str) -> exc.ConnectionError:
     return exc.ConnectionError(
         _message(error, dialect), code=_code(error, dialect)
+    )
+
+
+def no_codec(error: LookupError) -> exc.ConnectionError:
+    return exc.ConnectionError(
+        f"Python has no codec for this charset, so the driver can't use it: "
+        f"{error}"
     )
 
 

@@ -496,3 +496,59 @@ def test_bytearray_is_stored_as_bytes():
         )
         assert len(query.all()) == 2
     db.close()
+
+
+@pytest.mark.mysql
+@pytest.mark.parametrize("charset", ["eucjpms", "armscii8", "geostd8"])
+def test_a_charset_without_a_python_codec_is_refused(charset):
+    with pytest.raises(exc.ConnectionError, match="no codec"):
+        Database(util.MYSQL_URI, charset=charset, persist=True)
+    db = Database(util.MYSQL_URI, charset=charset)
+    with pytest.raises(exc.ConnectionError, match="no codec"):
+        with db.cursor:
+            pass
+    db.close()
+
+
+@pytest.mark.mysql
+def test_set_names_without_a_python_codec_raises_data_error():
+    db = Database(util.MYSQL_URI)
+    with db.cursor as cur:
+        with pytest.raises(exc.DataError, match="eucjpms"):
+            cur.execute("SET NAMES eucjpms")
+            cur.query("SELECT 'a' AS a").all()
+    db.close()
+    with Database(util.MYSQL_URI).cursor as cur:
+        assert cur.query("SELECT 1 AS a").value() == 1
+
+
+@pytest.mark.mysql
+@pytest.mark.parametrize("lead", [b"\x80", b"\xa0", b"\xfd", b"\xfe", b"\xff"])
+def test_cp932_bytes_the_servers_refuse_stay_bytes(lead):
+    db = Database(util.MYSQL_URI, charset="cp932")
+    value = lead + b"\\"
+    with db.cursor as cur:
+        assert bytes(cur.query("SELECT :v AS a", v=value).value()) == value
+    db.close()
+
+
+@pytest.mark.mysql
+def test_cp932_text_the_servers_refuse_is_a_data_error():
+    db = Database(util.MYSQL_URI, charset="cp932")
+    with db.cursor as cur:
+        with pytest.raises(exc.DataError):
+            cur.query("SELECT :v AS a", v="\\").all()
+    db.close()
+
+
+@pytest.mark.mysql
+def test_comparing_a_hex_literal_under_another_collation():
+    db = Database(
+        util.MYSQL_URI, charset="utf8mb4", collation="utf8mb4_unicode_ci"
+    )
+    with db.cursor as cur:
+        with pytest.raises(exc.ProgrammingError) as info:
+            cur.query("SELECT 'x' IN (:v) AS a", v="é\\").all()
+        assert info.value.code == 1267
+        assert cur.query("SELECT 'x' IN (:v) AS a", v="é").value() == 0
+    db.close()

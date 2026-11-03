@@ -10,6 +10,7 @@ except ImportError as e:
         "In order to use quma with MySQL you need to install mysqlclient"
     ) from e
 
+import codecs
 from typing import Any
 
 from .. import (
@@ -62,6 +63,7 @@ class ChangelingStreamCursor(RowStreamCursor):
 class EscapingConnection(DriverConnection):
     def set_character_set(self, charset, collation=None):
         super().set_character_set(charset, collation)
+        codecs.lookup(self.encoding)
         self._text_charset = charset
 
     def literal(self, o):
@@ -110,6 +112,8 @@ class Connection(conn.Connection):
             )
         except MySQLdb.Error as e:
             raise errors.connection_error(e, self.dialect) from e
+        except LookupError as e:
+            raise errors.no_codec(e) from e
         return self.disable_autocommit(conn)
 
     def enable_autocommit_if(self, autocommit, conn):

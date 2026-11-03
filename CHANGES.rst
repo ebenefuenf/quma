@@ -5,6 +5,20 @@ quma Changelog
 Unreleased
 ----------
 
+- With asyncmy, ``init_command`` no longer replaces the ``SET NAMES`` quma sends
+  first, which made MySQL refuse to compare a value in a hex literal to a quoted
+  string. The command still runs, afterwards.
+- A MySQL charset that Python has no codec for raises ``ConnectionError`` while
+  connecting, instead of a builtin ``LookupError`` on each statement. After
+  ``SET NAMES`` it raises ``DataError``.
+- With mysqlclient and ``charset='cp932'``, ``bytes`` with one of the 5 bytes that
+  Python accepts and the servers refuse are sent as binary. They failed with error
+  1300 if they also held a backslash byte.
+- JSON that a charset garbled raises ``DataError`` instead of ``JSONDecodeError``,
+  like ``¥`` under ``client_encoding=SJIS``. MySQL's errors 1300, for a value
+  invalid in its charset, and 1267, 1270 and 1271, for collations that can't be
+  compared, raise ``DataError`` and ``ProgrammingError`` instead of plain
+  ``DatabaseError``.
 - A statement and parameters that don't fit together raise ``ProgrammingError``
   with every driver, for a missing ``:name`` too. psycopg2, mysqlclient and asyncmy
   raised builtin ``KeyError``, ``IndexError``, ``TypeError`` or ``ValueError``.

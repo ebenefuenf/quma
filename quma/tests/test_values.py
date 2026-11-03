@@ -18,6 +18,7 @@ from .. import (
     Database,
     exc,
 )
+from .. import values as quma_values
 from . import util
 
 ASYNCMY_URI = util.MYSQL_URI.replace("mysqlclient://", "asyncmy://")
@@ -479,3 +480,12 @@ async def test_asyncmy_closes_a_connection_it_cant_decode_for():
         with pytest.raises(exc.ConnectionLost):
             await cur.query("SELECT 1 AS a").all()
     await db.close()
+
+
+def test_is_text():
+    assert quma_values.is_text("é".encode(), "utf8")
+    assert not quma_values.is_text(b"\xff", "utf8")
+    assert quma_values.is_text(b"\x83\x5c", "cp932")
+    for byte in (b"\x80", b"\xa0", b"\xfd", b"\xfe", b"\xff"):
+        assert byte.decode("cp932")
+        assert not quma_values.is_text(byte + b"\\", "cp932")
