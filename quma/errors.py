@@ -99,6 +99,12 @@ _CODES = {"postgresql": _POSTGRESQL, "mysql": _MYSQL, "sqlite": _SQLITE}
 
 SQLITE_CLOSED = "Cannot operate on a closed database."
 
+# What psycopg and sqlite3 say, the others raise a KeyError.
+_MISSING_PARAMETER = (
+    "query parameter missing",
+    "You did not supply a value for binding",
+)
+
 # The driver's classes that mean the same on every driver, for unknown codes
 # and for errors the driver raises itself.
 _CATEGORIES = {
@@ -135,14 +141,14 @@ def _from_builtin(
         return None
     # The statement and its parameters don't fit together. Drivers format them
     # with Python's % operator, whose errors they pass on.
-    message = str(error)
     if isinstance(error, KeyError):
         name = error.args[0]
         # mysqlclient formats bytes.
         if isinstance(name, bytes):
             name = name.decode(errors="replace")
         message = f"query parameter missing: {name}"
-    return exc.ProgrammingError(message, script=script)
+        return exc.MissingParameter(message, script=script)
+    return exc.ProgrammingError(str(error), script=script)
 
 
 def translate(
@@ -257,6 +263,8 @@ def _class(
         return exc.ConnectionLost
     if dialect == "sqlite" and str(error) == SQLITE_CLOSED:
         return exc.ConnectionLost
+    if dialect != "mysql" and str(error).startswith(_MISSING_PARAMETER):
+        return exc.MissingParameter
     for name in names:
         if name in _CATEGORIES:
             return _CATEGORIES[name]

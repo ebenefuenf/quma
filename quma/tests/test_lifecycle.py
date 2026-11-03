@@ -599,6 +599,18 @@ def test_a_missing_name_raises_programming_error(driver, params):
     db.close()
 
 
+def test_a_missing_name_is_a_key_error_too(driver):
+    db = Database(driver)
+    with db.cursor as cur:
+        with pytest.raises(KeyError) as info:
+            cur.query("SELECT :wanted AS a").all()
+    assert isinstance(info.value, exc.MissingParameter)
+    assert isinstance(info.value, exc.ProgrammingError)
+    assert "wanted" in str(info.value)
+    assert not str(info.value).startswith("'")
+    db.close()
+
+
 def test_a_missing_name_says_which(driver):
     if driver.startswith("sqlite3"):
         pytest.skip("Says it its own way, in a message of sqlite3.")

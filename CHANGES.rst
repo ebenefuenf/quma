@@ -34,8 +34,11 @@ Unreleased
   compared, raise ``DataError`` and ``ProgrammingError`` instead of plain
   ``DatabaseError``.
 - A statement and parameters that don't fit together raise ``ProgrammingError``
-  with every driver, for a missing ``:name`` too. psycopg2, mysqlclient and asyncmy
-  raised builtin ``KeyError``, ``IndexError``, ``TypeError`` or ``ValueError``.
+  with every driver. psycopg2, mysqlclient and asyncmy raised builtin ``KeyError``,
+  ``IndexError``, ``TypeError`` or ``ValueError``. A missing ``:name`` raises the
+  new ``MissingParameter``, also with psycopg and SQLite. It's a
+  ``ProgrammingError`` and still a ``KeyError``, so code that catches that keeps
+  working.
 - With aiosqlite, ``many().get()`` without a size works. It raised
   ``AttributeError``, because the driver's cursor didn't exist yet.
 - With aiosqlite, a failed connection waits for its thread. The thread could

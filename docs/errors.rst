@@ -33,7 +33,8 @@ The exceptions
     │   └── ExclusionViolation    PostgreSQL only
     ├── DataError             too long, out of range, of the wrong type
     ├── ProgrammingError      a syntax error, a missing table or column,
-    │                         a missing permission
+    │   │                     a missing permission
+    │   └── MissingParameter  a placeholder without a value, also a KeyError
     ├── RaisedError           RAISE EXCEPTION on PostgreSQL, SIGNAL on MySQL
     │                         and MariaDB, RAISE() on SQLite
     ├── TransactionConflict   a deadlock, a serialization failure or a lock

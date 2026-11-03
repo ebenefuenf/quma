@@ -85,6 +85,14 @@ class ProgrammingError(DatabaseError):
     placeholder."""
 
 
+class MissingParameter(ProgrammingError, KeyError):
+    """A placeholder has no value. Also a :class:`KeyError`, which is what
+    psycopg2, mysqlclient and asyncmy raise for this, so code that catches it
+    keeps working."""
+
+    __str__ = Exception.__str__
+
+
 class RaisedError(DatabaseError):
     """SQL raised the error itself: ``RAISE EXCEPTION`` on PostgreSQL,
     ``SIGNAL`` on MySQL and MariaDB, ``RAISE()`` on SQLite."""
