@@ -43,6 +43,17 @@ class Cursor:
     def __init__(self, conn):
         self.connection = conn
         self._cursor = None
+        self._arraysize = 1
+
+    @property
+    def arraysize(self):
+        return self._cursor.arraysize if self._cursor else self._arraysize
+
+    @arraysize.setter
+    def arraysize(self, size):
+        self._arraysize = size
+        if self._cursor:
+            self._cursor.arraysize = size
 
     @property
     def description(self):
@@ -63,6 +74,7 @@ class Cursor:
         try:
             if self._cursor is None:
                 self._cursor = await self.connection.cursor()
+                self._cursor.arraysize = self._arraysize
             return await getattr(self._cursor, method)(*args)
         except asyncio.CancelledError:
             # The statement would go on running in the connection's thread,
@@ -126,7 +138,13 @@ class AsyncConnection(conn.AsyncConnection):
         # Otherwise a connection that wasn't closed keeps the process alive.
         conn._thread.daemon = True
         try:
-            await conn
+            try:
+                await conn
+            except BaseException:
+                # aiosqlite stops its thread here without waiting for it, and
+                # the thread fails if the event loop is closed by then.
+                await asyncio.to_thread(conn._thread.join)
+                raise
         except sqlite3.Error as e:
             raise errors.connection_error(e, self.dialect) from e
         conn.row_factory = row_factory(

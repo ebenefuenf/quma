@@ -1,6 +1,7 @@
 import asyncio
 import subprocess
 import sys
+import threading
 from dataclasses import dataclass
 
 import pytest
@@ -282,6 +283,39 @@ async def test_closed_connection_raises_quma_exception(tmp_path):
         await raw_conn.close()
         with pytest.raises(exc.DatabaseError):
             await cur.execute("SELECT 1")
+    await db.close()
+
+
+async def test_many_uses_the_arraysize(tmp_path):
+    db = AsyncDatabase(f"aiosqlite:///{tmp_path / 'm.db'}")
+    sql = "SELECT 1 AS a UNION SELECT 2 UNION SELECT 3"
+    async with db.cursor as cur:
+        assert cur.arraysize == 1
+        assert [list(row) for row in await cur.query(sql).many().get()] == [
+            [1]
+        ]
+    async with db.cursor as cur:
+        assert await cur.query("CREATE TABLE t (a INT)").many().get() == ()
+    async with db.cursor as cur:
+        assert cur.raw_cursor is not None
+        cur.raw_cursor.cursor.arraysize = 2
+        rows = await cur.query(sql).many().get()
+        assert [list(row) for row in rows] == [[1], [2]]
+        assert cur.arraysize == 2
+    await db.close()
+
+
+async def test_a_failed_connect_stops_the_thread():
+    db = AsyncDatabase("aiosqlite:////nonexistent/directory/quma.sqlite")
+    with pytest.raises(exc.ConnectionError):
+        async with db.cursor:
+            pass
+    workers = [
+        thread
+        for thread in threading.enumerate()
+        if "_connection_worker_thread" in thread.name
+    ]
+    assert not workers
     await db.close()
 
 

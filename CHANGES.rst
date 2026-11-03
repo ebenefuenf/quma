@@ -5,6 +5,10 @@ quma Changelog
 Unreleased
 ----------
 
+- With aiosqlite, ``many().get()`` without a size works. It raised
+  ``AttributeError``, because the driver's cursor didn't exist yet.
+- With aiosqlite, a failed connection waits for its thread. The thread could
+  raise ``RuntimeError: Event loop is closed`` if the event loop closed first.
 - psycopg's own ``cur.stream()`` and ``cur.copy()`` can't hang anymore. Between
   rows the driver holds the connection's lock, so closing the cursor, committing
   or returning the connection while an iterator was kept waited forever, and took
