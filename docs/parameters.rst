@@ -166,6 +166,13 @@ mysqlclient and asyncmy send the same for these:
   ``UUID`` or ``PurePath``. A value whose only text is its ``repr()``, like a
   ``dict``, a ``range`` or a plain object, is refused.
 
+psycopg2 sends ``Decimal('Infinity')`` and ``Decimal('-Infinity')`` as ``NaN``,
+without an error, so that's what a ``numeric`` column stores. Check such values
+yourself if they can occur. quma leaves this alone: only a global adapter could
+change it, which would also apply to code that uses psycopg2 directly, and slow
+down every ``Decimal``. psycopg sends them as they are, MySQL and MariaDB raise
+:class:`quma.ProgrammingError`, and SQLite refuses every ``Decimal``.
+
 
 Supported servers
 -----------------
