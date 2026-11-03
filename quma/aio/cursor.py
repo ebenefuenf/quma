@@ -257,6 +257,21 @@ class AsyncCursor(BaseCursor[AsyncConnectionLike]):
                 "Open one cursor per task."
             )
 
+    async def _hold(self, finish: Callable[[], Any]) -> AsyncOccupation:
+        """Keep other operations out until :meth:`_let_go`."""
+        self._check_idle()
+        await self._busy.acquire()
+        try:
+            self._block = AsyncOccupation(self, finish)
+        except BaseException:
+            self._busy.release()
+            raise
+        return self._block
+
+    def _let_go(self) -> None:
+        self._block = None
+        self._busy.release()
+
     def _shared(self) -> AbstractAsyncContextManager[Any]:
         # Cursors on one carrier share its connection, and asyncmy can't
         # run two queries on a connection at once.

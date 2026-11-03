@@ -57,9 +57,9 @@ class AsyncDriverIterator:
 
 
 class AsyncDriverContext:
-    """What psycopg's ``cursor.copy()`` returns. It holds the cursor's lock for
-    the whole block: its object runs on the connection without asking, and
-    another task closing the cursor has to wait for it."""
+    """What psycopg's ``cursor.copy()`` returns. The cursor stays held for the
+    whole block: its object runs on the connection without asking, and another
+    task closing the cursor has to wait for it."""
 
     def __init__(self, cursor: Any, manager: Any) -> None:
         self.cursor = cursor
@@ -68,39 +68,30 @@ class AsyncDriverContext:
 
     async def __aenter__(self) -> Any:
         cursor = self.cursor
-        cursor._check_idle()
-        await cursor._busy.acquire()
+        self.use = await cursor._hold(self._abort)
         try:
-            self.use = AsyncOccupation(cursor, self._abort)
             enter = translating(cursor._conn(), self.manager.__aenter__)
-            try:
-                async with cursor._shared():
-                    value = await enter()
-            except BaseException:
-                self.use.forget()
-                raise
+            async with cursor._shared():
+                return await enter()
         except BaseException:
-            cursor._busy.release()
+            self.use.forget()
+            cursor._let_go()
             raise
-        cursor._block = self.use
-        return value
 
     async def __aexit__(self, *exc_info: Any) -> Any:
         if not self.use.forget():
             return False
-        self.cursor._block = None
         leave = translating(self.cursor._conn(), self.manager.__aexit__)
         try:
             return await leave(*exc_info)
         finally:
-            self.cursor._busy.release()
+            self.cursor._let_go()
 
     async def _abort(self) -> None:
-        self.cursor._block = None
         # Only with an exception does psycopg stop the COPY, and without
         # ending it the next statement waits for its rest.
         error = exc.APIError(CLOSED_EARLY)
         try:
             await self.manager.__aexit__(type(error), error, None)
         finally:
-            self.cursor._busy.release()
+            self.cursor._let_go()
