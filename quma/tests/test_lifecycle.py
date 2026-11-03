@@ -190,6 +190,61 @@ def test_a_closed_carried_cursor_can_still_commit(database):
     assert_no_slot_lost(database)
 
 
+def test_raw_conn_follows_the_connection(database):
+    carrier = object()
+    cur = database(carrier).cursor
+    assert cur.raw_conn is None
+    cur.create_cursor()
+    raw = cur.raw_conn
+    assert raw is not None
+    cur.put()
+    assert cur.raw_conn is raw
+    other = database(carrier).cursor
+    assert other.raw_conn is None
+    other.create_cursor()
+    assert other.raw_conn is raw
+    database.release(carrier)
+    assert cur.raw_conn is None
+    assert other.raw_conn is None
+    assert_no_slot_lost(database)
+
+
+def test_closing_gives_up_the_connection(database):
+    cur = database.cursor()
+    assert cur.raw_conn is not None
+    cur.close()
+    assert cur.raw_conn is None
+    assert_no_slot_lost(database)
+
+
+def test_a_closed_cursor_still_tells_about_its_last_statement(database):
+    with database.cursor as cur:
+        cur.execute(SQL)
+        has_rowcount = cur.has_rowcount
+        cur.fetchall()
+    # psycopg resets it when the cursor closes, the others keep it.
+    assert isinstance(cur.rowcount, int)
+    assert cur.has_rowcount == has_rowcount
+    assert cur.raw_cursor is not None
+
+
+def test_a_query_counts_after_its_cursor_closed(database):
+    if not database.conn.has_rowcount:
+        pytest.skip("SQLite only knows the count from the rows")
+    with database.cursor as cur:
+        query = cur.query(SQL).run()
+    assert query.count() == 1
+
+
+def test_closing_a_cursor_twice_returns_its_connection_once(database):
+    cur = database.cursor()
+    cur.close()
+    cur.close()
+    with database.cursor as other:
+        other.execute(SQL)
+    assert_no_slot_lost(database)
+
+
 def test_mogrify_binds_the_values(driver):
     placeholder = "?" if driver.startswith("sqlite3") else "%(v)s"
     db = Database(driver)

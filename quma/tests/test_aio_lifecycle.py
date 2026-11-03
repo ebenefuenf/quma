@@ -193,6 +193,104 @@ async def test_a_closed_carried_cursor_can_still_commit(database):
     await assert_no_slot_lost(database)
 
 
+async def test_raw_conn_follows_the_connection(database):
+    carrier = object()
+    cur = database(carrier).cursor
+    assert cur.raw_conn is None
+    await cur.create_cursor()
+    raw = cur.raw_conn
+    assert raw is not None
+    await cur.put()
+    assert cur.raw_conn is raw
+    other = database(carrier).cursor
+    assert other.raw_conn is None
+    await other.create_cursor()
+    assert other.raw_conn is raw
+    await database.release(carrier)
+    assert cur.raw_conn is None
+    assert other.raw_conn is None
+    await assert_no_slot_lost(database)
+
+
+async def test_closing_gives_up_the_connection(database):
+    cur = await database.cursor
+    assert cur.raw_conn is not None
+    await cur.close()
+    assert cur.raw_conn is None
+    await assert_no_slot_lost(database)
+
+
+async def test_a_closed_cursor_still_tells_about_its_last_statement(database):
+    async with database.cursor as cur:
+        await cur.execute(SQL)
+        has_rowcount = cur.has_rowcount
+        await cur.fetchall()
+    # psycopg resets it when the cursor closes, the others keep it.
+    assert isinstance(cur.rowcount, int)
+    assert cur.has_rowcount == has_rowcount
+    assert cur.raw_cursor is not None
+
+
+async def test_a_query_counts_after_its_cursor_closed(database):
+    if not database.conn.has_rowcount:
+        pytest.skip("SQLite only knows the count from the rows")
+    async with database.cursor as cur:
+        query = await cur.query(SQL).run()
+    assert await query.count() == 1
+
+
+async def test_closing_a_cursor_twice_returns_its_connection_once(database):
+    cur = await database.cursor
+    await cur.close()
+    await cur.close()
+    async with database.cursor as other:
+        await other.execute(SQL)
+    await assert_no_slot_lost(database)
+
+
+@pytest.fixture
+def slow_get(database, monkeypatch):
+    """Keeps a cursor in the middle of opening until the event is set."""
+    gate = asyncio.Event()
+    get = database.conn.get
+
+    async def waiting(**kwargs):
+        await gate.wait()
+        return await get(**kwargs)
+
+    monkeypatch.setattr(database.conn, "get", waiting)
+    return gate
+
+
+async def opening(cur):
+    task = asyncio.create_task(cur.create_cursor())
+    await asyncio.sleep(0)
+    return task
+
+
+async def test_a_cursor_being_opened_refuses_to_open(database, slow_get):
+    cur = database.cursor
+    task = await opening(cur)
+    with pytest.raises(exc.APIError, match="already open"):
+        await cur.create_cursor()
+    slow_get.set()
+    await task
+    await cur.close()
+    await assert_no_slot_lost(database)
+
+
+async def test_a_cursor_being_opened_has_no_connection_yet(database, slow_get):
+    cur = database.cursor
+    task = await opening(cur)
+    with pytest.raises(exc.APIError, match="no open connection"):
+        await cur.execute(SQL)
+    slow_get.set()
+    await task
+    await cur.execute(SQL)
+    await cur.close()
+    await assert_no_slot_lost(database)
+
+
 def query(cur):
     return cur.query(SQL).all()
 
