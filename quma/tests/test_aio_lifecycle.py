@@ -154,6 +154,7 @@ USES = {
     "commit": lambda cur: cur.commit(),
     "rollback": lambda cur: cur.rollback(),
     "block": lambda cur: cur.transaction().__aenter__(),
+    "stream": lambda cur: cur.query(SQL).stream().__anext__(),
 }
 
 
@@ -173,7 +174,9 @@ async def test_a_cursor_without_a_connection_says_so(database, use):
     await assert_no_slot_lost(database)
 
 
-@pytest.mark.parametrize("use", ["query", "execute", "fetchall", "mogrify"])
+@pytest.mark.parametrize(
+    "use", ["query", "execute", "fetchall", "mogrify", "block", "stream"]
+)
 async def test_a_closed_carried_cursor_says_so(database, use):
     carrier = object()
     async with database(carrier).cursor as cur:

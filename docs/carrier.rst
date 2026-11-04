@@ -56,6 +56,11 @@ closed, can't run queries anymore, because the connection may already
 serve another cursor. ``db(request)`` opens new cursors on a new carrier
 afterwards, even if you kept the object it returned.
 
+After its ``with`` block, a carried cursor can still commit or roll back the
+carrier's transaction, but it can't start anything new: queries, streams and
+:ref:`transaction blocks <transaction-blocks>` raise ``APIError``. Get a new
+cursor with ``db(request).cursor`` for those.
+
 Cursors on one carrier share its connection and its transaction. Use a
 carrier from one thread at a time: mysqlclient and sqlite3 connections
 don't support queries from several threads. In async code, the cursors

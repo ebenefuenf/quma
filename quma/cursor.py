@@ -244,14 +244,15 @@ class BaseCursor(Generic[ConnT]):
         return self.conn
 
     def _idle_raw_conn(self) -> RawConnection:
-        raw_conn = self.raw_conn
-        if raw_conn is None:
-            raise exc.APIError("The cursor has no open connection.")
+        raw_conn = self._cursor().raw_conn
         check_idle(raw_conn)
         return raw_conn
 
     def _commit_conn(self) -> RawConnection:
-        raw_conn = self._idle_raw_conn()
+        raw_conn = self.raw_conn
+        if raw_conn is None:
+            raise exc.APIError("The cursor has no open connection.")
+        check_idle(raw_conn)
         check_no_block(raw_conn)
         return raw_conn
 

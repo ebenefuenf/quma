@@ -94,7 +94,6 @@ class BaseOccupation:
     blocks = True
 
     def __init__(self, cursor: Any, finish: Callable[[], Any]) -> None:
-        cursor._cursor()
         self.cursor = cursor
         self.raw_conn = cursor._idle_raw_conn()
         self.finish = finish
